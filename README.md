@@ -1,1 +1,0 @@
-# nrtkumi.github.io
