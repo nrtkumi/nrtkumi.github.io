@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>KAITEN — 30秒で音楽に出会う</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,6 +27,7 @@
     font-family: "Zen Kaku Gothic New", sans-serif;
     min-height: 100vh;
     padding-bottom: 120px;
+    -webkit-tap-highlight-color: transparent;
   }
   /* ---------- header ---------- */
   header {
@@ -311,6 +312,7 @@
     transform: translateY(110%);
     transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
     z-index: 10;
+    padding-bottom: env(safe-area-inset-bottom); /* iPhoneのホームバー回避 */
   }
   .player.show { transform: none; }
   .player-inner {
@@ -418,15 +420,48 @@
     margin: 40px auto;
   }
   @media (max-width: 760px) {
+    body { padding-bottom: 150px; }
     .vol, .preview-note { display: none; }
-    .timeline { min-width: 100px; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
-    header { padding-top: 28px; }
-    .tab { padding: 12px 12px; font-size: 0.88rem; }
+    header { padding: 24px 16px 4px; }
+    .tabs { padding: 0 16px; overflow-x: auto; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { padding: 12px 10px; font-size: 0.88rem; white-space: nowrap; flex-shrink: 0; }
+    .search-wrap { padding: 0 16px; margin-top: 16px; }
+    #searchInput { padding: 11px 10px; }
+    #searchBtn { padding: 11px 18px; }
+    .chips, .status-row, .grid, .empty { padding-left: 16px; padding-right: 16px; }
     .heart { opacity: 1; transform: scale(1); } /* タッチ端末では常時表示 */
+    /* プレイヤーは2段組: 上段=ジャケット+曲名+操作 / 下段=シークバー */
+    .player-inner {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-areas:
+        "disc now controls"
+        "timeline timeline timeline";
+      gap: 4px 10px;
+      padding: 10px 14px 12px;
+    }
+    .disc-wrap { grid-area: disc; width: 48px; height: 48px; align-self: center; }
+    .disc::after { width: 10px; height: 10px; }
+    .now { grid-area: now; align-self: center; }
+    .now .t { font-size: 0.88rem; }
+    .controls { grid-area: controls; gap: 0; }
+    .icon-btn { width: 40px; height: 40px; }
+    .icon-btn.main { width: 44px; height: 44px; }
+    .timeline { grid-area: timeline; min-width: 0; }
+    input[type="range"]::-webkit-slider-thumb { width: 16px; height: 16px; }
+    input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; }
   }
-  @media (max-width: 520px) {
-    .timeline { display: none; }
+  @media (max-width: 380px) {
+    #npFav { display: none; } /* 極小画面ではカード側のハートで代替 */
+  }
+  /* タッチ端末: ホバー前提の演出を無効化(タップ後のホバー固着防止) */
+  @media (hover: none) {
+    .card:hover { transform: none; border-color: var(--line); }
+    .card:hover .overlay { opacity: 0; }
+    .card.playing { border-color: var(--accent); }
+    .card.playing .overlay { opacity: 1; }
   }
   @media (prefers-reduced-motion: reduce) {
     .disc, .eq i, .card, .heart.pop { animation: none !important; }
@@ -909,10 +944,36 @@
     $("npArtist").textContent = t.artistName + (t.collectionName ? " — " + t.collectionName : "");
     player.classList.add("show");
     document.title = "▶ " + t.trackName + " — KAITEN";
+    updateMediaSession(t);
     pushHistory(t);
     syncFavUI();
     if (view === "history") render(); // 履歴タブ表示中は順序を即反映
     updateCards();
+  }
+
+  /* ---------- Media Session (スマホのロック画面・通知センターの再生コントロール) ---------- */
+  function updateMediaSession(t) {
+    if (!("mediaSession" in navigator)) return;
+    try {
+      const art = (t.artworkUrl100 || "").replace("100x100", "600x600");
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: t.trackName,
+        artist: t.artistName,
+        album: t.collectionName || "",
+        artwork: art ? [{ src: art, sizes: "600x600", type: "image/jpeg" }] : []
+      });
+    } catch {}
+  }
+  if ("mediaSession" in navigator) {
+    const actions = {
+      play: () => audio.play(),
+      pause: () => audio.pause(),
+      previoustrack: () => $("prevBtn").click(),
+      nexttrack: () => $("nextBtn").click()
+    };
+    for (const [name, fn] of Object.entries(actions)) {
+      try { navigator.mediaSession.setActionHandler(name, fn); } catch {}
+    }
   }
 
   function updateCards() {
