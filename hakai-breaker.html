@@ -355,12 +355,14 @@
 
   /* ---------- 状態 ---------- */
   // state: start | aim | flight | shift | upgrade | over
+  // ※メインループはスタート前から回るため、全て宣言時に初期化しておく
   let state = "start";
-  let wave, score, balls, dmg, critL, explL, pierceL, wreckL;
-  let blocks, gems, flying, particles, floats;
-  let launchX, aimDir, aiming, pointerMoved;
-  let toFire, fireTimer, firstLand, collected;
-  let combo, flightTime, shiftT, shake, hasFired;
+  let wave = 1, score = 0, balls = 3, dmg = 1;
+  let critL = 0, explL = 0, pierceL = 0, wreckL = 0;
+  let blocks = [], gems = [], flying = [], particles = [], floats = [];
+  let launchX = W / 2, aimDir = null, aiming = false, pointerMoved = false;
+  let toFire = 0, fireTimer = 0, firstLand = null, collected = 0;
+  let combo = 0, flightTime = 0, shiftT = 1, shake = 0, hasFired = false;
   let speedBase = 1;
   let pendingUpgrade = false;
 
@@ -449,7 +451,7 @@
   }
   function blockHue(b) {
     const t = Math.min(b.max / Math.max(wave, 1), 2.2);
-    return Math.max(280 - 0, 170 - t * 75); // 170(緑) -> 10(赤) ※heavyはさらに低く
+    return Math.max(10, 170 - t * 75); // 170(緑) -> 10(赤) ※heavyはさらに低く
   }
 
   /* ---------- パーティクル ---------- */
