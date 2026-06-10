@@ -3,7 +3,7 @@
 1秒だけ流れる曲のワンフレーズを聴いて、4択から曲名を当てる音楽クイズゲーム。
 iTunes Search API の30秒プレビュー(サビなどのハイライト部分)を使い、実際の楽曲で遊べる。
 
-- **プレイURL**: https://nrtkumi.github.io/games/phrase-hunter/(旧URL `/games/intro-hunter/` からリダイレクト)
+- **プレイURL**: https://nrtkumi.github.io/games/phrase-hunter/
 - **対応環境**: スマホ(iOS Safari / Android Chrome)優先、PCブラウザ可。縦画面・タッチ操作のみで完結
 - **通信**: 楽曲取得・プレビュー再生のためネットワーク接続が必要
 
