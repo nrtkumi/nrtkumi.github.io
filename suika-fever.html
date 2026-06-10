@@ -233,11 +233,43 @@ button:focus-visible { outline: 2px solid #ffd700; outline-offset: 2px; }
   function newHand() { return { t: Math.floor(Math.random() * 5 * Math.random() * 1.4) % 5, aura: rollAura() }; }
 
   function audio() {
-    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (!AC) {
+      try {
+        AC = new (window.AudioContext || window.webkitAudioContext)();
+        // iOS backgrounds the context as 'interrupted'; resume when it changes
+        AC.onstatechange = () => { if (AC.state !== 'running' && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+      } catch (e) {}
+    }
     if (AC && AC.state !== 'running') { try { AC.resume(); } catch (e) {} }
     return AC;
   }
+  // iOS routes Web Audio through the ringer channel, so the hardware silent
+  // switch mutes it. Playing an <audio> media element moves the audio session
+  // to the playback category, which ignores the silent switch.
+  let silentEl = null;
+  function silentWavUrl() {
+    const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVE');
+    str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    str(36, 'data'); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+    return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  }
+  function unlockMedia() {
+    if (!silentEl) {
+      silentEl = document.createElement('audio');
+      silentEl.setAttribute('playsinline', '');
+      silentEl.loop = true;
+      silentEl.volume = 0.01;
+      silentEl.src = silentWavUrl();
+    }
+    const p = silentEl.play();
+    if (p && p.catch) p.catch(() => {});
+  }
   function unlockAudio() {
+    unlockMedia();
     audio();
     if (!AC) return;
     try {
@@ -245,9 +277,12 @@ button:focus-visible { outline: 2px solid #ffd700; outline-offset: 2px; }
       const s = AC.createBufferSource();
       s.buffer = b; s.connect(AC.destination); s.start(0);
     } catch (e) {}
-    if (AC.state === 'running') {
-      ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click'].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
-    }
+    const done = () => {
+      if (AC.state === 'running') {
+        ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click'].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+      }
+    };
+    try { AC.resume().then(done); } catch (e) { done(); }
   }
   ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click'].forEach(ev => document.addEventListener(ev, unlockAudio, true));
   document.addEventListener('visibilitychange', () => { if (!document.hidden) audio(); });
