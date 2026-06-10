@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>TAP DUEL — 2人対戦タップバトル</title>
+<meta name="description" content="スマホ1台を2人で挟んで遊ぶ、5点先取のミニゲーム対戦。早押し・連打・タイミング勝負!">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Mono:wght@400;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  html, body { height: 100%; }
+  body {
+    height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+    background: #0b0e1a; color: #fff;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    touch-action: none; overscroll-behavior: none;
+  }
+  .zone { flex: 1; display: flex; position: relative; overflow: hidden; }
+  #zone2 { transform: rotate(180deg); padding-bottom: env(safe-area-inset-top); background: radial-gradient(120% 90% at 50% 110%, rgba(255, 93, 177, .14), transparent 70%); }
+  #zone1 { padding-bottom: env(safe-area-inset-bottom); background: radial-gradient(120% 90% at 50% 110%, rgba(39, 230, 255, .14), transparent 70%); }
+  #zone2 .arena { --me: #ff5db1; }
+  #zone1 .arena { --me: #27e6ff; }
+  .arena { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 14px; text-align: center; }
+
+  #mid { height: 64px; display: flex; flex-direction: column; flex: none; background: #131831; border-top: 1px solid #2a3160; border-bottom: 1px solid #2a3160; z-index: 2; }
+  .midrow { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: "Space Mono", monospace; font-size: 13px; color: #8e97c9; }
+  #mid2 { transform: rotate(180deg); border-bottom: 1px dashed #2a3160; }
+  .midrow b { font-size: 17px; }
+  .s-me1 { color: #27e6ff; } .s-me2 { color: #ff5db1; }
+
+  .ttl { font-family: "Bungee", cursive; font-size: clamp(34px, 11vw, 64px); line-height: 1; background: linear-gradient(180deg, #fff, var(--me)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .tsub { font-size: 14px; font-weight: 700; color: #aeb6e2; }
+  .tstats { font-family: "Space Mono", monospace; font-size: 12px; color: #8e97c9; }
+  .blink { font-weight: 900; color: var(--me); animation: bl 1.1s infinite; font-size: 16px; }
+  @keyframes bl { 50% { opacity: .25; } }
+
+  .rno { font-family: "Space Mono", monospace; font-size: 13px; color: #8e97c9; letter-spacing: .2em; }
+  .gname { font-size: clamp(24px, 8vw, 44px); font-weight: 900; color: var(--me); }
+  .grule { font-size: 14px; font-weight: 700; color: #cdd3f2; max-width: 30em; }
+
+  .big { font-size: clamp(30px, 10vw, 64px); font-weight: 900; line-height: 1.2; }
+  .wait { color: #ff5d5d; }
+  .go { color: #3dff8e; animation: pop .18s; }
+  @keyframes pop { from { transform: scale(.4); } }
+  .hint { font-size: 13px; font-weight: 700; color: #8e97c9; }
+
+  .timer { font-family: "Space Mono", monospace; font-size: clamp(40px, 13vw, 76px); font-weight: 700; }
+  .cards { font-size: clamp(52px, 17vw, 100px); line-height: 1.1; letter-spacing: .15em; }
+
+  .tugnum { font-family: "Space Mono", monospace; font-size: clamp(40px, 13vw, 76px); font-weight: 700; color: var(--me); }
+  .rope { width: min(78vw, 340px); height: 14px; border-radius: 7px; background: #1d2347; position: relative; overflow: hidden; }
+  .ropefill { position: absolute; inset: 0; width: 50%; background: var(--me); border-radius: 7px; transition: width .08s linear; }
+  .tugtime { font-size: 15px; font-weight: 900; color: #8e97c9; }
+
+  .numgrid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; max-width: 320px; }
+  .numbtn { width: 62px; height: 62px; border-radius: 50%; border: 2px solid var(--me); background: #131831; color: #fff; font-family: "Bungee", cursive; font-size: 24px; display: flex; align-items: center; justify-content: center; }
+  .numbtn.done { opacity: .18; border-color: #444; }
+  .arena.ng { animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+
+  .mark { font-size: clamp(44px, 14vw, 80px); line-height: 1.1; }
+  .rmsg { font-size: 20px; font-weight: 900; }
+  .res.win .rmsg { color: #3dff8e; } .res.lose .rmsg { color: #ff5d5d; } .res.draw .rmsg { color: #8e97c9; }
+  .rsub { font-size: 13px; font-weight: 700; color: #aeb6e2; }
+  .res { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+</style>
+</head>
+<body>
+  <div class="zone" id="zone2"><div class="arena" id="arena2"></div></div>
+  <div id="mid"><div class="midrow" id="mid2"></div><div class="midrow" id="mid1"></div></div>
+  <div class="zone" id="zone1"><div class="arena" id="arena1"></div></div>
+
+<script>
+"use strict";
+/* ---------- audio (iOS消音スイッチ対策込み・hakaiと同方式) ---------- */
+let AC = null, muted = false;
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+    } catch (e) {}
+  }
+  if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  str(36, "data"); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline", "");
+    silentEl.loop = true;
+    silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play();
+  if (p && p.catch) p.catch(() => {});
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === "running") {
+      ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+    }
+  };
+  try { AC.resume().then(done); } catch (e) { done(); }
+}
+["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+function tone(f, d, type, vol, slideTo) {
+  if (muted || !audio()) return;
+  try {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "sine"; o.frequency.value = f;
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, AC.currentTime + d);
+    g.gain.value = vol || 0.06;
+    g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + d);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + d);
+  } catch (e) {}
+}
+const sTick = () => tone(640, 0.035, "square", 0.025);
+const sGo = () => tone(1240, 0.14, "square", 0.06);
+const sBuzz = () => tone(110, 0.25, "sawtooth", 0.07);
+const sIntro = () => [523, 784].forEach((f, i) => setTimeout(() => tone(f, 0.12, "square", 0.04), i * 90));
+const sPoint = () => [660, 880, 1320].forEach((f, i) => setTimeout(() => tone(f, 0.14, "square", 0.045), i * 70));
+const sWin = () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.25, "square", 0.05), i * 130));
+const vibe = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+/* ---------- 永続化 ---------- */
+const store = {
+  load(k, fb) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } },
+  save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+let stats = store.load("tapduel_stats", { 1: 0, 2: 0 });
+
+/* ---------- 状態(ループが触るものは全て宣言時に初期化) ---------- */
+const WIN = 5;
+const INTRO_MS = 2200, RESULT_MS = 1700;
+const $ = id => document.getElementById(id);
+const arenaEl = { 1: $("arena1"), 2: $("arena2") };
+const midEl = { 1: $("mid1"), 2: $("mid2") };
+const other = p => p === 1 ? 2 : 1;
+let state = "title";          // title | intro | play | result | over
+let score = { 1: 0, 2: 0 };
+let curGame = null, lastGame = null, roundNum = 0;
+let tRef = 0;                 // 現フェーズの開始時刻
+let g = {};                   // 進行中ミニゲームの作業データ
+
+function setArena(p, html) { arenaEl[p].innerHTML = html; }
+function setArenas(html) { setArena(1, html); setArena(2, html); }
+function q(p, sel) { return arenaEl[p].querySelector(sel); }
+
+function renderMid() {
+  for (const p of [1, 2]) {
+    const o = other(p);
+    midEl[p].innerHTML = state === "title"
+      ? `TAP DUEL — ${WIN}点先取`
+      : `ROUND ${roundNum}&nbsp; <b class="s-me${p}">${score[p]}</b> - <b class="s-me${o}">${score[o]}</b>`;
+  }
+}
+
+/* ---------- ミニゲーム定義 ---------- */
+const EMO = ["🍎", "🍌", "🍇", "🍓", "🍊"];
+const GAMES = {
+  signal: {
+    name: "シグナル早押し",
+    rule: "🟢が出たら自分の画面を先にタップ! フライングは相手のポイント",
+    start(now) {
+      g = { fired: false, at: now + 1200 + Math.random() * 2300, done: false };
+      setArenas(`<div class="big wait">待て……</div>`);
+    },
+    tick(now) {
+      if (!g.fired && now >= g.at) {
+        g.fired = true; g.firedAt = now;
+        setArenas(`<div class="big go">🟢 押せ!!</div>`);
+        sGo();
+      }
+    },
+    tap(p, e, now) {
+      if (g.done) return;
+      g.done = true;
+      if (!g.fired) winPoint(other(p), "フライング発生!");
+      else winPoint(p, `反応速度 ${Math.round(now - g.firedAt)}ms`);
+    }
+  },
+  tug: {
+    name: "連打つなひき",
+    rule: "5秒間ひたすら連打! タップが多いほうの勝ち",
+    start(now) {
+      g = { taps: { 1: 0, 2: 0 }, end: now + 5000, done: false };
+      setArenas(`<div class="tugnum">0</div><div class="rope"><div class="ropefill" style="width:50%"></div></div><div class="tugtime">5</div>`);
+    },
+    tick(now) {
+      if (g.done) return;
+      const left = Math.max(0, g.end - now);
+      for (const p of [1, 2]) {
+        const t = q(p, ".tugtime");
+        if (t) t.textContent = (left / 1000).toFixed(1) + " 秒";
+      }
+      if (now >= g.end) {
+        g.done = true;
+        const w = g.taps[1] === g.taps[2] ? 0 : (g.taps[1] > g.taps[2] ? 1 : 2);
+        winPoint(w, null, { 1: `あなた ${g.taps[1]}回 / あいて ${g.taps[2]}回`, 2: `あなた ${g.taps[2]}回 / あいて ${g.taps[1]}回` });
+      }
+    },
+    tap(p) {
+      if (g.done) return;
+      g.taps[p]++;
+      const n = q(p, ".tugnum");
+      if (n) n.textContent = g.taps[p];
+      for (const v of [1, 2]) {
+        const f = q(v, ".ropefill");
+        if (f) f.style.width = Math.max(6, Math.min(94, 50 + (g.taps[v] - g.taps[other(v)]) * 2)) + "%";
+      }
+      if (g.taps[p] % 4 === 0) sTick();
+    }
+  },
+  stop: {
+    name: "ピッタリ5秒",
+    rule: "タイマーは1.5秒で見えなくなる。5.00秒ピッタリを狙ってタップ!",
+    start(now) {
+      g = { t0: now, stopped: { 1: null, 2: null }, done: false };
+      setArenas(`<div class="hint">目標 5.00 秒</div><div class="timer">0.00</div>`);
+    },
+    tick(now) {
+      if (g.done) return;
+      const el = (now - g.t0) / 1000;
+      for (const p of [1, 2]) {
+        if (g.stopped[p] !== null) continue;
+        const t = q(p, ".timer");
+        if (t) t.textContent = el < 1.5 ? el.toFixed(2) : "?.??";
+      }
+      if (el >= 8) {
+        for (const p of [1, 2]) if (g.stopped[p] === null) g.stopped[p] = 8;
+        this.finish();
+      }
+    },
+    tap(p, e, now) {
+      if (g.done || g.stopped[p] !== null) return;
+      g.stopped[p] = (now - g.t0) / 1000;
+      setArena(p, `<div class="hint">目標 5.00 秒</div><div class="timer">止めた!</div><div class="hint">相手を待っています…</div>`);
+      sTick();
+      if (g.stopped[1] !== null && g.stopped[2] !== null) this.finish();
+    },
+    finish() {
+      if (g.done) return;
+      g.done = true;
+      const d1 = Math.abs(g.stopped[1] - 5), d2 = Math.abs(g.stopped[2] - 5);
+      const w = d1 === d2 ? 0 : (d1 < d2 ? 1 : 2);
+      winPoint(w, null, {
+        1: `あなた ${g.stopped[1].toFixed(2)}秒 / あいて ${g.stopped[2].toFixed(2)}秒`,
+        2: `あなた ${g.stopped[2].toFixed(2)}秒 / あいて ${g.stopped[1].toFixed(2)}秒`
+      });
+    }
+  },
+  match: {
+    name: "マッチタップ",
+    rule: "2つの絵文字が同じになった瞬間にタップ! お手つきは相手のポイント",
+    start(now) {
+      g = { flipAt: now, flips: 0, match: false, matchShown: false, done: false };
+    },
+    tick(now) {
+      if (g.done) return;
+      if (now >= g.flipAt) {
+        g.flips++;
+        const isMatch = (g.flips >= 6 && !g.matchShown) || Math.random() < 0.32;
+        const a = EMO[(Math.random() * EMO.length) | 0];
+        let b = a;
+        if (!isMatch) { do { b = EMO[(Math.random() * EMO.length) | 0]; } while (b === a); }
+        else g.matchShown = true;
+        g.match = isMatch;
+        setArenas(`<div class="cards">${a} ${b}</div><div class="hint">同じになったらタップ!</div>`);
+        g.flipAt = now + 900;
+      }
+    },
+    tap(p) {
+      if (g.done || g.flips === 0) return;
+      g.done = true;
+      if (g.match) winPoint(p, "ナイスマッチ!");
+      else winPoint(other(p), "お手つき発生!");
+    }
+  },
+  order: {
+    name: "数字タッチ",
+    rule: "1→2→3→4→5 の順に先にタップしきったほうの勝ち!",
+    start(now) {
+      const nums = [1, 2, 3, 4, 5];
+      for (let i = nums.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [nums[i], nums[j]] = [nums[j], nums[i]]; }
+      g = { next: { 1: 1, 2: 1 }, lock: { 1: 0, 2: 0 }, done: false };
+      setArenas(`<div class="numgrid">${nums.map(n => `<button class="numbtn" data-n="${n}">${n}</button>`).join("")}</div><div class="hint">1から順にタップ!</div>`);
+    },
+    tap(p, e, now) {
+      if (g.done || now < g.lock[p]) return;
+      const btn = e.target.closest("[data-n]");
+      if (!btn) return;
+      const n = +btn.dataset.n;
+      if (n === g.next[p]) {
+        btn.classList.add("done");
+        g.next[p]++;
+        sTick();
+        if (n === 5) { g.done = true; winPoint(p, "1→5 完走!"); }
+      } else {
+        g.lock[p] = now + 500;
+        arenaEl[p].classList.remove("ng");
+        void arenaEl[p].offsetWidth;
+        arenaEl[p].classList.add("ng");
+        sBuzz();
+      }
+    }
+  }
+};
+
+/* ---------- 進行 ---------- */
+function showTitle() {
+  state = "title";
+  for (const p of [1, 2]) {
+    setArena(p, `<div class="ttl">TAP DUEL</div>
+      <div class="tsub">スマホを2人で挟んで、${WIN}点先取のミニゲーム対決!</div>
+      <div class="tstats">通算 あなた ${stats[p]}勝 / あいて ${stats[other(p)]}勝</div>
+      <div class="blink">タップでスタート</div>`);
+  }
+  renderMid();
+}
+function startMatch() {
+  score = { 1: 0, 2: 0 };
+  roundNum = 0;
+  lastGame = null;
+  nextRound();
+}
+function nextRound() {
+  roundNum++;
+  const keys = Object.keys(GAMES).filter(k => k !== lastGame);
+  curGame = keys[(Math.random() * keys.length) | 0];
+  lastGame = curGame;
+  state = "intro";
+  tRef = performance.now();
+  const game = GAMES[curGame];
+  setArenas(`<div class="rno">ROUND ${roundNum}</div><div class="gname">${game.name}</div><div class="grule">${game.rule}</div>`);
+  renderMid();
+  sIntro();
+}
+function winPoint(p, msg, detail) {
+  state = "result";
+  tRef = performance.now();
+  if (p) { score[p]++; sPoint(); vibe(60); } else sBuzz();
+  for (const v of [1, 2]) {
+    const own = p === v;
+    setArena(v, `<div class="res ${p === 0 ? "draw" : own ? "win" : "lose"}">
+      <div class="mark">${p === 0 ? "🤝" : own ? "⭕" : "❌"}</div>
+      <div class="rmsg">${p === 0 ? "引き分け" : own ? "ポイントゲット!" : "相手にポイント…"}</div>
+      ${msg ? `<div class="rsub">${msg}</div>` : ""}
+      ${detail ? `<div class="rsub">${detail[v]}</div>` : ""}
+    </div>`);
+  }
+  renderMid();
+}
+function showOver() {
+  state = "over";
+  tRef = performance.now();
+  const w = score[1] >= WIN ? 1 : 2;
+  stats[w]++;
+  store.save("tapduel_stats", stats);
+  sWin();
+  vibe([60, 60, 120]);
+  for (const p of [1, 2]) {
+    const own = w === p;
+    setArena(p, `<div class="mark">${own ? "🏆" : "🥈"}</div>
+      <div class="big" style="color:${own ? "#3dff8e" : "#ff5d5d"}">${own ? "勝利!!" : "敗北…"}</div>
+      <div class="rsub">${score[p]} - ${score[other(p)]} / 通算 あなた ${stats[p]}勝</div>
+      <div class="blink">タップで再戦</div>`);
+  }
+  renderMid();
+}
+
+/* ---------- 入力 ---------- */
+function onTap(p, e) {
+  const now = performance.now();
+  if (state === "title") { startMatch(); return; }
+  if (state === "over") { if (now - tRef > 900) startMatch(); return; }
+  if (state !== "play") return;
+  GAMES[curGame].tap(p, e, now);
+}
+for (const p of [1, 2]) {
+  $("zone" + p).addEventListener("pointerdown", e => { e.preventDefault(); onTap(p, e); });
+}
+
+/* ---------- メインループ(タイトル時点から常時稼働) ---------- */
+function loop(now) {
+  if (state === "intro" && now - tRef > INTRO_MS) {
+    state = "play";
+    tRef = now;
+    GAMES[curGame].start(now);
+  } else if (state === "play") {
+    const game = GAMES[curGame];
+    if (game.tick) game.tick(now);
+  } else if (state === "result" && now - tRef > RESULT_MS) {
+    if (score[1] >= WIN || score[2] >= WIN) showOver();
+    else nextRound();
+  }
+  requestAnimationFrame(loop);
+}
+showTitle();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
