@@ -60,6 +60,19 @@ Web Audioの音はiOSの消音スイッチ(マナーモード)で無音になる
 - スコア等の永続化は localStorage(try/catchでフォールバック)
 - 長いセッション向けに速度ボタンや自動加速を検討
 
+### 必須チェックリスト(OGP・メタタグ)
+
+リリース前ではなく**実装の段階でメタタグを入れておく**(後回しにすると忘れる):
+
+- `<meta name="description">` と OGP一式: `og:title` / `og:description` / `og:image` / `og:type`(website)/ `og:url` + `twitter:card`(summary_large_image)
+- `og:image` と `og:url` は**絶対URL**(https://nrtkumi.github.io/...)で書く
+- 既存例: `games/tanetori/index.html`、`suika-fever.html`
+- 画像は **1200x630**(またはタネトリの1200x800)、JPEG可。置き場所は `games/<ゲーム名>/assets/ogp.jpg`(ルート直下のゲームは `<名前>-ogp.jpg`)
+- 画像の作り方は2通り。ゲームの見た目が伝わる方を選ぶ:
+  1. **ゲームプレイのスクリーンショット**(進行中の画面が一番伝わる) — Playwrightで自動プレイさせて撮る。`deviceScaleFactor: 2` + 600x315のclipでちょうど1200x630になる。盤面が育つまで数十秒プレイさせ、複数タイミングで撮って目視で選ぶ。ポインタを左右にスイープすると操作が散って画になる(実例: スイカフィーバーのOGP制作)
+  2. **画像生成** — codex経由のgpt-image-2でタイトルロゴ入りのキービジュアルを生成する(下の「画像アセット」参照)。プレイ画面がOGP映えしないゲームや、文字主体のビジュアルにしたい場合はこちら
+- スクショ撮影の注意: 長時間の自動プレイでcanvasの2Dコンテキスト状態がリセットされ、初期化時の `ctx.scale(dpr, dpr)` が消えて描画が崩れることがある(スイカフィーバーで実際に起きた)。**dpr変換は毎フレーム `ctx.setTransform(dpr, 0, 0, dpr, 0, 0)` で再設定**しておく(iOS Safariのコンテキスト喪失対策にもなる)
+
 ### 画像アセット(任意) — codex経由の画像生成が使える
 
 グラフィックの基本は絵文字+canvas描画(アセット不要・単一HTML維持)だが、タイトルロゴ・OGP画像・スプライト等が必要な場合は **Codex CLI(`codex`)経由でgpt-image-2の画像生成**が使える:
@@ -96,3 +109,4 @@ Web Audioの音はiOSの消音スイッチ(マナーモード)で無音になる
 1. `git add` → コミット(本文に変更概要、Co-Authored-By付き)→ `git push`(mainがそのままGitHub Pages)
 2. ファイルを移動した場合は旧URLに meta refresh + `location.replace` のリダイレクトHTMLを残す
 3. ユーザーにプレイURL(https://nrtkumi.github.io/games/<ゲーム名>/)を案内。反映に1〜2分かかる旨を添える
+4. OGPはSNS側にキャッシュされる。シェアしたのに反映されない場合はXのCard Validator等でキャッシュ更新を案内する
