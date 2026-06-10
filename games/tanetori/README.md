@@ -48,6 +48,7 @@
   - いずれも sips でリサイズし計約700KBに最適化
 - マメ・天使・葉っぱ・パーティクルはcanvas描画のまま(色変化・発光・回転が自由なため)
 - スマホ対応: viewport-fit=cover + safe-area-inset、touch-action: none、Pointer Events統一、マルチタッチ(移動しながら発射)対応
+- ダブルタップズーム無効化: iOS Safariは`user-scalable=no`を無視するため、全要素`touch-action: manipulation` + `dblclick`/`gesturestart`/連続`touchend`(350ms以内)のpreventDefaultで抑止。touchend抑止で合成clickが消えるためボタン類はPointer Eventsで処理
 - iOS消音スイッチ対策: 初回タップで無音WAVを `<audio>` ループ再生(オーディオセッション切替)+ `AudioContext.resume()` のPromise完了待ち + `onstatechange` での自動復帰(games/hakai と同方式)
 - メインループ(rAF)はタイトル画面から常時稼働、ループが触る状態は全て宣言時に初期化
 - ベストスコアは localStorage(try/catchフォールバック付き)
