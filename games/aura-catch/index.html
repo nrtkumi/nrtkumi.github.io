@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0d0a1f">
+<title>オーラキャッチ! - AURA CATCH</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #0d0a1f;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    color: #fff;
+  }
+  #cv {
+    position: fixed; inset: 0;
+    width: 100vw; height: 100vh;
+    display: block;
+    touch-action: none;
+  }
+  #mute {
+    position: fixed;
+    top: calc(var(--sat) + 10px); right: 12px;
+    z-index: 30;
+    width: 42px; height: 42px;
+    border: 2px solid rgba(255,255,255,0.25);
+    border-radius: 12px;
+    background: rgba(20,15,45,0.7);
+    color: #fff; font-size: 19px;
+    cursor: pointer;
+  }
+  .ov {
+    position: fixed; inset: 0;
+    z-index: 20;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px;
+    background: rgba(13,10,31,0.93);
+    padding: calc(var(--sat) + 16px) 18px calc(var(--sab) + 16px);
+    text-align: center;
+  }
+  .hidden { display: none !important; }
+  .title {
+    font-family: "Bungee", cursive;
+    font-size: clamp(34px, 11vw, 58px);
+    line-height: 1.05;
+    margin: 0;
+    background: linear-gradient(135deg, #ffd54f 0%, #ff5e8a 45%, #b388ff 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 4px 14px rgba(255,94,138,0.35));
+  }
+  .sub {
+    font-family: "Space Mono", monospace;
+    letter-spacing: 0.35em;
+    font-size: 13px; color: #8d86b8;
+    margin: -6px 0 0;
+  }
+  .desc { font-size: 14px; color: #cfc9ec; line-height: 1.8; margin: 4px 0; }
+  .desc b { color: #ffd54f; }
+  .stat {
+    font-family: "Space Mono", monospace;
+    font-size: 13px; color: #8d86b8;
+  }
+  .stat b { color: #fff; font-size: 16px; }
+  .btn {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700; font-size: 18px;
+    color: #1a1430;
+    background: linear-gradient(135deg, #ffd54f, #ff8a5e);
+    border: none; border-radius: 16px;
+    padding: 15px 46px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(255,138,94,0.4);
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn.ghost {
+    background: rgba(255,255,255,0.08);
+    color: #cfc9ec;
+    border: 2px solid rgba(255,255,255,0.2);
+    box-shadow: none;
+    font-size: 15px; padding: 11px 34px;
+  }
+  .bigscore {
+    font-family: "Bungee", cursive;
+    font-size: clamp(40px, 13vw, 64px);
+    margin: 0; color: #ffd54f;
+    text-shadow: 0 0 24px rgba(255,213,79,0.45);
+  }
+  .newrec {
+    font-weight: 700; color: #ff5e8a; font-size: 15px;
+    animation: blink 0.8s infinite alternate;
+  }
+  @keyframes blink { from { opacity: 1; } to { opacity: 0.35; } }
+  /* 図鑑 */
+  #zukan { justify-content: flex-start; }
+  #zukanHead {
+    width: min(92vw, 540px);
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-top: 6px;
+    padding-right: 56px; /* 右上のミュートボタンとの重なり回避 */
+  }
+  #zukanHead h2 { font-family: "Bungee", cursive; font-size: 22px; margin: 0; color: #b388ff; }
+  #zukanGrid {
+    width: min(92vw, 540px);
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9px;
+    padding: 4px 2px 12px;
+  }
+  .card {
+    background: rgba(255,255,255,0.05);
+    border: 2px solid var(--rc, rgba(255,255,255,0.12));
+    border-radius: 14px;
+    padding: 10px 6px 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .card .emo { font-size: 34px; line-height: 1.2; }
+  .card .nm { font-size: 11px; font-weight: 700; line-height: 1.3; min-height: 2.6em; display: flex; align-items: center; }
+  .card .rr { font-size: 10px; font-weight: 700; color: var(--rc); }
+  .card .qt { font-size: 9.5px; color: #8d86b8; line-height: 1.4; }
+  .card.lock { opacity: 0.55; }
+  .card.lock .emo { filter: grayscale(1) brightness(0.4); }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<button id="mute" aria-label="音の切り替え">🔊</button>
+
+<div id="start" class="ov">
+  <h1 class="title">オーラ<br>キャッチ!</h1>
+  <p class="sub">AURA CATCH</p>
+  <p class="desc">リングが<b>キャラにピッタリ重なる瞬間</b>にタップ!<br>ヘンテコキャラを捕まえて図鑑をコンプしよう。<br>ど真ん中なら <b>ガチ神オーラ</b> が爆増。</p>
+  <p class="stat" id="startStat"></p>
+  <button class="btn" id="btnStart">キャッチ開始</button>
+  <button class="btn ghost" id="btnZukan1">図鑑をみる</button>
+</div>
+
+<div id="over" class="ov hidden">
+  <p class="sub">RESULT</p>
+  <p class="bigscore" id="ovAura">0</p>
+  <p class="stat">獲得オーラ</p>
+  <p class="newrec hidden" id="ovNew">🔥 NEW RECORD 🔥</p>
+  <p class="desc" id="ovDetail"></p>
+  <button class="btn" id="btnRetry">もう一回</button>
+  <button class="btn ghost" id="btnZukan2">図鑑をみる</button>
+</div>
+
+<div id="zukan" class="ov hidden">
+  <div id="zukanHead">
+    <h2>ブレロ図鑑</h2>
+    <span class="stat" id="zukanStat"></span>
+  </div>
+  <div id="zukanGrid"></div>
+  <button class="btn ghost" id="btnZukanClose">とじる</button>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- canvas ---------- */
+const cv = document.getElementById("cv");
+const cx = cv.getContext("2d");
+let W = 0, H = 0, DPR = 1, SAFE_TOP = 0;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+  cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  SAFE_TOP = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
+}
+window.addEventListener("resize", resize);
+resize();
+
+/* ---------- audio (iOS消音スイッチ対策込み / hakai と同方式) ---------- */
+let AC = null, muted = false;
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+    } catch (e) {}
+  }
+  if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  str(36, "data"); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline", "");
+    silentEl.loop = true;
+    silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play();
+  if (p && p.catch) p.catch(() => {});
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === "running") {
+      ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+    }
+  };
+  try { AC.resume().then(done); } catch (e) { done(); }
+}
+["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+function tone(f, d, type, vol, slideTo, delay) {
+  if (muted || !audio()) return;
+  try {
+    const t0 = AC.currentTime + (delay || 0);
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "sine"; o.frequency.setValueAtTime(f, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + d);
+    g.gain.setValueAtTime(vol || 0.06, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t0); o.stop(t0 + d);
+  } catch (e) {}
+}
+function noise(d, vol) {
+  if (muted || !audio()) return;
+  try {
+    const n = Math.floor(AC.sampleRate * d);
+    const buf = AC.createBuffer(1, n, AC.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = AC.createBufferSource(); src.buffer = buf;
+    const g = AC.createGain(); g.gain.value = vol || 0.08;
+    src.connect(g); g.connect(AC.destination); src.start();
+  } catch (e) {}
+}
+/* キャラ登場時のブツブツ"声"(ブレインロット風の意味不明ボイス) */
+function sVoice(rar) {
+  const base = 180 + Math.random() * 220 + rar * 60;
+  const n = 5 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < n; i++) {
+    const f = base * (0.8 + Math.random() * 0.7);
+    tone(f, 0.07, "sawtooth", 0.035, f * (Math.random() < 0.5 ? 1.4 : 0.7), i * 0.075);
+  }
+}
+const sPerfect = () => { [880, 1175, 1568, 2093].forEach((f, i) => tone(f, 0.16, "square", 0.05, null, i * 0.055)); vibe(30); };
+const sGood = () => { tone(660, 0.1, "square", 0.045); tone(990, 0.12, "square", 0.04, null, 0.07); vibe(15); };
+const sMiss = () => { tone(300, 0.25, "sawtooth", 0.06, 120); noise(0.12, 0.05); vibe([40, 40, 40]); };
+const sNew = () => [1319, 1568, 2093, 2637].forEach((f, i) => tone(f, 0.2, "sine", 0.05, null, 0.2 + i * 0.07));
+const sOver = () => [392, 311, 233, 156].forEach((f, i) => tone(f, 0.3, "sawtooth", 0.05, null, i * 0.16));
+const sStart = () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.14, "square", 0.045, null, i * 0.06));
+const vibe = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+document.getElementById("mute").addEventListener("click", e => {
+  muted = !muted;
+  e.currentTarget.textContent = muted ? "🔇" : "🔊";
+});
+
+/* ---------- 永続化 ---------- */
+const store = {
+  load(k, fb) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } },
+  save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+let best = store.load("aura_best", 0);
+let caught = new Set(store.load("aura_zukan", []));
+
+/* ---------- キャラ図鑑(全てオリジナル) ---------- */
+const RAR = [
+  { n: "ふつう",            c: "#9aa3b5", m: 1,  w: 100 },
+  { n: "レア",              c: "#4fc3f7", m: 2,  w: 45 },
+  { n: "エグレア",          c: "#b388ff", m: 4,  w: 18 },
+  { n: "シグマ",            c: "#ffd54f", m: 9,  w: 7 },
+  { n: "ブレインロット級",  c: "#ff5e8a", m: 25, w: 2 }
+];
+const CHARS = [
+  { id: 0,  nm: "オニギリーノ・ニンニン",     e: "🍙", a: "🥷", r: 0, q: "米は裏切らない" },
+  { id: 1,  nm: "タコヤキーナ・ヤッキヤキ",   e: "🐙", a: "🔥", r: 0, q: "外はカリ、中は謎" },
+  { id: 2,  nm: "ネコマキ・シャリシャリ",     e: "🐱", a: "🍣", r: 0, q: "シャリの上はベッド" },
+  { id: 3,  nm: "イヌカマボコ・プリプリ",     e: "🐶", a: "🍥", r: 0, q: "プリプリで何が悪い" },
+  { id: 4,  nm: "パンダ・メロンパンニ",       e: "🐼", a: "🍈", r: 0, q: "皮だけ食べる派" },
+  { id: 5,  nm: "カエルーチェ・アマガッパ",   e: "🐸", a: "☔", r: 0, q: "雨の日こそ本気" },
+  { id: 6,  nm: "ウサピョーニ・モチモッチ",   e: "🐰", a: "🍡", r: 0, q: "のびしろしかない" },
+  { id: 7,  nm: "ハトポッポ・センベイーノ",   e: "🐦", a: "🍘", r: 0, q: "公園を支配する者" },
+  { id: 8,  nm: "クマモナカ・アンコルド",     e: "🐻", a: "🍯", r: 0, q: "あんこは飲み物" },
+  { id: 9,  nm: "ピヨピヨ・オヤコドンナ",     e: "🐤", a: "🍚", r: 0, q: "親子丼にはならない" },
+  { id: 10, nm: "サカナッチ・ホシゾラーノ",   e: "🐟", a: "⭐", r: 0, q: "夜空を泳ぐ" },
+  { id: 11, nm: "カメロンパン・ノロノーロ",   e: "🐢", a: "🍞", r: 0, q: "急がば寝ろ" },
+  { id: 12, nm: "シバイヌーチェ・チャーシュー", e: "🐕", a: "🍜", r: 1, q: "待てができない" },
+  { id: 13, nm: "キツネーゼ・アゲアゲ",       e: "🦊", a: "⛩️", r: 1, q: "アゲしか勝たん" },
+  { id: 14, nm: "ペンギーノ・コオリッシモ",   e: "🐧", a: "🧊", r: 1, q: "常に氷点下メンタル" },
+  { id: 15, nm: "フクロウデミ・ヨフカシーナ", e: "🦉", a: "🌙", r: 1, q: "寝たら負けだと思ってる" },
+  { id: 16, nm: "コアラッテ・ネムネミーノ",   e: "🐨", a: "💤", r: 1, q: "今日も定時で寝る" },
+  { id: 17, nm: "ハムハミーノ・ホッペタンク", e: "🐹", a: "🌻", r: 1, q: "ほっぺは第二の倉庫" },
+  { id: 18, nm: "ドラゴラーメン・バリカタッチ", e: "🐲", a: "🍜", r: 2, q: "替え玉は権利" },
+  { id: 19, nm: "テング・スシマゲドン",       e: "👺", a: "🍣", r: 2, q: "シャリは聖域" },
+  { id: 20, nm: "ニワトリーノ・オウゴンタマゴ", e: "🐔", a: "🥚", r: 2, q: "金の卵を産む(自称)" },
+  { id: 21, nm: "シグマ・カワウソーネ",       e: "🦦", a: "♨️", r: 3, q: "オーラで温泉が沸く" },
+  { id: 22, nm: "タヌキーニ・バケバケッシモ", e: "🦝", a: "🍃", r: 3, q: "化けるのは月曜だけ" },
+  { id: 23, nm: "ブレインロットン・フジヤマックス", e: "🗻", a: "🧠", r: 4, q: "脳がとろける標高3776m" }
+];
+
+const SLANG_PERF = ["ガチ神", "オーラ全開", "無限リズ", "エグすぎ", "それはシグマ"];
+const SLANG_GOOD = ["それな", "ナイスキャッチ", "おしゃ", "いい感じ"];
+const SLANG_MISS = ["NPCムーブ…", "オーラ↓↓", "逃げられた…", "草"];
+const pick = a => a[Math.floor(Math.random() * a.length)];
+
+/* ---------- 状態(rAFループはスタート前から回るため全て宣言時に初期化) ---------- */
+let state = "start";          // start | play | over
+let phase = "idle";           // idle | enter | ring | result | flee
+let phaseT = 0;
+let cur = null;               // 出現中キャラ { def, fleeVX, fleeVY }
+let ringT = 0, ringDur = 2.1;
+let hearts = 3, aura = 0, combo = 0, caps = 0, newCount = 0;
+let lastJudge = "";           // perfect | good | miss
+let floats = [];
+let parts = [];
+let bgDots = [];
+let shake = 0;
+let tGlobal = 0;
+
+for (let i = 0; i < 26; i++) {
+  bgDots.push({ x: Math.random(), y: Math.random(), r: 1 + Math.random() * 2.2, sp: 0.008 + Math.random() * 0.02, tw: Math.random() * 7 });
+}
+
+const charY = () => H * 0.44;
+const targetR = () => Math.min(W, H) * 0.165;
+const maxR = () => Math.min(W, H) * 0.62;
+
+/* ---------- 進行 ---------- */
+function weightedChar() {
+  let total = 0;
+  for (const c of CHARS) total += RAR[c.r].w;
+  let roll = Math.random() * total;
+  for (const c of CHARS) { roll -= RAR[c.r].w; if (roll <= 0) return c; }
+  return CHARS[0];
+}
+function spawn() {
+  cur = { def: weightedChar(), fleeVX: 0, fleeVY: 0, fleeX: 0, fleeY: 0 };
+  phase = "enter"; phaseT = 0; ringT = 0;
+  sVoice(cur.def.r);
+}
+function addFloat(txt, y, col, size, life) {
+  floats.push({ txt, x: W / 2, y, col, size: size || 22, t: 0, life: life || 1.1 });
+}
+function confetti(n, colors) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 120 + Math.random() * 320;
+    parts.push({
+      x: W / 2, y: charY(),
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 140,
+      rot: Math.random() * Math.PI * 2, vr: (Math.random() - 0.5) * 12,
+      col: pick(colors), t: 0, life: 0.9 + Math.random() * 0.6, s: 4 + Math.random() * 6
+    });
+  }
+}
+function judge() {
+  if (phase !== "ring" || !cur) return;
+  const r = maxR() * (1 - ringT);
+  const ratio = r / targetR();
+  if (ratio > 1.5) { doMiss(); return; }
+  if (Math.abs(ratio - 1) <= 0.13) doCapture(true);
+  else doCapture(false);
+}
+function doCapture(perfect) {
+  const def = cur.def, rar = RAR[def.r];
+  combo++;
+  const gain = Math.round(100 * rar.m * (perfect ? 2 : 1) * (1 + (combo - 1) * 0.2));
+  aura += gain;
+  caps++;
+  lastJudge = perfect ? "perfect" : "good";
+  const isNew = !caught.has(def.id);
+  if (isNew) {
+    caught.add(def.id);
+    newCount++;
+    store.save("aura_zukan", Array.from(caught));
+    sNew();
+  }
+  perfect ? sPerfect() : sGood();
+  addFloat(perfect ? pick(SLANG_PERF) : pick(SLANG_GOOD), charY() - targetR() - 64, perfect ? "#ffd54f" : "#7CFC9A", 26);
+  addFloat("+" + gain + " オーラ", charY() - targetR() - 30, "#fff", 19);
+  addFloat(def.nm + (isNew ? " NEW!" : ""), charY() + targetR() + 44, rar.c, 17, 1.5);
+  if (combo >= 2) addFloat(combo + "コンボ", charY() + targetR() + 74, "#b388ff", 15);
+  confetti(perfect ? 46 : 22, [rar.c, "#ffd54f", "#ff5e8a", "#4fc3f7", "#fff"]);
+  shake = perfect ? 7 : 3;
+  ringDur = Math.max(0.68, ringDur * 0.955);
+  phase = "result"; phaseT = 0;
+}
+function doMiss() {
+  combo = 0;
+  hearts--;
+  lastJudge = "miss";
+  sMiss();
+  addFloat(pick(SLANG_MISS), charY() - targetR() - 50, "#ff5e8a", 24);
+  shake = 6;
+  cur.fleeVX = (Math.random() < 0.5 ? -1 : 1) * (W * 0.9 + Math.random() * W * 0.5);
+  cur.fleeVY = -H * (0.4 + Math.random() * 0.5);
+  phase = "flee"; phaseT = 0;
+}
+function startGame() {
+  hearts = 3; aura = 0; combo = 0; caps = 0; newCount = 0;
+  ringDur = 2.1;
+  floats = []; parts = [];
+  state = "play";
+  hideAll();
+  sStart();
+  spawn();
+}
+function gameOver() {
+  state = "over";
+  const isNew = aura > best;
+  if (isNew) { best = aura; store.save("aura_best", best); }
+  document.getElementById("ovAura").textContent = aura.toLocaleString();
+  document.getElementById("ovNew").classList.toggle("hidden", !isNew);
+  document.getElementById("ovDetail").innerHTML =
+    "キャッチ <b>" + caps + "体</b>" +
+    (newCount ? " / 図鑑に <b>NEW " + newCount + "体</b>" : "") +
+    "<br>図鑑コンプ率 <b>" + Math.round(caught.size / CHARS.length * 100) + "%</b>" +
+    " ・ ベスト <b>" + best.toLocaleString() + "</b>";
+  document.getElementById("over").classList.remove("hidden");
+  sOver();
+}
+
+/* ---------- 更新 ---------- */
+function update(dt) {
+  tGlobal += dt;
+  shake = Math.max(0, shake - dt * 26);
+  for (const d of bgDots) { d.y -= d.sp * dt; if (d.y < -0.02) { d.y = 1.02; d.x = Math.random(); } }
+  floats = floats.filter(f => (f.t += dt) < f.life);
+  parts = parts.filter(p => {
+    p.t += dt;
+    p.vy += 720 * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+    return p.t < p.life;
+  });
+
+  if (state !== "play" || !cur) return;
+  phaseT += dt;
+  if (phase === "enter") {
+    if (phaseT >= 0.45) { phase = "ring"; phaseT = 0; ringT = 0; }
+  } else if (phase === "ring") {
+    ringT = Math.min(1, ringT + dt / ringDur);
+    const r = maxR() * (1 - ringT);
+    if (r <= targetR() * 0.55) doMiss();
+  } else if (phase === "result") {
+    if (phaseT >= 1.0) spawn();
+  } else if (phase === "flee") {
+    cur.fleeX += cur.fleeVX * dt;
+    cur.fleeY += cur.fleeVY * dt;
+    if (phaseT >= 0.85) { hearts > 0 ? spawn() : gameOver(); }
+  }
+}
+
+/* ---------- 描画 ---------- */
+function drawChar() {
+  if (!cur) return;
+  const def = cur.def, rar = RAR[def.r];
+  let x = W / 2, y = charY(), sc = 1;
+  if (phase === "enter") {
+    const k = Math.min(1, phaseT / 0.35);
+    sc = 0.2 + 0.8 * (1 - Math.pow(1 - k, 3));
+    sc *= 1 + Math.sin(k * Math.PI) * 0.15;
+  } else if (phase === "result") {
+    sc = 1 + Math.sin(Math.min(phaseT, 0.3) / 0.3 * Math.PI) * 0.25;
+  } else if (phase === "flee") {
+    x += cur.fleeX; y += cur.fleeY;
+  }
+  const wob = Math.sin(tGlobal * 9) * 0.13;
+  const sq = 1 + Math.sin(tGlobal * 13) * 0.06;
+  const size = targetR() * 1.1;
+  cx.save();
+  cx.translate(x, y);
+  cx.rotate(wob);
+  cx.scale(sc * sq, sc * (2 - sq) * 0.5 + sc * 0.5);
+  // レアオーラ
+  if (def.r >= 2 && phase !== "flee") {
+    const g = cx.createRadialGradient(0, 0, size * 0.2, 0, 0, size * 1.25);
+    g.addColorStop(0, rar.c + "55"); g.addColorStop(1, rar.c + "00");
+    cx.fillStyle = g;
+    cx.beginPath(); cx.arc(0, 0, size * 1.25, 0, Math.PI * 2); cx.fill();
+  }
+  cx.textAlign = "center"; cx.textBaseline = "middle";
+  cx.font = size + "px sans-serif";
+  cx.fillText(def.e, 0, 6);
+  cx.font = size * 0.42 + "px sans-serif";
+  cx.fillText(def.a, size * 0.42, -size * 0.42);
+  cx.restore();
+}
+function drawRing() {
+  if (phase !== "ring" || !cur) return;
+  const r = maxR() * (1 - ringT);
+  const tr = targetR();
+  const ratio = r / tr;
+  const inPerfect = Math.abs(ratio - 1) <= 0.13;
+  const inGood = ratio <= 1.5 && ratio > 0.55;
+  // ターゲット円(点線)
+  cx.save();
+  cx.setLineDash([7, 8]);
+  cx.lineWidth = 2.5;
+  cx.strokeStyle = "rgba(255,255,255,0.3)";
+  cx.beginPath(); cx.arc(W / 2, charY(), tr, 0, Math.PI * 2); cx.stroke();
+  cx.restore();
+  // 縮むリング
+  cx.save();
+  cx.lineWidth = inPerfect ? 8 : 5;
+  cx.strokeStyle = inPerfect ? "#ffd54f" : (inGood ? "#7CFC9A" : "rgba(255,255,255,0.75)");
+  if (inPerfect) { cx.shadowColor = "#ffd54f"; cx.shadowBlur = 18; }
+  cx.beginPath(); cx.arc(W / 2, charY(), r, 0, Math.PI * 2); cx.stroke();
+  cx.restore();
+}
+function drawHUD() {
+  const top = SAFE_TOP + 26;
+  cx.textBaseline = "middle";
+  // ハート
+  cx.textAlign = "left";
+  cx.font = "20px sans-serif";
+  let hs = "";
+  for (let i = 0; i < 3; i++) hs += i < hearts ? "❤️" : "🖤";
+  cx.fillText(hs, 14, top);
+  // オーラ
+  cx.textAlign = "center";
+  cx.font = "700 26px 'Space Mono', monospace";
+  cx.fillStyle = "#ffd54f";
+  cx.fillText("✨" + aura.toLocaleString(), W / 2, top + 4);
+  cx.font = "11px 'Zen Kaku Gothic New', sans-serif";
+  cx.fillStyle = "#8d86b8";
+  cx.fillText("オーラ", W / 2, top + 26);
+  if (combo >= 2 && state === "play") {
+    cx.font = "700 15px 'Zen Kaku Gothic New', sans-serif";
+    cx.fillStyle = "#b388ff";
+    cx.fillText(combo + " コンボ中", W / 2, top + 48);
+  }
+  // 図鑑
+  cx.textAlign = "left";
+  cx.font = "12px 'Space Mono', monospace";
+  cx.fillStyle = "#8d86b8";
+  cx.fillText("📖 " + caught.size + "/" + CHARS.length, 14, top + 26);
+}
+function draw() {
+  cx.clearRect(0, 0, W, H);
+  const g = cx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#171134"); g.addColorStop(0.6, "#0d0a1f"); g.addColorStop(1, "#120b26");
+  cx.fillStyle = g;
+  cx.fillRect(0, 0, W, H);
+  for (const d of bgDots) {
+    cx.globalAlpha = 0.25 + Math.sin(tGlobal * 2 + d.tw) * 0.2;
+    cx.fillStyle = "#b388ff";
+    cx.beginPath(); cx.arc(d.x * W, d.y * H, d.r, 0, Math.PI * 2); cx.fill();
+  }
+  cx.globalAlpha = 1;
+
+  cx.save();
+  if (shake > 0) cx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+  if (state === "play") {
+    drawRing();
+    drawChar();
+  }
+  for (const p of parts) {
+    cx.save();
+    cx.translate(p.x, p.y); cx.rotate(p.rot);
+    cx.globalAlpha = Math.max(0, 1 - p.t / p.life);
+    cx.fillStyle = p.col;
+    cx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.6);
+    cx.restore();
+  }
+  for (const f of floats) {
+    const k = f.t / f.life;
+    cx.globalAlpha = k < 0.15 ? k / 0.15 : Math.max(0, 1 - (k - 0.15) / 0.85);
+    cx.font = "700 " + f.size + "px 'Zen Kaku Gothic New', sans-serif";
+    cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillStyle = f.col;
+    cx.fillText(f.txt, f.x, f.y - k * 26);
+  }
+  cx.globalAlpha = 1;
+  cx.restore();
+
+  if (state === "play") drawHUD();
+}
+
+/* ---------- メインループ(スタート画面の時点から回す) ---------- */
+let lastT = 0;
+function loop(t) {
+  const dt = Math.min(0.05, (t - lastT) / 1000 || 0.016);
+  lastT = t;
+  try { update(dt); draw(); } catch (e) { console.error(e); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ---------- 入力 ---------- */
+cv.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  if (state === "play") judge();
+}, { passive: false });
+
+/* ---------- UI ---------- */
+function hideAll() {
+  ["start", "over", "zukan"].forEach(id => document.getElementById(id).classList.add("hidden"));
+}
+let zukanFrom = "start";
+function openZukan(from) {
+  zukanFrom = from;
+  renderZukan();
+  hideAll();
+  document.getElementById("zukan").classList.remove("hidden");
+}
+function renderZukan() {
+  document.getElementById("zukanStat").textContent = caught.size + "/" + CHARS.length + " (" + Math.round(caught.size / CHARS.length * 100) + "%)";
+  const grid = document.getElementById("zukanGrid");
+  grid.innerHTML = CHARS.map(c => {
+    const got = caught.has(c.id), rar = RAR[c.r];
+    return '<div class="card' + (got ? "" : " lock") + '" style="--rc:' + rar.c + '">' +
+      '<div class="emo">' + (got ? c.e + c.a : "❓") + "</div>" +
+      '<div class="nm">' + (got ? c.nm : "？？？") + "</div>" +
+      '<div class="rr">' + rar.n + "</div>" +
+      '<div class="qt">' + (got ? c.q : "未発見") + "</div>" +
+      "</div>";
+  }).join("");
+}
+function refreshStartStat() {
+  document.getElementById("startStat").innerHTML =
+    "ベストオーラ <b>" + best.toLocaleString() + "</b> ・ 図鑑 <b>" + caught.size + "/" + CHARS.length + "</b>";
+}
+document.getElementById("btnStart").addEventListener("click", startGame);
+document.getElementById("btnRetry").addEventListener("click", startGame);
+document.getElementById("btnZukan1").addEventListener("click", () => openZukan("start"));
+document.getElementById("btnZukan2").addEventListener("click", () => openZukan("over"));
+document.getElementById("btnZukanClose").addEventListener("click", () => {
+  hideAll();
+  refreshStartStat();
+  document.getElementById(zukanFrom).classList.remove("hidden");
+});
+refreshStartStat();
+
+/* テスト用フック(ヘッドレス/E2Eテストがタイミング判定に使う読み取り専用窓口) */
+window.__AURA__ = {
+  get state() { return state; },
+  get phase() { return phase; },
+  get hearts() { return hearts; },
+  get aura() { return aura; },
+  get caps() { return caps; },
+  ratio() { return phase === "ring" ? (maxR() * (1 - ringT)) / targetR() : -1; }
+};
+</script>
+</body>
+</html>
