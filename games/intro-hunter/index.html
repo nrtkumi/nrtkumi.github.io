@@ -272,7 +272,7 @@
   <div class="spin" id="loadSpin"></div>
   <p id="loadMsg">曲を集めています…</p>
   <div id="loadErr">
-    <p>曲を取得できませんでした。<br>通信環境を確認してもう一度お試しください。</p>
+    <p>曲を取得できませんでした。<br>混み合っている可能性があります。<br>少し時間をおいてもう一度お試しください。</p>
     <button class="btn" id="retryBtn">リトライ</button>
     <button class="btn ghost" id="backBtn">ジャンル選択へ戻る</button>
   </div>
@@ -487,18 +487,24 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) stopP
 function jsonp(url) {
   return new Promise((resolve, reject) => {
     const cb = "ih_cb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
-    window[cb] = data => { resolve(data); cleanup(); };
     const s = document.createElement("script");
+    // レート制限時は空レスポンスが返りコールバックが呼ばれないため、タイムアウト必須
+    const timer = setTimeout(() => fail(new Error("jsonp timeout")), 8000);
+    function cleanup() { clearTimeout(timer); window[cb] = () => {}; s.remove(); }
+    function fail(e) { reject(e); cleanup(); }
+    window[cb] = data => { resolve(data); cleanup(); };
     s.src = url + "&callback=" + cb;
-    s.onerror = () => { reject(new Error("jsonp failed")); cleanup(); };
-    function cleanup() { delete window[cb]; s.remove(); }
+    s.onerror = () => fail(new Error("jsonp failed"));
     document.body.appendChild(s);
   });
 }
 async function fetchJson(url, jsonpOk) {
   try {
     const res = await fetch(url);
-    return await res.json();
+    if (!res.ok) throw new Error("http " + res.status);
+    const text = await res.text();
+    if (!text.trim()) throw new Error("empty body");  // レート制限時の空200対策
+    return JSON.parse(text);
   } catch (e) {
     if (jsonpOk) return jsonp(url);
     throw e;
@@ -546,9 +552,9 @@ async function loadGenrePool(key) {
   // ヒットチャート: Apple RSS(most-played)→ Lookupでプレビュー補完
   if (g.chart) {
     try {
-      const rss = await fetch(
-        "https://rss.applemarketingtools.com/api/v2/jp/music/most-played/100/songs.json"
-      ).then(r => r.json());
+      const rss = await fetchJson(
+        "https://rss.marketingtools.apple.com/api/v2/jp/music/most-played/100/songs.json", false
+      );
       const ids = ((rss.feed && rss.feed.results) || []).map(r => r.id).join(",");
       if (ids) {
         const d = await fetchJson("https://itunes.apple.com/lookup?id=" + ids + "&country=JP", true);
@@ -562,19 +568,49 @@ async function loadGenrePool(key) {
 }
 
 async function loadArtistPool(artists) {
-  const picks = shuffle(artists.slice()).slice(0, 6);
-  const lists = await Promise.all(picks.map(artist =>
-    fetchJson("https://itunes.apple.com/search?" + new URLSearchParams({
-      term: artist, media: "music", entity: "song",
-      attribute: "artistTerm", country: "JP", limit: "25"
-    }), true).then(d => d.results || []).catch(() => [])
-  ));
-  return buildPool(lists.flat());
+  // iTunes Search APIはレート制限が厳しいため、3アーティストずつのバッチで
+  // 取得し、プールが足りた時点で打ち切って呼び出し回数を最小化する
+  const order = shuffle(artists.slice());
+  const raw = [];
+  let pool = [];
+  for (let i = 0; i < Math.min(order.length, 9) && pool.length < 40; i += 3) {
+    const lists = await Promise.all(order.slice(i, i + 3).map(artist =>
+      fetchJson("https://itunes.apple.com/search?" + new URLSearchParams({
+        term: artist, media: "music", entity: "song",
+        attribute: "artistTerm", country: "JP", limit: "50"
+      }), true).then(d => d.results || []).catch(() => [])
+    ));
+    raw.push(...lists.flat());
+    pool = buildPool(raw);
+  }
+  return pool;
+}
+
+/* プールキャッシュ: 「もう一度」やリトライのたびにAPIを叩かない(レート制限対策) */
+const POOL_TTL = 12 * 3600 * 1000;
+const memPools = {};
+function poolCacheGet(key, allowStale) {
+  if (memPools[key]) return memPools[key];
+  try {
+    const c = JSON.parse(localStorage.getItem(STORE_KEY + ":pool:" + key) || "null");
+    if (c && c.tracks && c.tracks.length >= 8 && (allowStale || Date.now() - c.ts < POOL_TTL)) {
+      return c.tracks;
+    }
+  } catch (e) {}
+  return null;
+}
+function poolCacheSet(key, tracks) {
+  memPools[key] = tracks;
+  try {
+    localStorage.setItem(STORE_KEY + ":pool:" + key, JSON.stringify({ ts: Date.now(), tracks }));
+  } catch (e) {}
 }
 
 /* ================= ゲーム進行 ================= */
 function startGame(key) {
   genreKey = key;
+  const cached = poolCacheGet(key, false);
+  if (cached) { beginRun(cached); return; }
   show("loading");
   $("loadSpin").style.display = "block";
   $("loadMsg").style.display = "block";
@@ -582,15 +618,23 @@ function startGame(key) {
   loadGenrePool(key).then(p => {
     if (scr !== "loading") return;        // 戻るボタンで離脱済み
     if (p.length < 8) throw new Error("pool too small");
-    pool = p;
-    qIndex = 0; lives = MAX_LIVES; score = 0; combo = 0; maxCombo = 0; correctCount = 0;
-    nextQuestion();
+    poolCacheSet(key, p);
+    beginRun(p);
   }).catch(() => {
     if (scr !== "loading") return;
+    // 取得失敗時は期限切れキャッシュでもあれば使う
+    const stale = poolCacheGet(key, true);
+    if (stale) { memPools[key] = stale; beginRun(stale); return; }
     $("loadSpin").style.display = "none";
     $("loadMsg").style.display = "none";
     $("loadErr").style.display = "flex";
   });
+}
+
+function beginRun(p) {
+  pool = shuffle(p.slice());
+  qIndex = 0; lives = MAX_LIVES; score = 0; combo = 0; maxCombo = 0; correctCount = 0;
+  nextQuestion();
 }
 
 function comboMult() { return 1 + Math.min(combo, 10) * 0.1; }
