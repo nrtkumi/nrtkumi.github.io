@@ -18,13 +18,19 @@
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
   html, body { height: 100%; overscroll-behavior: none; }
   body {
-    background: #10142a; color: #fff; overflow: hidden;
+    background: radial-gradient(circle at 50% 30%, #1c2350 0%, #10142a 70%);
+    color: #fff; overflow: hidden;
     font-family: "Zen Kaku Gothic New", sans-serif;
     height: 100dvh;
   }
+  /* PCのワイド画面ではスマホ風の縦長カラムに制限して中央寄せ
+     (ゲーム内サイズは横幅基準で比例計算されるため、全幅だと巨大化する) */
   #wrap {
-    position: fixed; inset: 0; display: flex; flex-direction: column;
+    position: fixed; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: min(520px, 64vh);
+    display: flex; flex-direction: column;
     padding-top: env(safe-area-inset-top);
+    box-shadow: 0 0 48px rgba(0, 0, 0, 0.65);
   }
   #hud {
     display: flex; justify-content: space-between; align-items: center;
@@ -90,7 +96,8 @@
           マメが落ちると<em>床がこわれる</em><br>
           <em>白マメ</em>を撃つと天使が床を修復<br>
           <em>七色マメ</em>で画面のマメ全消し+天使ラッシュ<br>
-          トリにマメが当たるとゲームオーバー
+          トリにマメが当たるとゲームオーバー<br>
+          <span style="color:#9fd8ff">PCは ←→/A・D 移動、Space/Z 発射</span>
         </div>
         <div class="tap">タップでスタート</div>
       </div>

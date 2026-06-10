@@ -49,6 +49,7 @@
 - マメ・天使・葉っぱ・パーティクルはcanvas描画のまま(色変化・発光・回転が自由なため)
 - スマホ対応: viewport-fit=cover + safe-area-inset、touch-action: none、Pointer Events統一、マルチタッチ(移動しながら発射)対応
 - ダブルタップズーム無効化: iOS Safariは`user-scalable=no`を無視するため、全要素`touch-action: manipulation` + `dblclick`/`gesturestart`/連続`touchend`(350ms以内)のpreventDefaultで抑止。touchend抑止で合成clickが消えるためボタン類はPointer Eventsで処理
+- PC対応: ゲーム内サイズは横幅から比例計算されるため、全幅表示だと巨大化する。ワイド画面では `max-width: min(520px, 64vh)` の縦長カラムに制限して中央寄せ(枠外は暗背景+シャドウ)。キーボード操作(←→/A・D移動、Space/Z発射)対応
 - iOS消音スイッチ対策: 初回タップで無音WAVを `<audio>` ループ再生(オーディオセッション切替)+ `AudioContext.resume()` のPromise完了待ち + `onstatechange` での自動復帰(games/hakai と同方式)
 - メインループ(rAF)はタイトル画面から常時稼働、ループが触る状態は全て宣言時に初期化
 - ベストスコアは localStorage(try/catchフォールバック付き)
@@ -61,6 +62,7 @@
 3. **実ブラウザE2E**(puppeteer-core + ローカルChrome、390×844・hasTouch): ロード時エラーゼロ / canvas描画ピクセル確認 / 背景画像ロード確認 / タップ開始 / ▶長押しで移動 / 発射でスコア加算 / 5秒以上の自動プレイでconsoleエラーゼロ / ゲームオーバー→リトライ / localStorage永続化 / スクリーンショット目視確認 — 全通過
 4. **フェーズ別ビジュアル確認**: デバッグフックでスコアを5000/10000/30000/42000に設定し、夕方・夜・モノクロ・花火の各ティントをスクリーンショットで目視確認
 5. **スプライト切り替え確認**: puppeteerのclip付きスクリーンショットでトリ周辺をクローズアップし、待機/発射(くちばし開き)/左向き反転の3状態を目視確認
+6. **PC向けE2E**(1440×900): ゲームカラムが520px以下で中央寄せされること / マウスクリックで開始 / ←→キーで移動 / Spaceで発射・得点 / スクリーンショット目視確認 — 全通過
 
 ### 開発で得た教訓
 
