@@ -228,14 +228,17 @@
   let spawnT = 1, nextFlash = 5000, shake = 0, overAt = 0;
   let fwT = 0;
   const input = { l: false, r: false, fire: false };
-  // 背景画像(読み込めなければグラデーションにフォールバック)
-  const bgImg = typeof Image !== "undefined" ? new Image() : null;
-  let bgReady = false;
-  if (bgImg) {
-    bgImg.onload = () => { bgReady = true; };
-    bgImg.onerror = () => { bgReady = false; };
-    bgImg.src = "assets/bg.jpg";
+  // 画像アセット(読み込めなければcanvas描画にフォールバック)
+  function loadImg(src) {
+    if (typeof Image === "undefined") return null;
+    const im = new Image();
+    im.onload = () => { im.ready = true; };
+    im.src = src;
+    return im;
   }
+  const bgImg = loadImg("assets/bg.jpg");
+  const birdImg = loadImg("assets/bird.png");
+  const birdShootImg = loadImg("assets/bird_shoot.png");
   // 背景フェーズ(top/botはフォールバック用、tt/tbは画像への乗算ティント)
   const PHASES = [
     { at: 0,     top: [126, 200, 255], bot: [191, 233, 255], sun: true,  tt: [255, 255, 255], tb: [255, 255, 255] },
@@ -539,6 +542,20 @@
   }
 
   function drawBird() {
+    const img = bird.beakT > 0 && birdShootImg && birdShootImg.ready ? birdShootImg
+              : birdImg && birdImg.ready ? birdImg : null;
+    if (!img) { drawBirdVector(); return; }
+    const hop = mode === "play" && (input.l || input.r) ? Math.abs(Math.sin(bird.step * 2)) * 3 : 0;
+    const hgt = bird.h * 1.5;
+    const wdt = hgt * img.width / img.height;
+    ctx.save();
+    ctx.translate(bird.x, floorY - hop + 2);
+    if (bird.face < 0) ctx.scale(-1, 1);
+    ctx.drawImage(img, -wdt / 2, -hgt, wdt, hgt);
+    ctx.restore();
+  }
+
+  function drawBirdVector() {
     const x = bird.x, y = floorY, f = bird.face;
     const w = bird.w, h = bird.h;
     const hop = mode === "play" && (input.l || input.r) ? Math.abs(Math.sin(bird.step * 2)) * 3 : 0;
@@ -595,7 +612,7 @@
     const pi = phaseIdx(), ph = PHASES[pi];
     lerpC(curTop, ph.top, 0.04); lerpC(curBot, ph.bot, 0.04);
     lerpC(curTT, ph.tt, 0.04); lerpC(curTB, ph.tb, 0.04);
-    if (bgReady) {
+    if (bgImg && bgImg.ready) {
       const iw = bgImg.width, ih = bgImg.height;
       const s = Math.max(W / iw, H / ih);
       ctx.drawImage(bgImg, (W - iw * s) / 2, (H - ih * s) / 2, iw * s, ih * s);
@@ -775,7 +792,8 @@
   window.__tanetori = {
     start: tryStart,
     shoot,
-    get bgReady() { return bgReady; },
+    get bgReady() { return !!(bgImg && bgImg.ready); },
+    get birdReady() { return !!(birdImg && birdImg.ready && birdShootImg && birdShootImg.ready); },
     get mode() { return mode; },
     get score() { return score; },
     set score(v) { score = v; },
