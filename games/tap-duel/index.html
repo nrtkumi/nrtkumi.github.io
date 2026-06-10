@@ -83,6 +83,21 @@
 
   .countfield { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: min(80vw, 320px); font-size: 26px; line-height: 1.2; }
 
+  .padgrid { display: grid; grid-template-columns: repeat(2, 72px); gap: 12px; }
+  .pad { width: 72px; height: 72px; border-radius: 16px; border: none; opacity: .3; transition: opacity .1s; }
+  .pad.lit { opacity: 1; transform: scale(1.06); }
+  .pad:active { opacity: .85; }
+
+  .morewrap { display: flex; gap: 12px; }
+  .morebox { width: clamp(110px, 34vw, 150px); min-height: 110px; background: #131831; border: 2px solid var(--me); border-radius: 14px; padding: 8px; font-size: 19px; line-height: 1.35; color: #fff; }
+
+  .pourbar { position: relative; width: min(78vw, 340px); height: 22px; border-radius: 11px; background: #1d2347; overflow: hidden; }
+  .pourfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--me); }
+  .pourline { position: absolute; left: 80%; top: -3px; bottom: -3px; width: 3px; background: #3dff8e; }
+
+  .jcd { font-family: "Space Mono", monospace; font-size: clamp(36px, 12vw, 64px); font-weight: 700; }
+  .jrow { display: flex; gap: 14px; }
+
   .mark { font-size: clamp(44px, 14vw, 80px); line-height: 1.1; }
   .rmsg { font-size: 20px; font-weight: 900; }
   .res.win .rmsg { color: #3dff8e; } .res.lose .rmsg { color: #ff5d5d; } .res.draw .rmsg { color: #8e97c9; }
@@ -572,6 +587,210 @@ const GAMES = {
       g.done = true;
       if (+btn.dataset.v === g.ans) winPoint(p, "かぞえ勝ち!");
       else winPoint(other(p), `おてつき! 正解は ${g.ans}`);
+    }
+  },
+  simon: {
+    name: "ひかった順",
+    rule: "4回ひかる順をおぼえて、同じ順に先にタップ! まちがえたら最初から",
+    start(now) {
+      const COL = ["#ff5d5d", "#4da3ff", "#3dff8e", "#ffd84d"];
+      const seq = [];
+      for (let i = 0; i < 4; i++) seq.push((Math.random() * 4) | 0);
+      g = { seq, t0: now, showing: true, disp: -2, prog: { 1: 0, 2: 0 }, lock: { 1: 0, 2: 0 }, done: false };
+      setArenas(`<div class="hint shint">ひかる順をおぼえろ!</div><div class="padgrid" data-seq="${seq.join(",")}">${[0, 1, 2, 3].map(i => `<button class="pad" data-pad="${i}" style="background:${COL[i]}"></button>`).join("")}</div><div class="hint sprog"></div>`);
+    },
+    setLit(lit) {
+      for (const p of [1, 2]) {
+        arenaEl[p].querySelectorAll(".pad").forEach((el, i) => el.classList.toggle("lit", i === lit));
+      }
+    },
+    tick(now) {
+      if (g.done || !g.showing) return;
+      const el = now - g.t0;
+      const s = (el / 550) | 0;
+      if (s < 4) {
+        const lit = el % 550 < 400 ? g.seq[s] : -1;
+        if (lit !== g.disp) { g.disp = lit; this.setLit(lit); if (lit >= 0) sTick(); }
+      } else {
+        g.showing = false;
+        this.setLit(-1);
+        for (const p of [1, 2]) { const h = q(p, ".shint"); if (h) h.textContent = "おぼえた順にタップ!"; }
+      }
+    },
+    tap(p, e, now) {
+      if (g.done || g.showing || now < g.lock[p]) return;
+      const btn = e.target.closest("[data-pad]");
+      if (!btn) return;
+      if (+btn.dataset.pad === g.seq[g.prog[p]]) {
+        g.prog[p]++;
+        sTick();
+        const pr = q(p, ".sprog");
+        if (pr) pr.textContent = "●".repeat(g.prog[p]);
+        if (g.prog[p] >= 4) { g.done = true; winPoint(p, "完ぺきな再現!"); }
+      } else {
+        g.prog[p] = 0;
+        g.lock[p] = now + 600;
+        const pr = q(p, ".sprog");
+        if (pr) pr.textContent = "";
+        arenaEl[p].classList.remove("ng");
+        void arenaEl[p].offsetWidth;
+        arenaEl[p].classList.add("ng");
+        sBuzz();
+      }
+    }
+  },
+  feint: {
+    name: "だまし早押し",
+    rule: "🟢だけタップ! 🟡や🔵のフェイントにひっかかったら相手の点",
+    start(now) {
+      g = { at: now + 2000 + Math.random() * 4000, nextFake: now + 700 + Math.random() * 900, fakeUntil: 0, fired: false, disp: "", done: false };
+      this.show(`<div class="big wait">待て……</div>`);
+    },
+    show(html) {
+      if (g.disp === html) return;
+      g.disp = html;
+      setArenas(html + `<div class="hint">🟢だけタップ! ほかは全部フェイント</div>`);
+    },
+    tick(now) {
+      if (g.done || g.fired) return;
+      if (now >= g.at) {
+        g.fired = true; g.firedAt = now;
+        this.show(`<div class="big go">🟢 押せ!!</div>`);
+        sGo();
+      } else if (now < g.fakeUntil) {
+        // フェイント表示中
+      } else if (now >= g.nextFake) {
+        g.fakeUntil = now + 350;
+        g.nextFake = now + 1000 + Math.random() * 1200;
+        this.show(`<div class="big wait">${Math.random() < 0.5 ? "🟡" : "🔵"} まだ!</div>`);
+      } else {
+        this.show(`<div class="big wait">待て……</div>`);
+      }
+    },
+    tap(p, e, now) {
+      if (g.done) return;
+      g.done = true;
+      if (!g.fired) winPoint(other(p), "フェイントにひっかかった!");
+      else winPoint(p, `反応速度 ${Math.round(now - g.firedAt)}ms`);
+    }
+  },
+  more: {
+    name: "どっちが多い?",
+    rule: "多いほうのワクを先にタップ! まちがいは相手の点",
+    start(now) {
+      const EM = ["🔵", "🔴", "🟣", "🟠"];
+      const i = (Math.random() * EM.length) | 0;
+      const e1 = EM[i], e2 = EM[(i + 1 + ((Math.random() * 3) | 0)) % EM.length];
+      const n1 = 5 + ((Math.random() * 8) | 0);
+      let n2 = n1;
+      while (Math.abs(n2 - n1) < 2) n2 = 5 + ((Math.random() * 8) | 0);
+      g = { done: false };
+      setArenas(`<div class="hint">どっちが多い?</div><div class="morewrap">` +
+        `<button class="morebox" data-more="${n1 > n2 ? 1 : 0}">${e1.repeat(n1)}</button>` +
+        `<button class="morebox" data-more="${n2 > n1 ? 1 : 0}">${e2.repeat(n2)}</button></div>`);
+    },
+    tap(p, e) {
+      if (g.done) return;
+      const btn = e.target.closest("[data-more]");
+      if (!btn) return;
+      g.done = true;
+      if (btn.dataset.more === "1") winPoint(p, "お見立てどおり!");
+      else winPoint(other(p), "おてつき! そっちは少ない");
+    }
+  },
+  pour: {
+    name: "ちょうど注ぎ",
+    rule: "押して注いで、緑の線ピッタリで離せ! こえたらふきこぼれ",
+    start(now) {
+      g = { start: { 1: 0, 2: 0 }, lv: { 1: null, 2: null }, holding: { 1: false, 2: false }, t0: now, done: false };
+      setArenas(`<div class="hint">押しているあいだ注がれる。線(80)ピッタリで離せ!</div><div class="pourbar"><div class="pourfill"></div><div class="pourline"></div></div><div class="hint pmsg">長押しでスタート</div>`);
+    },
+    fillOf(p, now) { return Math.min(100, (now - g.start[p]) / 25); },
+    lockIn(p, lv) {
+      g.holding[p] = false;
+      g.lv[p] = lv;
+      const f = q(p, ".pourfill");
+      if (f) f.style.width = lv + "%";
+      const m = q(p, ".pmsg");
+      if (m) m.textContent = lv > 80 ? "ふきこぼれた…!" : `${lv | 0} で停止 — 相手を待っています…`;
+      if (g.lv[1] !== null && g.lv[2] !== null) this.finish();
+    },
+    tick(now) {
+      if (g.done) return;
+      for (const p of [1, 2]) {
+        if (!g.holding[p]) continue;
+        const lv = this.fillOf(p, now);
+        const f = q(p, ".pourfill");
+        if (f) f.style.width = lv + "%";
+        if (lv >= 100) this.lockIn(p, 100);
+      }
+      if (g.done) return;
+      if (now - g.t0 >= 10000) {
+        for (const p of [1, 2]) if (g.lv[p] === null) this.lockIn(p, g.holding[p] ? this.fillOf(p, now) : 0);
+      }
+    },
+    tap(p, e, now) {
+      if (g.done || g.holding[p] || g.lv[p] !== null) return;
+      g.holding[p] = true;
+      g.start[p] = now;
+      const m = q(p, ".pmsg");
+      if (m) m.textContent = "注いでいる…";
+      sTick();
+    },
+    up(p, e, now) {
+      if (g.done || !g.holding[p]) return;
+      this.lockIn(p, this.fillOf(p, now));
+    },
+    finish() {
+      if (g.done) return;
+      g.done = true;
+      const sc = p => g.lv[p] > 80 ? 1000 + g.lv[p] : 80 - g.lv[p];
+      const txt = p => g.lv[p] > 80 ? "ふきこぼれ" : String(g.lv[p] | 0);
+      const d1 = sc(1), d2 = sc(2);
+      const w = d1 === d2 ? 0 : (d1 < d2 ? 1 : 2);
+      winPoint(w, "線は80ちょうど", { 1: `あなた ${txt(1)} / あいて ${txt(2)}`, 2: `あなた ${txt(2)} / あいて ${txt(1)}` });
+    }
+  },
+  janken: {
+    name: "3秒じゃんけん",
+    rule: "3秒以内にこっそり手をえらべ! あいこは引き分け、出さないと負け",
+    start(now) {
+      g = { pick: { 1: null, 2: null }, end: now + 3000, done: false };
+      setArenas(`<div class="jcd">3</div><div class="jrow">${["✊", "✌️", "✋"].map((h, i) => `<button class="ansbtn" data-j="${i}">${h}</button>`).join("")}</div>`);
+    },
+    tick(now) {
+      if (g.done) return;
+      const left = Math.ceil((g.end - now) / 1000);
+      for (const p of [1, 2]) {
+        const c = q(p, ".jcd");
+        if (c) c.textContent = Math.max(0, left);
+      }
+      if (now >= g.end) this.finish();
+    },
+    tap(p, e) {
+      if (g.done || g.pick[p] !== null) return;
+      const btn = e.target.closest("[data-j]");
+      if (!btn) return;
+      g.pick[p] = +btn.dataset.j;
+      setArena(p, `<div class="jcd">えらんだ!</div><div class="hint">あいてを待っています…</div>`);
+      sTick();
+      if (g.pick[1] !== null && g.pick[2] !== null) this.finish();
+    },
+    finish() {
+      if (g.done) return;
+      g.done = true;
+      const HANDS = ["✊", "✌️", "✋"];
+      const a = g.pick[1], b = g.pick[2];
+      const beats = (x, y) => (x === 0 && y === 1) || (x === 1 && y === 2) || (x === 2 && y === 0);
+      let w = 0;
+      if (a === null && b === null) w = 0;
+      else if (a === null) w = 2;
+      else if (b === null) w = 1;
+      else if (beats(a, b)) w = 1;
+      else if (beats(b, a)) w = 2;
+      const hand = x => x === null ? "なし" : HANDS[x];
+      winPoint(w, w === 0 && a !== null && a === b ? "あいこ!" : null,
+        { 1: `あなた ${hand(a)} / あいて ${hand(b)}`, 2: `あなた ${hand(b)} / あいて ${hand(a)}` });
     }
   },
   order: {
