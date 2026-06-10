@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>ペアチューン — 耳でそろえる神経衰弱</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #101418;
+    --surface: #1a212a;
+    --surface-2: #232e3a;
+    --line: #2f4052;
+    --text: #eef3f6;
+    --muted: #8da3b5;
+    --accent: #3dd6c3;
+    --accent-2: #ff8e3d;
+    --good: #4ade80;
+    --bad: #ff5e7a;
+    --radius: 14px;
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overscroll-behavior: none; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  button { font-family: inherit; color: inherit; border: none; background: none; cursor: pointer; touch-action: manipulation; }
+
+  .screen {
+    display: none;
+    min-height: 100dvh;
+    padding: calc(14px + var(--sat)) 18px calc(20px + var(--sab));
+    max-width: 520px;
+    margin: 0 auto;
+    flex-direction: column;
+  }
+  .screen.on { display: flex; }
+
+  .logo {
+    font-family: "Bungee", cursive;
+    font-size: clamp(1.9rem, 9vw, 2.7rem);
+    line-height: 1.05;
+    text-align: center;
+  }
+  .logo span { color: var(--accent); }
+  .tagline { color: var(--muted); text-align: center; font-size: 0.85rem; margin-top: 8px; }
+
+  /* ---------- start ---------- */
+  #start { justify-content: center; gap: 16px; }
+  .howto {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-size: 0.82rem;
+    line-height: 1.75;
+    color: var(--muted);
+  }
+  .howto b { color: var(--text); }
+  .mode-row { display: flex; gap: 8px; }
+  .mode-btn {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 10px 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .mode-btn.sel { border-color: var(--accent); color: var(--accent); background: rgba(61, 214, 195, 0.08); }
+  .mode-note { font-size: 0.72rem; color: var(--muted); text-align: center; min-height: 1.2em; }
+  .genres { display: flex; flex-direction: column; gap: 10px; }
+  .genre-btn {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 13px 16px;
+    font-size: 1rem;
+    font-weight: 700;
+    transition: transform 0.08s;
+  }
+  .genre-btn:active { transform: scale(0.97); background: var(--surface-2); }
+  .genre-btn .emo { font-size: 1.4rem; }
+  .genre-btn .bst {
+    margin-left: auto;
+    font-family: "Space Mono", monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .genre-btn .bst b { color: var(--accent); font-weight: 700; }
+
+  /* ---------- loading ---------- */
+  #loading { justify-content: center; align-items: center; gap: 20px; }
+  .spin {
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    border: 4px solid var(--line);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loadMsg { color: var(--muted); font-size: 0.9rem; }
+  #loadErr { display: none; flex-direction: column; gap: 14px; align-items: center; }
+  #loadErr p { color: var(--muted); font-size: 0.88rem; text-align: center; line-height: 1.7; }
+
+  /* ---------- play ---------- */
+  #play { gap: 12px; }
+  .hud {
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: "Space Mono", monospace;
+    font-size: 0.82rem;
+    color: var(--muted);
+    padding-right: 48px;   /* 右上の固定サウンドボタンと重ならないように */
+  }
+  .hud b { color: var(--text); font-size: 1.05rem; }
+  .hud .hint { color: var(--accent); font-weight: 700; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .tune-card {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    border-radius: 12px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    overflow: hidden;
+    transition: transform 0.1s, border-color 0.15s, opacity 0.3s;
+  }
+  .tune-card:active { transform: scale(0.95); }
+  .tune-card .back {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.7rem;
+    background:
+      radial-gradient(circle at 30% 25%, rgba(61, 214, 195, 0.10), transparent 55%),
+      radial-gradient(circle at 75% 80%, rgba(255, 142, 61, 0.08), transparent 55%);
+  }
+  .tune-card.up { border-color: var(--accent); }
+  .tune-card.up .back { background: rgba(61, 214, 195, 0.12); }
+  .tune-card.ng { border-color: var(--bad); }
+  .tune-card.matched { border-color: var(--good); pointer-events: none; }
+  .tune-card .eq {
+    position: absolute;
+    left: 0; right: 0; bottom: 8px;
+    display: none;
+    justify-content: center;
+    gap: 3px;
+    height: 16px;
+    align-items: flex-end;
+  }
+  .tune-card.up .eq { display: flex; }
+  .tune-card .eq i {
+    width: 4px;
+    background: var(--accent);
+    border-radius: 2px;
+    animation: eq 0.55s ease-in-out infinite alternate;
+  }
+  .tune-card .eq i:nth-child(2) { animation-delay: 0.18s; }
+  .tune-card .eq i:nth-child(3) { animation-delay: 0.34s; }
+  @keyframes eq { from { height: 4px; } to { height: 15px; } }
+  .tune-card img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  .tune-card.matched img { display: block; }
+  .tune-card.matched::after {
+    content: "✓";
+    position: absolute;
+    top: 4px; right: 7px;
+    color: var(--good);
+    font-weight: 700;
+    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  }
+
+  #quitBtn {
+    align-self: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 10px 18px;
+  }
+
+  /* ---------- clear ---------- */
+  #clear { justify-content: center; gap: 16px; }
+  .clear-ttl { font-family: "Bungee", cursive; font-size: 2rem; color: var(--accent); text-align: center; }
+  .stars { text-align: center; font-size: 2rem; letter-spacing: 6px; }
+  .result {
+    font-family: "Space Mono", monospace;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    text-align: center;
+    line-height: 2;
+    font-size: 0.92rem;
+  }
+  .result b { color: var(--accent-2); font-size: 1.25rem; }
+  #newBest { color: var(--good); font-weight: 700; display: none; }
+  .playlist {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .playlist h3 { font-size: 0.78rem; color: var(--muted); font-weight: 700; letter-spacing: 0.06em; }
+  .pl-row { display: flex; align-items: center; gap: 10px; }
+  .pl-row img { width: 42px; height: 42px; border-radius: 8px; background: var(--surface-2); }
+  .pl-row .meta { min-width: 0; }
+  .pl-row .t { font-size: 0.84rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pl-row .a { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .clear-btns { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .btn {
+    background: var(--accent);
+    color: #06231f;
+    border-radius: 999px;
+    padding: 13px 38px;
+    font-size: 1rem;
+    font-weight: 700;
+    transition: transform 0.08s;
+    width: min(80vw, 300px);
+  }
+  .btn:active { transform: scale(0.95); }
+  .btn.ghost { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); }
+
+  #sndBtn {
+    position: fixed;
+    top: calc(10px + var(--sat));
+    right: 12px;
+    z-index: 30;
+    font-size: 1.1rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    width: 40px; height: 40px;
+  }
+</style>
+</head>
+<body>
+
+<button id="sndBtn" aria-label="効果音切り替え">🔊</button>
+
+<!-- ============ START ============ -->
+<section id="start" class="screen on">
+  <div>
+    <h1 class="logo">PAIR<br><span>TUNES</span></h1>
+    <p class="tagline">ペアチューン — 耳でそろえる神経衰弱</p>
+  </div>
+  <div class="howto">
+    カードをめくると曲が<b>2秒</b>だけ流れる。<b>同じ曲のペア</b>を耳で探してそろえよう。
+    12枚(6曲)を全部そろえるまでの<b>手数とタイム</b>で記録に挑戦。
+    そろえた曲はジャケットが見えて、クリア後にプレイリストになる。
+  </div>
+  <div class="mode-row">
+    <button class="mode-btn sel" id="modeEasy">かんたん</button>
+    <button class="mode-btn" id="modeHard">むずかしい</button>
+  </div>
+  <p class="mode-note" id="modeNote">ペアは同じ部分が流れる</p>
+  <div class="genres" id="genres"></div>
+  <p class="tagline" style="font-size:0.72rem">楽曲データ: iTunes Search API(30秒プレビュー)</p>
+</section>
+
+<!-- ============ LOADING ============ -->
+<section id="loading" class="screen">
+  <div class="spin" id="loadSpin"></div>
+  <p id="loadMsg">曲を集めています…</p>
+  <div id="loadErr">
+    <p>曲を取得できませんでした。<br>混み合っている可能性があります。<br>少し時間をおいてもう一度お試しください。</p>
+    <button class="btn" id="retryBtn">リトライ</button>
+    <button class="btn ghost" id="backBtn">ジャンル選択へ戻る</button>
+  </div>
+</section>
+
+<!-- ============ PLAY ============ -->
+<section id="play" class="screen">
+  <div class="hud">
+    <span>手数 <b id="moves">0</b></span>
+    <span class="hint" id="pairsLeft"></span>
+    <span>TIME <b id="timer">0:00</b></span>
+  </div>
+  <div class="grid" id="grid"></div>
+  <button id="quitBtn">あきらめてジャンル選択へ</button>
+</section>
+
+<!-- ============ CLEAR ============ -->
+<section id="clear" class="screen">
+  <p class="clear-ttl">CLEAR!</p>
+  <p class="stars" id="stars"></p>
+  <div class="result">
+    <div>手数 <b id="rMoves">0</b> / TIME <b id="rTime">0:00</b></div>
+    <div id="rBest"></div>
+    <div id="newBest">★ ベスト更新!</div>
+  </div>
+  <div class="playlist">
+    <h3>🎵 今日の6曲</h3>
+    <div id="plRows"></div>
+  </div>
+  <div class="clear-btns">
+    <button class="btn" id="againBtn">新しい6曲でもう一度</button>
+    <button class="btn ghost" id="homeBtn">ジャンル選択へ</button>
+  </div>
+</section>
+
+<script>
+"use strict";
+
+/* ================= 定数 ================= */
+const PAIRS = 6;
+const SNIPPET_SEC = 2.0;
+const HARD_OFFSETS = [0, 14];   // むずかしい: ペアの片方はサビ違いの位置から
+const STORE_KEY = "pair-tunes-v1";
+
+const GENRES = {
+  hits:  { label: "ヒットチャート", emo: "🔥", chart: true, artists: [] },
+  jpop:  { label: "J-POP", emo: "🎤", artists: [
+    "YOASOBI", "Vaundy", "藤井風", "Ado", "King Gnu", "Creepy Nuts",
+    "Official髭男dism", "Mrs. GREEN APPLE", "あいみょん", "米津玄師",
+    "back number", "星野源", "サカナクション", "スピッツ", "aiko", "Superfly"
+  ] },
+  anime: { label: "アニソン", emo: "✨", artists: [
+    "LiSA", "Aimer", "Eve", "ヨルシカ", "藍井エイル", "ClariS",
+    "fripSide", "鈴木雅之", "西川貴教", "オーイシマサヨシ", "やなぎなぎ",
+    "サンボマスター", "FLOW", "GRANRODEO", "緑黄色社会", "幾田りら"
+  ] },
+  west:  { label: "洋楽", emo: "🌍", artists: [
+    "Taylor Swift", "Ed Sheeran", "Bruno Mars", "The Weeknd", "Billie Eilish",
+    "Dua Lipa", "Maroon 5", "Queen", "Michael Jackson", "Ariana Grande",
+    "Coldplay", "Avicii", "Sia", "Charlie Puth", "Olivia Rodrigo", "Harry Styles"
+  ] },
+  retro: { label: "懐メロ 90s-00s", emo: "📼", artists: [
+    "宇多田ヒカル", "GLAY", "L'Arc〜en〜Ciel", "浜崎あゆみ", "倉木麻衣",
+    "ポルノグラフィティ", "モーニング娘。", "globe", "Every Little Thing",
+    "大塚愛", "ORANGE RANGE", "コブクロ", "いきものがかり", "EXILE",
+    "中島美嘉", "湘南乃風"
+  ] }
+};
+
+/* ================= 状態(宣言時に全て初期化 — ループはこの時点から回る) ================= */
+let scr = "start";            // start | loading | play | clear
+let mode = "easy";            // easy | hard
+let genreKey = null;
+let roundTracks = [];         // 今ラウンドの6曲
+let cards = [];               // {trackIdx, offset, el, audio, state: down|up|matched, stopAt}
+let upCard = null;            // 表になっている1枚目
+let judging = false;          // 2枚目判定中の入力ロック
+let moves = 0;
+let matchedPairs = 0;
+let startedAt = 0;            // 初手の時刻(0=未開始)
+let finishedSec = 0;
+let muted = false;
+
+/* ================= 永続化 ================= */
+function loadStore() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || { best: {} }; }
+  catch (e) { return { best: {} }; }
+}
+function saveStore(s) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) {}
+}
+let store = loadStore();
+const bestKey = () => genreKey + ":" + mode;
+
+/* ================= DOM ================= */
+const $ = id => document.getElementById(id);
+const screens = { start: $("start"), loading: $("loading"), play: $("play"), clear: $("clear") };
+function show(name) {
+  scr = name;
+  Object.keys(screens).forEach(k => screens[k].classList.toggle("on", k === name));
+}
+
+/* ================= 効果音(Web Audio合成 / iOS消音スイッチ対策は hakai と同方式) ================= */
+let AC = null;
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+    } catch (e) { return null; }
+  }
+  if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+  return AC && AC.state === "running" ? AC : null;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const rate = 8000, len = rate;
+  const buf = new ArrayBuffer(44 + len * 2);
+  const v = new DataView(buf);
+  const wstr = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  wstr(0, "RIFF"); v.setUint32(4, 36 + len * 2, true); wstr(8, "WAVE");
+  wstr(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  wstr(36, "data"); v.setUint32(40, len * 2, true);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline", "");
+    silentEl.loop = true;
+    silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play();
+  if (p && p.catch) p.catch(() => {});
+  audio();
+  const done = () => {
+    ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+  };
+  try { AC.resume().then(done); } catch (e) { done(); }
+}
+["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+function tone(freq, dur, type, vol, when) {
+  const ac = audio();
+  if (muted || !ac) return;
+  const t = ac.currentTime + (when || 0);
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type || "sine"; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol || 0.15, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+const sfx = {
+  tap:   () => tone(660, 0.06, "square", 0.05),
+  match: () => { tone(660, 0.12, "triangle", 0.16); tone(990, 0.16, "triangle", 0.16, 0.1); },
+  miss:  () => tone(200, 0.18, "sawtooth", 0.1),
+  clear: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, "triangle", 0.16, i * 0.13)); }
+};
+
+$("sndBtn").addEventListener("click", () => {
+  muted = !muted;
+  $("sndBtn").textContent = muted ? "🔇" : "🔊";
+  if (!muted) sfx.tap();
+});
+
+/* ================= iTunes API(media=allが必須 — media=musicはiOS Safariで
+   musics://へリダイレクトされ全滅する。phrase-hunterのREADME参照) ================= */
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = "pt_cb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
+    const s = document.createElement("script");
+    const timer = setTimeout(() => fail(new Error("jsonp timeout")), 8000);
+    function cleanup() { clearTimeout(timer); window[cb] = () => {}; s.remove(); }
+    function fail(e) { reject(e); cleanup(); }
+    window[cb] = data => { resolve(data); cleanup(); };
+    s.src = url + "&callback=" + cb;
+    s.onerror = () => fail(new Error("jsonp failed"));
+    document.body.appendChild(s);
+  });
+}
+async function fetchJson(url, jsonpOk) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("http " + res.status);
+    const text = await res.text();
+    if (!text.trim()) throw new Error("empty body");  // レート制限時の空200対策
+    return JSON.parse(text);
+  } catch (e) {
+    if (jsonpOk) return jsonp(url);
+    throw e;
+  }
+}
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const BAD_TITLE = /(instrumental|karaoke|カラオケ|off vocal|オフボーカル|remix|リミックス|live|ライブ|ライヴ|acoustic|アコースティック|cover|カバー|edit\)|ver\.|version)/i;
+function normTitle(t) {
+  return t.toLowerCase()
+    .replace(/[\(\(\[].*?[\)\)\]]/g, "")
+    .replace(/\s*(feat|ft)\..*$/i, "")
+    .replace(/[\s　・~〜!!??]/g, "");
+}
+function buildPool(rawTracks) {
+  const seen = new Set();
+  const out = [];
+  rawTracks.forEach(t => {
+    if (!t || !t.previewUrl || !t.trackName || BAD_TITLE.test(t.trackName)) return;
+    if (t.kind && t.kind !== "song") return;
+    const key = normTitle(t.trackName) + "|" + (t.artistName || "").toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      id: t.trackId,
+      title: t.trackName,
+      artist: t.artistName,
+      preview: t.previewUrl,
+      art: (t.artworkUrl100 || "").replace("100x100", "300x300")
+    });
+  });
+  return shuffle(out);
+}
+
+async function loadGenrePool(key) {
+  const g = GENRES[key];
+  // ヒットチャート: iTunes旧RSS(topsongs)。CORS可・プレビューURL込み・iOS可
+  if (g.chart) {
+    try {
+      const rss = await fetchJson("https://itunes.apple.com/jp/rss/topsongs/limit=100/json", false);
+      const entries = (rss.feed && rss.feed.entry) || [];
+      const seen = new Set();
+      const p = [];
+      entries.forEach(e => {
+        const enc = (e.link || []).find(l => l.attributes && l.attributes.rel === "enclosure");
+        const imgs = e["im:image"] || [];
+        const title = e["im:name"] && e["im:name"].label;
+        const artist = (e["im:artist"] && e["im:artist"].label) || "";
+        if (!enc || !enc.attributes.href || !title || BAD_TITLE.test(title)) return;
+        const k = normTitle(title) + "|" + artist.toLowerCase();
+        if (seen.has(k)) return;
+        seen.add(k);
+        const img = imgs.length ? imgs[imgs.length - 1].label : "";
+        p.push({
+          id: Number(e.id && e.id.attributes && e.id.attributes["im:id"]) || k,
+          title, artist,
+          preview: enc.attributes.href,
+          art: img.replace("170x170", "300x300")
+        });
+      });
+      if (p.length >= PAIRS) return shuffle(p);
+    } catch (e) { /* チャート不可 → J-POPプールへフォールバック */ }
+    return loadArtistPool(GENRES.jpop.artists);
+  }
+  return loadArtistPool(g.artists);
+}
+
+async function loadArtistPool(artists) {
+  // レート制限対策: 3アーティストずつのバッチで取得し、足りた時点で打ち切り
+  const order = shuffle(artists.slice());
+  const raw = [];
+  let pool = [];
+  for (let i = 0; i < Math.min(order.length, 9) && pool.length < 30; i += 3) {
+    const lists = await Promise.all(order.slice(i, i + 3).map(artist =>
+      fetchJson("https://itunes.apple.com/search?" + new URLSearchParams({
+        term: artist, media: "all", entity: "song",
+        attribute: "artistTerm", country: "JP", limit: "50"
+      }), true).then(d => d.results || []).catch(() => [])
+    ));
+    raw.push(...lists.flat());
+    pool = buildPool(raw);
+  }
+  return pool;
+}
+
+/* プールキャッシュ(メモリ+localStorage 12時間) */
+const POOL_TTL = 12 * 3600 * 1000;
+const memPools = {};
+function poolCacheGet(key, allowStale) {
+  if (memPools[key]) return memPools[key];
+  try {
+    const c = JSON.parse(localStorage.getItem(STORE_KEY + ":pool:" + key) || "null");
+    if (c && c.tracks && c.tracks.length >= PAIRS && (allowStale || Date.now() - c.ts < POOL_TTL)) {
+      return c.tracks;
+    }
+  } catch (e) {}
+  return null;
+}
+function poolCacheSet(key, tracks) {
+  memPools[key] = tracks;
+  try {
+    localStorage.setItem(STORE_KEY + ":pool:" + key, JSON.stringify({ ts: Date.now(), tracks }));
+  } catch (e) {}
+}
+
+/* ================= ゲーム進行 ================= */
+function startGame(key) {
+  genreKey = key;
+  const cached = poolCacheGet(key, false);
+  if (cached) { beginRound(cached); return; }
+  show("loading");
+  $("loadSpin").style.display = "block";
+  $("loadMsg").style.display = "block";
+  $("loadErr").style.display = "none";
+  loadGenrePool(key).then(p => {
+    if (scr !== "loading") return;
+    if (p.length < PAIRS) throw new Error("pool too small");
+    poolCacheSet(key, p);
+    beginRound(p);
+  }).catch(() => {
+    if (scr !== "loading") return;
+    const stale = poolCacheGet(key, true);
+    if (stale) { memPools[key] = stale; beginRound(stale); return; }
+    $("loadSpin").style.display = "none";
+    $("loadMsg").style.display = "none";
+    $("loadErr").style.display = "flex";
+  });
+}
+
+function beginRound(pool) {
+  // アーティストが偏らないよう、できるだけ別アーティストから6曲選ぶ
+  const picked = [];
+  const usedArtists = new Set();
+  for (const t of shuffle(pool.slice())) {
+    if (usedArtists.has(t.artist) && pool.length - picked.length > PAIRS) continue;
+    usedArtists.add(t.artist);
+    picked.push(t);
+    if (picked.length === PAIRS) break;
+  }
+  for (const t of pool) {                       // 足りなければ重複アーティスト許可
+    if (picked.length === PAIRS) break;
+    if (!picked.includes(t)) picked.push(t);
+  }
+  roundTracks = picked;
+
+  // 各曲1つの<audio>を用意(タップ起点で再生するのでiOSでも可)
+  stopAllSnippets();
+  cards = [];
+  roundTracks.forEach((t, ti) => {
+    const a = document.createElement("audio");
+    a.setAttribute("playsinline", "");
+    a.preload = "auto";
+    a.src = t.preview;
+    try { a.load(); } catch (e) {}
+    const offsets = mode === "hard" ? shuffle(HARD_OFFSETS.slice()) : [0, 0];
+    offsets.forEach(off => cards.push({ trackIdx: ti, offset: off, audio: a, el: null, state: "down", stopAt: 0 }));
+  });
+  shuffle(cards);
+
+  const grid = $("grid");
+  grid.innerHTML = "";
+  cards.forEach((c, i) => {
+    const b = document.createElement("button");
+    b.className = "tune-card";
+    b.innerHTML = '<span class="back">🎵</span><span class="eq"><i></i><i></i><i></i></span><img alt="">';
+    b.querySelector("img").src = roundTracks[c.trackIdx].art;
+    b.addEventListener("click", () => flip(i));
+    c.el = b;
+    grid.appendChild(b);
+  });
+
+  upCard = null; judging = false;
+  moves = 0; matchedPairs = 0; startedAt = 0; finishedSec = 0;
+  renderHud();
+  show("play");
+}
+
+function playSnippet(card) {
+  stopAllSnippets();
+  const a = card.audio;
+  try { a.currentTime = card.offset; } catch (e) {}
+  const p = a.play();
+  if (p && p.catch) p.catch(() => {});
+  // 停止は音声イベントに頼らず壁時計で行う(読み込み遅延・再生失敗でも破綻しない)
+  card.stopAt = performance.now() + SNIPPET_SEC * 1000;
+}
+
+function stopAllSnippets() {
+  cards.forEach(c => {
+    c.stopAt = 0;
+    try { c.audio.pause(); } catch (e) {}
+  });
+}
+
+function flip(i) {
+  const card = cards[i];
+  if (scr !== "play" || judging || card.state === "matched") return;
+  if (!startedAt) startedAt = performance.now();
+
+  // 表のカードをもう一度タップ → 聴き直し(ペナルティなし)
+  if (card.state === "up") { playSnippet(card); return; }
+
+  sfx.tap();
+  card.state = "up";
+  card.el.classList.add("up");
+  playSnippet(card);
+
+  if (!upCard) { upCard = card; return; }
+
+  // 2枚目: 判定
+  moves++;
+  renderHud();
+  const first = upCard;
+  upCard = null;
+  judging = true;
+  const isMatch = first.trackIdx === card.trackIdx;
+
+  setTimeout(() => {
+    judging = false;
+    if (isMatch) {
+      [first, card].forEach(c => {
+        c.state = "matched";
+        c.el.classList.remove("up");
+        c.el.classList.add("matched");
+      });
+      matchedPairs++;
+      sfx.match();
+      renderHud();
+      if (matchedPairs === PAIRS) finishRound();
+    } else {
+      [first, card].forEach(c => c.el.classList.add("ng"));
+      sfx.miss();
+      setTimeout(() => {
+        [first, card].forEach(c => {
+          c.state = "down";
+          c.el.classList.remove("up", "ng");
+        });
+        stopAllSnippets();
+      }, 650);
+    }
+  }, isMatch ? 350 : 1200);   // 不一致は2枚目を聴く時間を確保してから伏せる
+}
+
+function finishRound() {
+  finishedSec = Math.round((performance.now() - startedAt) / 1000);
+  stopAllSnippets();
+  sfx.clear();
+
+  const stars = moves <= 8 ? 3 : moves <= 12 ? 2 : 1;
+  $("stars").textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
+  $("rMoves").textContent = moves;
+  $("rTime").textContent = fmtTime(finishedSec);
+
+  const b = store.best[bestKey()];
+  const isBest = !b || moves < b.moves || (moves === b.moves && finishedSec < b.sec);
+  if (isBest) {
+    store.best[bestKey()] = { moves, sec: finishedSec };
+    saveStore(store);
+  }
+  const nb = store.best[bestKey()];
+  $("rBest").textContent = "BEST " + nb.moves + "手 / " + fmtTime(nb.sec);
+  $("newBest").style.display = isBest ? "block" : "none";
+
+  const rows = $("plRows");
+  rows.innerHTML = "";
+  roundTracks.forEach(t => {
+    const r = document.createElement("div");
+    r.className = "pl-row";
+    r.innerHTML = '<img alt=""><div class="meta"><div class="t"></div><div class="a"></div></div>';
+    r.querySelector("img").src = t.art;
+    r.querySelector(".t").textContent = t.title;
+    r.querySelector(".a").textContent = t.artist;
+    rows.appendChild(r);
+  });
+
+  renderGenres();
+  show("clear");
+}
+
+function fmtTime(s) {
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+
+/* ================= 表示 ================= */
+function renderHud() {
+  $("moves").textContent = moves;
+  $("pairsLeft").textContent = "あと " + (PAIRS - matchedPairs) + " ペア";
+}
+
+function renderGenres() {
+  const box = $("genres");
+  box.innerHTML = "";
+  Object.keys(GENRES).forEach(key => {
+    const g = GENRES[key];
+    const b = document.createElement("button");
+    b.className = "genre-btn";
+    const best = store.best[key + ":" + mode];
+    b.innerHTML = '<span class="emo"></span><span class="lb"></span>' +
+      '<span class="bst">' + (best ? "BEST <b>" + best.moves + "手</b>" : "") + "</span>";
+    b.querySelector(".emo").textContent = g.emo;
+    b.querySelector(".lb").textContent = g.label;
+    b.addEventListener("click", () => { sfx.tap(); startGame(key); });
+    box.appendChild(b);
+  });
+}
+
+function setMode(m) {
+  mode = m;
+  $("modeEasy").classList.toggle("sel", m === "easy");
+  $("modeHard").classList.toggle("sel", m === "hard");
+  $("modeNote").textContent = m === "easy"
+    ? "ペアは同じ部分が流れる"
+    : "ペアは同じ曲の違う部分が流れる(耳が試される)";
+  renderGenres();
+}
+
+/* ================= 操作 ================= */
+$("modeEasy").addEventListener("click", () => { sfx.tap(); setMode("easy"); });
+$("modeHard").addEventListener("click", () => { sfx.tap(); setMode("hard"); });
+$("retryBtn").addEventListener("click", () => { sfx.tap(); startGame(genreKey); });
+$("backBtn").addEventListener("click", () => { sfx.tap(); show("start"); });
+$("quitBtn").addEventListener("click", () => { sfx.tap(); stopAllSnippets(); show("start"); });
+$("againBtn").addEventListener("click", () => { sfx.tap(); startGame(genreKey); });
+$("homeBtn").addEventListener("click", () => { sfx.tap(); show("start"); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopAllSnippets(); });
+
+/* ================= メインループ(宣言時から回る): スニペット停止とタイマー表示 ================= */
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (scr !== "play") return;
+  cards.forEach(c => {
+    if (c.stopAt && now >= c.stopAt) {
+      c.stopAt = 0;
+      try { c.audio.pause(); } catch (e) {}
+    }
+  });
+  $("timer").textContent = fmtTime(startedAt ? Math.floor((now - startedAt) / 1000) : 0);
+}
+requestAnimationFrame(loop);
+
+/* ================= 初期化 ================= */
+setMode("easy");
+</script>
+</body>
+</html>
