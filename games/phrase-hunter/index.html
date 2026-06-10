@@ -539,6 +539,7 @@ function buildPool(rawTracks) {
   const out = [];
   rawTracks.forEach(t => {
     if (!t || !t.previewUrl || !t.trackName || BAD_TITLE.test(t.trackName)) return;
+    if (t.kind && t.kind !== "song") return;  // media=all対策(楽曲以外を除外)
     const key = normTitle(t.trackName) + "|" + (t.artistName || "").toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
@@ -549,18 +550,32 @@ function buildPool(rawTracks) {
 
 async function loadGenrePool(key) {
   const g = GENRES[key];
-  // ヒットチャート: Apple RSS(most-played)→ Lookupでプレビュー補完
+  // ヒットチャート: iTunes旧RSS(topsongs)。プレビューURL・ジャケット込みで
+  // 取得でき、CORS可・iOS Safariでも通る(SnapTune index.html と同方式)
   if (g.chart) {
     try {
-      const rss = await fetchJson(
-        "https://rss.marketingtools.apple.com/api/v2/jp/music/most-played/100/songs.json", false
-      );
-      const ids = ((rss.feed && rss.feed.results) || []).map(r => r.id).join(",");
-      if (ids) {
-        const d = await fetchJson("https://itunes.apple.com/lookup?id=" + ids + "&country=JP", true);
-        const p = buildPool(d.results || []);
-        if (p.length >= 8) return p;
-      }
+      const rss = await fetchJson("https://itunes.apple.com/jp/rss/topsongs/limit=100/json", false);
+      const entries = (rss.feed && rss.feed.entry) || [];
+      const seen = new Set();
+      const p = [];
+      entries.forEach(e => {
+        const enc = (e.link || []).find(l => l.attributes && l.attributes.rel === "enclosure");
+        const imgs = e["im:image"] || [];
+        const title = e["im:name"] && e["im:name"].label;
+        const artist = (e["im:artist"] && e["im:artist"].label) || "";
+        if (!enc || !enc.attributes.href || !title || BAD_TITLE.test(title)) return;
+        const k = normTitle(title) + "|" + artist.toLowerCase();
+        if (seen.has(k)) return;
+        seen.add(k);
+        const img = imgs.length ? imgs[imgs.length - 1].label : "";
+        p.push({
+          id: Number(e.id && e.id.attributes && e.id.attributes["im:id"]) || k,
+          title, artist,
+          preview: enc.attributes.href,
+          art: img.replace("170x170", "300x300")
+        });
+      });
+      if (p.length >= 8) return shuffle(p);
     } catch (e) { /* チャート不可 → J-POPプールへフォールバック */ }
     return loadArtistPool(GENRES.jpop.artists);
   }
@@ -575,8 +590,10 @@ async function loadArtistPool(artists) {
   let pool = [];
   for (let i = 0; i < Math.min(order.length, 9) && pool.length < 40; i += 3) {
     const lists = await Promise.all(order.slice(i, i + 3).map(artist =>
+      // media=music はWebKit系で musics:// スキームへリダイレクトされ
+      // CORSエラーになる(iOS Safariで全滅)。media=all なら通る
       fetchJson("https://itunes.apple.com/search?" + new URLSearchParams({
-        term: artist, media: "music", entity: "song",
+        term: artist, media: "all", entity: "song",
         attribute: "artistTerm", country: "JP", limit: "50"
       }), true).then(d => d.results || []).catch(() => [])
     ));
