@@ -41,7 +41,9 @@
 
 ## 技術構成
 
-- 依存ライブラリなしの単一HTML(canvas + Pointer Events)
+- 依存ライブラリなしの単一HTML(canvas + Pointer Events)+ キャラ画像24枚(`assets/`)
+- **キャラ画像はCodex CLI($imagegenスキル / gpt-image-2)で生成**: 「チビキャラ・ステッカー風・濃紺背景 #0d0a1f」のスタイル指定を固定し、キャラごとの特徴だけ変えて24枚をバッチ生成。1024px PNGで生成後、`sips`で512px JPEG(計約1.4MB)に変換。gpt-image-2は透過背景非対応のため、ゲーム背景と同色の単色背景で生成し、canvas側で円形バッジにクリップして馴染ませている
+- 画像が未ロード・読み込み失敗時は絵文字の組み合わせ表示に自動フォールバック
 - フォントは既存ページと統一(Bungee + Zen Kaku Gothic New + Space Mono)
 - 効果音はWeb Audioでリアルタイム合成。キャラ登場時の「意味不明ボイス」もオシレーターで生成
 - **iOS消音スイッチ対策**: 初回タップ時に無音WAV(JSでArrayBuffer生成→Blob URL)を`<audio>`要素でループ再生してオーディオセッションを再生カテゴリへ切り替え、`AudioContext.resume()`のPromise完了を待ってアンロック判定、`onstatechange`で中断から自動復帰(games/hakai/と同方式)
@@ -53,7 +55,7 @@
 
 1. **構文チェック**: インラインscriptを抽出して `node --check` → OK
 2. **ヘッドレスロジックテスト**: DOM/canvas/localStorageをスタブしてNode(vm)でゲームループを駆動。スタート画面でのループ生存→開始→パーフェクト帯でのタップ捕獲×3→放置で3ミス→ゲームオーバー→記録保存→図鑑表示(24枚)→リトライ、まで全16項目PASS
-3. **実ブラウザE2E**: puppeteer-core + ローカルChrome、モバイルビューポート(390×844、`hasTouch: true`)+タッチイベントで実プレイ。pageerror/consoleエラーゼロ、canvas描画ピクセルあり、タッチで3体捕獲、ゲームオーバー、localStorage永続化、図鑑24枚、リトライまで全16項目PASS。スクリーンショットで見た目も目視確認
+3. **実ブラウザE2E**: puppeteer-core + ローカルChrome、モバイルビューポート(390×844、`hasTouch: true`)+タッチイベントで実プレイ。pageerror/consoleエラーゼロ、canvas描画ピクセルあり、キャラ画像24枚のロード、タッチで3体捕獲、ゲームオーバー、localStorage永続化、図鑑24枚(捕獲済みカードの画像表示込み)、リトライまで全18項目PASS。スクリーンショットで見た目も目視確認
 
 ### 開発で得た教訓
 
