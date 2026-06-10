@@ -607,6 +607,11 @@
     };
   }
 
+  // media=music は iOS Safari(WebKit)で musics:// スキームへリダイレクトされ
+  // fetch/JSONPとも失敗するため media=all を使い、MV等をここで除外する
+  // (詳細: games/phrase-hunter/README.md の教訓)
+  const isSong = t => t.previewUrl && (!t.kind || t.kind === "song");
+
   function toggleFav(track) {
     if (isFav(track.trackId)) {
       favs = favs.filter(t => t.trackId !== track.trackId);
@@ -652,7 +657,7 @@
     statusEl.textContent = "SEARCHING…";
 
     const url = "https://itunes.apple.com/search?" + new URLSearchParams({
-      term, media: "music", entity: "song", country: "JP", limit: "30"
+      term, media: "all", entity: "song", country: "JP", limit: "30"
     });
 
     let data;
@@ -669,7 +674,7 @@
       }
     }
 
-    searchResults = (data.results || []).filter(t => t.previewUrl).map(slim);
+    searchResults = (data.results || []).filter(isSong).map(slim);
     statusEl.textContent = searchResults.length
       ? `${searchResults.length} TRACKS / "${term}"`
       : `"${term}" に一致する曲が見つかりませんでした`;
@@ -726,7 +731,7 @@
       if (seeds.length) {
         const lists = await Promise.all(seeds.map(artist =>
           fetchJsonWithFallback("https://itunes.apple.com/search?" + new URLSearchParams({
-            term: artist, media: "music", entity: "song", country: "JP", limit: "12"
+            term: artist, media: "all", entity: "song", country: "JP", limit: "12"
           }), true).then(d => d.results || []).catch(() => [])
         ));
         const known = new Set([
@@ -736,7 +741,7 @@
         const seen = new Set();
         const merged = [];
         lists.flat().forEach(t => {
-          if (t.previewUrl && !known.has(t.trackId) && !seen.has(t.trackId)) {
+          if (isSong(t) && !known.has(t.trackId) && !seen.has(t.trackId)) {
             seen.add(t.trackId);
             merged.push(slim(t));
           }
@@ -746,23 +751,28 @@
       }
 
       // 2) 履歴ゼロ(または結果ゼロ)なら日本のトップソングチャート
-      //    ※このフィードはCORS不可の環境があるため、失敗しても次の手段へ
+      //    iTunes旧RSS(topsongs)はCORS可・プレビューURL込み・iOS Safari可。
+      //    (旧 rss.applemarketingtools.com は301移転、移転先もCORS不可)
       if (!recommendations.length) {
         try {
           const rss = await fetch(
-            "https://rss.applemarketingtools.com/api/v2/jp/music/most-played/30/songs.json"
+            "https://itunes.apple.com/jp/rss/topsongs/limit=30/json"
           ).then(r => r.json());
-          const ids = (rss.feed?.results || []).map(r => r.id).join(",");
-          if (ids) {
-            // RSSフィードにはpreviewUrlが無いため、Lookup APIで補完
-            const d = await fetchJsonWithFallback(
-              "https://itunes.apple.com/lookup?id=" + ids + "&country=JP", true
-            );
-            recommendations = (d.results || [])
-              .filter(t => t.previewUrl)
-              .map(slim);
-            recsLabel = "TOP SONGS IN JAPAN";
-          }
+          recommendations = (rss.feed?.entry || []).map(e => {
+            const enc = (e.link || []).find(l => l.attributes?.rel === "enclosure");
+            const imgs = e["im:image"] || [];
+            const img = imgs.length ? imgs[imgs.length - 1].label : "";
+            return {
+              trackId: Number(e.id?.attributes?.["im:id"]),
+              trackName: e["im:name"]?.label || "",
+              artistName: e["im:artist"]?.label || "",
+              collectionName: e["im:collection"]?.["im:name"]?.label || "",
+              previewUrl: enc?.attributes?.href || "",
+              // 描画側の "100x100"→大サイズ置換が効くようURLを揃える
+              artworkUrl100: img.replace("170x170", "100x100")
+            };
+          }).filter(t => t.previewUrl && t.trackName);
+          if (recommendations.length) recsLabel = "TOP SONGS IN JAPAN";
         } catch (e) { /* チャート取得失敗 → 下のシードプールへ */ }
       }
 
@@ -777,13 +787,13 @@
         const picks = shuffle(pool.slice()).slice(0, 3);
         const lists = await Promise.all(picks.map(artist =>
           fetchJsonWithFallback("https://itunes.apple.com/search?" + new URLSearchParams({
-            term: artist, media: "music", entity: "song", country: "JP", limit: "10"
+            term: artist, media: "all", entity: "song", country: "JP", limit: "10"
           }), true).then(d => d.results || []).catch(() => [])
         ));
         const seen = new Set();
         const merged = [];
         lists.flat().forEach(t => {
-          if (t.previewUrl && !seen.has(t.trackId)) {
+          if (isSong(t) && !seen.has(t.trackId)) {
             seen.add(t.trackId);
             merged.push(slim(t));
           }
