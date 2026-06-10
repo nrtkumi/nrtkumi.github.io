@@ -60,6 +60,19 @@
   .arena.ng { animation: shake .3s; }
   @keyframes shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 
+  .molefield { position: relative; width: min(80vw, 340px); height: clamp(140px, 24vh, 210px); background: #11152b; border: 1px solid #2a3160; border-radius: 14px; }
+  .mole { position: absolute; width: 56px; height: 56px; font-size: 36px; background: transparent; border: none; line-height: 1; padding: 0; }
+
+  .oddgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .cell { font-size: clamp(26px, 8vw, 40px); background: transparent; border: none; padding: 2px; line-height: 1.2; }
+
+  .formula { font-family: "Space Mono", monospace; font-size: clamp(34px, 11vw, 60px); font-weight: 700; }
+  .ansrow { display: flex; gap: 14px; }
+  .ansbtn { min-width: 70px; height: 56px; border-radius: 12px; border: 2px solid var(--me); background: #131831; color: #fff; font-family: "Space Mono", monospace; font-size: 24px; font-weight: 700; padding: 0 12px; }
+
+  .chmsg { font-size: 14px; font-weight: 700; color: #cdd3f2; }
+  .chtime { font-family: "Space Mono", monospace; font-size: clamp(36px, 12vw, 64px); font-weight: 700; }
+
   .mark { font-size: clamp(44px, 14vw, 80px); line-height: 1.1; }
   .rmsg { font-size: 20px; font-weight: 900; }
   .res.win .rmsg { color: #3dff8e; } .res.lose .rmsg { color: #ff5d5d; } .res.draw .rmsg { color: #8e97c9; }
@@ -293,6 +306,135 @@ const GAMES = {
       else winPoint(other(p), "お手つき発生!");
     }
   },
+  mole: {
+    name: "モグラたたき",
+    rule: "じぶんの陣地に出る🐹を先に5回たたけ!",
+    start(now) {
+      const seq = [];
+      for (let i = 0; i < 5; i++) seq.push({ x: 5 + ((Math.random() * 75) | 0), y: 5 + ((Math.random() * 60) | 0) });
+      g = { seq, n: { 1: 0, 2: 0 }, done: false };
+      setArenas(`<div class="molefield"></div><div class="hint">🐹を5回たたけ! <b class="molenum">0</b>/5</div>`);
+      this.place(1); this.place(2);
+    },
+    place(p) {
+      const f = q(p, ".molefield");
+      const pos = g.seq[g.n[p]];
+      if (f && pos) f.innerHTML = `<button class="mole" style="left:${pos.x}%;top:${pos.y}%">🐹</button>`;
+    },
+    tap(p, e) {
+      if (g.done || !e.target.closest(".mole")) return;
+      g.n[p]++;
+      sTick();
+      const num = q(p, ".molenum");
+      if (num) num.textContent = g.n[p];
+      if (g.n[p] >= 5) { g.done = true; winPoint(p, "たたき勝ち!"); return; }
+      this.place(p);
+    }
+  },
+  odd: {
+    name: "まちがいさがし",
+    rule: "1つだけちがう絵文字を先にタップ! おてつきは0.6秒お休み",
+    start(now) {
+      const PAIRS = [["😺", "😸"], ["🍩", "🍪"], ["😀", "😃"], ["🌝", "🌚"], ["🐔", "🐤"], ["🍓", "🍒"], ["🙈", "🙉"]];
+      const [a, b] = PAIRS[(Math.random() * PAIRS.length) | 0];
+      const oddIdx = (Math.random() * 16) | 0;
+      g = { lock: { 1: 0, 2: 0 }, done: false };
+      const cells = [];
+      for (let i = 0; i < 16; i++) cells.push(`<button class="cell" data-odd="${i === oddIdx ? 1 : 0}">${i === oddIdx ? b : a}</button>`);
+      setArenas(`<div class="oddgrid">${cells.join("")}</div><div class="hint">なかまはずれを先にタップ!</div>`);
+    },
+    tap(p, e, now) {
+      if (g.done || now < g.lock[p]) return;
+      const c = e.target.closest(".cell");
+      if (!c) return;
+      if (c.dataset.odd === "1") {
+        g.done = true;
+        winPoint(p, "見つけた!");
+      } else {
+        g.lock[p] = now + 600;
+        arenaEl[p].classList.remove("ng");
+        void arenaEl[p].offsetWidth;
+        arenaEl[p].classList.add("ng");
+        sBuzz();
+      }
+    }
+  },
+  math: {
+    name: "けいさん早押し",
+    rule: "こたえを先にタップ! まちがえたら相手のポイント",
+    start(now) {
+      const a = 2 + ((Math.random() * 8) | 0), b = 2 + ((Math.random() * 8) | 0);
+      const mul = Math.random() < 0.4;
+      const ans = mul ? a * b : a + b;
+      const set = new Set([ans]);
+      while (set.size < 3) {
+        const d = ans + (1 + ((Math.random() * 3) | 0)) * (Math.random() < 0.5 ? -1 : 1);
+        if (d > 0) set.add(d);
+      }
+      const opts = [...set];
+      for (let i = opts.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [opts[i], opts[j]] = [opts[j], opts[i]]; }
+      g = { ans, done: false };
+      setArenas(`<div class="formula">${a} ${mul ? "×" : "+"} ${b} = ?</div><div class="ansrow">${opts.map(v => `<button class="ansbtn" data-v="${v}">${v}</button>`).join("")}</div>`);
+    },
+    tap(p, e) {
+      if (g.done) return;
+      const btn = e.target.closest("[data-v]");
+      if (!btn) return;
+      g.done = true;
+      if (+btn.dataset.v === g.ans) winPoint(p, "正解!");
+      else winPoint(other(p), `おてつき! 正解は ${g.ans}`);
+    }
+  },
+  chicken: {
+    name: "チキンレース",
+    rule: "🧨を押さえつづけて、💥の前に離せ! 長く押さえたほうの勝ち",
+    start(now) {
+      g = { boom: now + 2500 + Math.random() * 3500, holding: { 1: false, 2: false }, rel: { 1: null, 2: null }, t0: { 1: 0, 2: 0 }, done: false };
+      setArenas(`<div class="big">🧨</div><div class="chmsg">押さえろ!</div><div class="chtime">0.00</div>`);
+    },
+    held(p) {
+      if (g.rel[p] !== null) return `あなた ${((g.rel[p] - g.t0[p]) / 1000).toFixed(2)}秒ホールド`;
+      return g.holding[p] ? "爆発に巻きこまれた…" : "押さえなかった…";
+    },
+    tick(now) {
+      if (g.done) return;
+      for (const p of [1, 2]) {
+        if (!g.holding[p]) continue;
+        const t = q(p, ".chtime");
+        if (t) t.textContent = ((now - g.t0[p]) / 1000).toFixed(2);
+      }
+      if (now >= g.boom) {
+        g.done = true;
+        const h1 = g.holding[1], h2 = g.holding[2];
+        let w = 0;
+        if (h1 && h2) w = 0;
+        else if (h1) w = 2;
+        else if (h2) w = 1;
+        else w = g.rel[1] !== null ? 1 : (g.rel[2] !== null ? 2 : 0);
+        winPoint(w, "💥ドカン!", { 1: this.held(1), 2: this.held(2) });
+      }
+    },
+    tap(p, e, now) {
+      if (g.done || g.holding[p] || g.rel[p] !== null) return;
+      g.holding[p] = true;
+      g.t0[p] = now;
+      const m = q(p, ".chmsg");
+      if (m) m.textContent = "押さえている… 離すタイミングを見きわめろ";
+      sTick();
+    },
+    up(p, e, now) {
+      if (g.done || !g.holding[p]) return;
+      g.holding[p] = false;
+      g.rel[p] = now;
+      const m = q(p, ".chmsg");
+      if (m) m.textContent = "離した! 相手と爆発を待て…";
+      if (g.rel[1] !== null && g.rel[2] !== null) {
+        g.done = true;
+        const w = g.rel[1] === g.rel[2] ? 0 : (g.rel[1] > g.rel[2] ? 1 : 2);
+        winPoint(w, "両者セーフ! ねばったほうの勝ち", { 1: this.held(1), 2: this.held(2) });
+      }
+    }
+  },
   order: {
     name: "数字タッチ",
     rule: "1→2→3→4→5 の順に先にタップしきったほうの勝ち!",
@@ -393,8 +535,16 @@ function onTap(p, e) {
   if (state !== "play") return;
   GAMES[curGame].tap(p, e, now);
 }
+function onRelease(p, e) {
+  if (state !== "play") return;
+  const game = GAMES[curGame];
+  if (game.up) game.up(p, e, performance.now());
+}
 for (const p of [1, 2]) {
   $("zone" + p).addEventListener("pointerdown", e => { e.preventDefault(); onTap(p, e); });
+  for (const ev of ["pointerup", "pointercancel"]) {
+    $("zone" + p).addEventListener(ev, e => { e.preventDefault(); onRelease(p, e); });
+  }
 }
 
 /* ---------- メインループ(タイトル時点から常時稼働) ---------- */
