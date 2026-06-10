@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>スイカフィーバー — 脳汁スイカゲーム</title>
+<meta name="description" content="同じ果物を合体させてスイカを目指せ!コンボ・保留オーラ・FEVER TIMEで脳汁あふれる爽快スイカゲーム。">
+<meta property="og:title" content="スイカ★フィーバー — 脳汁スイカゲーム">
+<meta property="og:description" content="同じ果物を合体させてスイカを目指せ!コンボ・保留オーラ・FEVER TIMEで脳汁あふれる爽快スイカゲーム。">
+<meta property="og:image" content="https://nrtkumi.github.io/suika-fever-ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/suika-fever.html">
+<meta name="twitter:card" content="summary_large_image">
 <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=M+PLUS+Rounded+1c:wght@400;800&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -609,6 +616,9 @@ button:focus-visible { outline: 2px solid #ffd700; outline-offset: 2px; }
   function drawScene() {
     frame++;
     hue = (hue + (fever ? 4 : 1)) % 360;
+    // re-assert the dpr transform every frame: if the 2D context is dropped
+    // and restored (iOS Safari, long sessions) its state resets to identity
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     ctx.save();
     if (shake > 0) { ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake); shake *= 0.87; if (shake < 0.4) shake = 0; }
