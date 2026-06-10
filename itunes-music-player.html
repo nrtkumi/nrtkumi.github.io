@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAITEN — 30秒で音楽に出会う</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #141019;
+    --surface: #1e1826;
+    --surface-2: #281f33;
+    --line: #372b46;
+    --text: #f4eee4;
+    --muted: #9b8fae;
+    --accent: #ff6b5e;
+    --accent-soft: rgba(255, 107, 94, 0.14);
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    min-height: 100vh;
+    padding-bottom: 120px;
+  }
+  /* ---------- header ---------- */
+  header {
+    padding: 40px 24px 8px;
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+  .logo {
+    font-family: "Bungee", cursive;
+    font-size: clamp(2.2rem, 6vw, 3.4rem);
+    letter-spacing: 0.02em;
+    line-height: 1;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent); }
+  .tagline {
+    color: var(--muted);
+    margin-top: 8px;
+    font-size: 0.92rem;
+  }
+  /* ---------- tabs ---------- */
+  .tabs {
+    max-width: 1080px;
+    margin: 22px auto 0;
+    padding: 0 24px;
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tab {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 12px 18px;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: color 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); }
+  .tab.active::after {
+    content: "";
+    position: absolute;
+    left: 14px; right: 14px; bottom: -1px;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: var(--accent);
+  }
+  .tab .count {
+    font-family: "Space Mono", monospace;
+    font-size: 0.7rem;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 1px 8px;
+    color: var(--muted);
+  }
+  .tab.active .count { color: var(--accent); border-color: var(--accent); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  /* ---------- search ---------- */
+  .search-wrap {
+    max-width: 1080px;
+    margin: 20px auto 0;
+    padding: 0 24px;
+    display: flex;
+    gap: 10px;
+  }
+  .search-box {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 6px 4px 20px;
+    transition: border-color 0.2s;
+  }
+  .search-box:focus-within { border-color: var(--accent); }
+  .search-box svg { flex-shrink: 0; opacity: 0.5; }
+  #searchInput {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 1rem;
+    padding: 12px;
+    min-width: 0;
+  }
+  #searchInput::placeholder { color: var(--muted); }
+  #searchBtn {
+    background: var(--accent);
+    color: #1a0e0c;
+    border: none;
+    border-radius: 999px;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 12px 26px;
+    cursor: pointer;
+    transition: transform 0.15s, filter 0.15s;
+  }
+  #searchBtn:hover { filter: brightness(1.1); }
+  #searchBtn:active { transform: scale(0.96); }
+  #searchBtn:focus-visible, #searchInput:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* ---------- chips ---------- */
+  .chips {
+    max-width: 1080px;
+    margin: 14px auto 0;
+    padding: 0 24px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 7px 16px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--text); }
+  /* ---------- status / results ---------- */
+  .status-row {
+    max-width: 1080px;
+    margin: 28px auto 0;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 1.6em;
+  }
+  .status {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-family: "Space Mono", monospace;
+  }
+  .clear-btn {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 0.78rem;
+    padding: 5px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: none;
+  }
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .grid {
+    max-width: 1080px;
+    margin: 14px auto 0;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 18px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.18s, border-color 0.18s, background 0.18s;
+    animation: rise 0.4s ease both;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+  .card:hover { transform: translateY(-4px); border-color: var(--accent); }
+  .card.playing {
+    border-color: var(--accent);
+    background: var(--surface-2);
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 28px rgba(255,107,94,0.18);
+  }
+  .art {
+    position: relative;
+    aspect-ratio: 1;
+    background: var(--surface-2);
+  }
+  .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .art .overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(20, 16, 25, 0.45);
+    opacity: 0;
+    transition: opacity 0.18s;
+  }
+  .card:hover .overlay, .card.playing .overlay { opacity: 1; }
+  .overlay .pbtn {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    color: #1a0e0c;
+  }
+  /* heart button on card */
+  .heart {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 36px; height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(20, 16, 25, 0.6);
+    backdrop-filter: blur(6px);
+    color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity 0.18s, transform 0.18s, color 0.18s;
+    z-index: 2;
+  }
+  .card:hover .heart, .heart.on { opacity: 1; transform: scale(1); }
+  .heart.on { color: var(--accent); }
+  .heart:hover { transform: scale(1.12); }
+  .heart:focus-visible { outline: 2px solid var(--accent); opacity: 1; }
+  .heart svg { pointer-events: none; }
+  .heart.on svg path { fill: currentColor; }
+  @keyframes pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+  }
+  .heart.pop { animation: pop 0.3s ease; }
+  /* equalizer bars for playing card */
+  .eq { display: flex; gap: 3px; align-items: flex-end; height: 22px; }
+  .eq i {
+    width: 4px; background: #1a0e0c; border-radius: 2px;
+    animation: eq 0.9s ease-in-out infinite;
+  }
+  .eq i:nth-child(1){ animation-delay: 0s; }
+  .eq i:nth-child(2){ animation-delay: 0.25s; }
+  .eq i:nth-child(3){ animation-delay: 0.5s; }
+  @keyframes eq {
+    0%,100% { height: 6px; } 50% { height: 22px; }
+  }
+  .meta { padding: 12px 14px 14px; }
+  .meta .t {
+    font-weight: 700; font-size: 0.92rem; line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .meta .a {
+    color: var(--muted); font-size: 0.82rem; margin-top: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .meta .when {
+    font-family: "Space Mono", monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-top: 6px;
+    opacity: 0.8;
+  }
+  .empty {
+    max-width: 1080px; margin: 60px auto; padding: 0 24px;
+    text-align: center; color: var(--muted);
+  }
+  .empty .big { font-family: "Bungee", cursive; font-size: 1.6rem; color: var(--line); margin-bottom: 12px; }
+  /* ---------- player bar ---------- */
+  .player {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(30, 24, 38, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--line);
+    transform: translateY(110%);
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    z-index: 10;
+  }
+  .player.show { transform: none; }
+  .player-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .disc-wrap {
+    position: relative;
+    width: 64px; height: 64px;
+    flex-shrink: 0;
+  }
+  .ring {
+    position: absolute; inset: -4px;
+    border-radius: 50%;
+    background: conic-gradient(var(--accent) calc(var(--p, 0) * 1%), var(--line) 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  }
+  .disc {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    animation: spin 6s linear infinite;
+    animation-play-state: paused;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+  }
+  .player.spinning .disc { animation-play-state: running; }
+  .disc img { width: 100%; height: 100%; object-fit: cover; }
+  .disc::after {
+    content: "";
+    position: absolute; inset: 0; margin: auto;
+    width: 14px; height: 14px;
+    background: var(--bg);
+    border: 2px solid var(--text);
+    border-radius: 50%;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .now {
+    min-width: 0;
+    flex: 1;
+  }
+  .now .t { font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .now .a { color: var(--muted); font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .icon-btn {
+    background: none; border: none; color: var(--text);
+    width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.15s, color 0.15s;
+  }
+  .icon-btn:hover { background: var(--accent-soft); }
+  .icon-btn:focus-visible { outline: 2px solid var(--accent); }
+  .icon-btn.main {
+    background: var(--accent); color: #1a0e0c;
+    width: 48px; height: 48px;
+  }
+  .icon-btn.main:hover { filter: brightness(1.1); }
+  .icon-btn.fav-on { color: var(--accent); }
+  .icon-btn.fav-on svg path { fill: currentColor; }
+  .timeline {
+    display: flex; align-items: center; gap: 10px;
+    flex: 1.4;
+    min-width: 140px;
+  }
+  .time {
+    font-family: "Space Mono", monospace;
+    font-size: 0.72rem; color: var(--muted);
+    width: 38px; text-align: center;
+  }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    flex: 1; height: 4px; border-radius: 2px;
+    background: linear-gradient(to right, var(--accent) calc(var(--v, 0) * 1%), var(--line) 0);
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: var(--text);
+    transition: transform 0.1s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.25); }
+  input[type="range"]::-moz-range-thumb {
+    width: 13px; height: 13px; border: none; border-radius: 50%;
+    background: var(--text);
+  }
+  .vol { display: flex; align-items: center; gap: 8px; width: 130px; flex-shrink: 0; }
+  .preview-note {
+    font-family: "Space Mono", monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+  }
+  .spinner {
+    width: 28px; height: 28px;
+    border: 3px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 40px auto;
+  }
+  @media (max-width: 760px) {
+    .vol, .preview-note { display: none; }
+    .timeline { min-width: 100px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    header { padding-top: 28px; }
+    .tab { padding: 12px 12px; font-size: 0.88rem; }
+    .heart { opacity: 1; transform: scale(1); } /* タッチ端末では常時表示 */
+  }
+  @media (max-width: 520px) {
+    .timeline { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .disc, .eq i, .card, .heart.pop { animation: none !important; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 class="logo">KAI<span>TEN</span></h1>
+  <p class="tagline">iTunes Search APIで検索して、30秒プレビューを連続再生</p>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab active" data-view="search" role="tab" aria-selected="true">
+    検索
+  </button>
+  <button class="tab" data-view="favs" role="tab" aria-selected="false">
+    お気に入り <span class="count" id="favCount">0</span>
+  </button>
+  <button class="tab" data-view="history" role="tab" aria-selected="false">
+    再生履歴 <span class="count" id="histCount">0</span>
+  </button>
+</nav>
+
+<div id="searchUI">
+  <div class="search-wrap">
+    <div class="search-box">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="searchInput" type="text" placeholder="曲名・アーティスト名で検索" autocomplete="off" aria-label="検索キーワード">
+    </div>
+    <button id="searchBtn">検索</button>
+  </div>
+  <div class="chips" id="chips">
+    <button class="chip">YOASOBI</button>
+    <button class="chip">Vaundy</button>
+    <button class="chip">藤井風</button>
+    <button class="chip">Ado</button>
+    <button class="chip">King Gnu</button>
+    <button class="chip">Creepy Nuts</button>
+  </div>
+</div>
+
+<div class="status-row">
+  <div class="status" id="status"></div>
+  <button class="clear-btn" id="clearBtn"></button>
+</div>
+<div class="grid" id="grid"></div>
+<div class="empty" id="empty">
+  <div class="big">PRESS PLAY</div>
+  <p>キーワードを検索するか、上のタグをタップしてください</p>
+</div>
+
+<!-- player bar -->
+<div class="player" id="player">
+  <div class="player-inner">
+    <div class="disc-wrap">
+      <div class="ring" id="ring"></div>
+      <div class="disc"><img id="npArt" src="" alt=""></div>
+    </div>
+    <div class="now">
+      <div class="t" id="npTitle">—</div>
+      <div class="a" id="npArtist">—</div>
+    </div>
+    <div class="controls">
+      <button class="icon-btn" id="npFav" aria-label="お気に入りに追加 / 解除">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+      </button>
+      <button class="icon-btn" id="prevBtn" aria-label="前の曲">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+      </button>
+      <button class="icon-btn main" id="playBtn" aria-label="再生 / 一時停止">
+        <svg id="playIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="pauseIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>
+      </button>
+      <button class="icon-btn" id="nextBtn" aria-label="次の曲">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
+      </button>
+    </div>
+    <div class="timeline">
+      <span class="time" id="curTime">0:00</span>
+      <input type="range" id="seek" min="0" max="100" value="0" step="0.1" aria-label="シークバー">
+      <span class="time" id="durTime">0:30</span>
+    </div>
+    <div class="vol">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+      <input type="range" id="vol" min="0" max="100" value="80" aria-label="音量">
+    </div>
+    <div class="preview-note">30s PREVIEW</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const grid = $("grid"), statusEl = $("status"), emptyEl = $("empty");
+  const player = $("player"), ring = $("ring"), clearBtn = $("clearBtn");
+  const audio = new Audio();
+  audio.volume = 0.8;
+
+  /* ---------- persistence (localStorage / 失敗時はメモリのみ) ---------- */
+  const store = {
+    load(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch { return fallback; }
+    },
+    save(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+    }
+  };
+
+  /* ---------- state ---------- */
+  let searchResults = [];          // 検索タブの表示リスト
+  let recommendations = [];        // ファーストビューのおすすめ
+  let recsLabel = "";              // おすすめのラベル文言
+  let recsLoading = false;
+  let hasSearched = false;         // 一度でも検索したらおすすめ表示を解除
+  let queue = [];                  // 再生キュー(再生開始時の表示リスト)
+  let currentIndex = -1;           // queue内のインデックス
+  let view = "search";             // search | favs | history
+
+  // favs: 配列 [track, ...] / history: [{track, at}, ...] 新しい順
+  let favs = store.load("kaiten_favs", []);
+  let history = store.load("kaiten_history", []);
+  const HISTORY_MAX = 50;
+
+  const isFav = id => favs.some(t => t.trackId === id);
+  const currentTrack = () => queue[currentIndex] || null;
+
+  /* ---------- track helpers ---------- */
+  // 保存サイズを抑えるため必要なフィールドだけ残す
+  function slim(t) {
+    return {
+      trackId: t.trackId,
+      trackName: t.trackName,
+      artistName: t.artistName,
+      collectionName: t.collectionName,
+      previewUrl: t.previewUrl,
+      artworkUrl100: t.artworkUrl100
+    };
+  }
+
+  function toggleFav(track) {
+    if (isFav(track.trackId)) {
+      favs = favs.filter(t => t.trackId !== track.trackId);
+    } else {
+      favs.unshift(slim(track));
+    }
+    store.save("kaiten_favs", favs);
+    updateCounts();
+    syncFavUI();
+    if (view === "favs") render(); // お気に入りタブ表示中は即反映
+  }
+
+  function pushHistory(track) {
+    history = history.filter(h => h.track.trackId !== track.trackId);
+    history.unshift({ track: slim(track), at: Date.now() });
+    if (history.length > HISTORY_MAX) history.length = HISTORY_MAX;
+    store.save("kaiten_history", history);
+    updateCounts();
+  }
+
+  function updateCounts() {
+    $("favCount").textContent = favs.length;
+    $("histCount").textContent = history.length;
+  }
+
+  function relTime(ts) {
+    const d = Math.floor((Date.now() - ts) / 1000);
+    if (d < 60) return "たった今";
+    if (d < 3600) return Math.floor(d / 60) + "分前";
+    if (d < 86400) return Math.floor(d / 3600) + "時間前";
+    if (d < 86400 * 7) return Math.floor(d / 86400) + "日前";
+    const dt = new Date(ts);
+    return (dt.getMonth() + 1) + "/" + dt.getDate();
+  }
+
+  /* ---------- search ---------- */
+  async function search(term) {
+    if (!term.trim()) return;
+    hasSearched = true;
+    switchView("search", false);
+    emptyEl.style.display = "none";
+    grid.innerHTML = '<div class="spinner" style="grid-column:1/-1"></div>';
+    statusEl.textContent = "SEARCHING…";
+
+    const url = "https://itunes.apple.com/search?" + new URLSearchParams({
+      term, media: "music", entity: "song", country: "JP", limit: "30"
+    });
+
+    let data;
+    try {
+      const res = await fetch(url);
+      data = await res.json();
+    } catch (e) {
+      try {
+        data = await jsonp(url);
+      } catch (e2) {
+        grid.innerHTML = "";
+        statusEl.textContent = "通信エラー。時間をおいて再度お試しください。";
+        return;
+      }
+    }
+
+    searchResults = (data.results || []).filter(t => t.previewUrl).map(slim);
+    statusEl.textContent = searchResults.length
+      ? `${searchResults.length} TRACKS / "${term}"`
+      : `"${term}" に一致する曲が見つかりませんでした`;
+    render();
+  }
+
+  function jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cb = "itunes_cb_" + Date.now();
+      window[cb] = data => { resolve(data); cleanup(); };
+      const s = document.createElement("script");
+      s.src = url + "&callback=" + cb;
+      s.onerror = () => { reject(new Error("jsonp failed")); cleanup(); };
+      function cleanup() { delete window[cb]; s.remove(); }
+      document.body.appendChild(s);
+    });
+  }
+
+  // fetch優先・CORS失敗時はJSONPへ(itunes.apple.com系のみjsonpOk=true)
+  async function fetchJsonWithFallback(url, jsonpOk) {
+    try {
+      const res = await fetch(url);
+      return await res.json();
+    } catch (e) {
+      if (jsonpOk) return jsonp(url);
+      throw e;
+    }
+  }
+
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  /* ---------- recommendations (ファーストビュー) ---------- */
+  async function loadRecommendations() {
+    recsLoading = true;
+    if (view === "search" && !hasSearched) {
+      emptyEl.style.display = "none";
+      grid.innerHTML = '<div class="spinner" style="grid-column:1/-1"></div>';
+      statusEl.textContent = "LOADING RECOMMENDATIONS…";
+      clearBtn.style.display = "none";
+    }
+    recommendations = [];
+    try {
+      // 1) お気に入り・履歴があれば、そのアーティストをシードにパーソナライズ
+      const seeds = [...new Set(
+        [...favs, ...history.map(h => h.track)].map(t => t.artistName)
+      )].slice(0, 3);
+
+      if (seeds.length) {
+        const lists = await Promise.all(seeds.map(artist =>
+          fetchJsonWithFallback("https://itunes.apple.com/search?" + new URLSearchParams({
+            term: artist, media: "music", entity: "song", country: "JP", limit: "12"
+          }), true).then(d => d.results || []).catch(() => [])
+        ));
+        const known = new Set([
+          ...favs.map(t => t.trackId),
+          ...history.map(h => h.track.trackId)
+        ]);
+        const seen = new Set();
+        const merged = [];
+        lists.flat().forEach(t => {
+          if (t.previewUrl && !known.has(t.trackId) && !seen.has(t.trackId)) {
+            seen.add(t.trackId);
+            merged.push(slim(t));
+          }
+        });
+        recommendations = shuffle(merged).slice(0, 24);
+        recsLabel = "FOR YOU / " + seeds.join(", ");
+      }
+
+      // 2) 履歴ゼロ(または結果ゼロ)なら日本のトップソングチャート
+      //    ※このフィードはCORS不可の環境があるため、失敗しても次の手段へ
+      if (!recommendations.length) {
+        try {
+          const rss = await fetch(
+            "https://rss.applemarketingtools.com/api/v2/jp/music/most-played/30/songs.json"
+          ).then(r => r.json());
+          const ids = (rss.feed?.results || []).map(r => r.id).join(",");
+          if (ids) {
+            // RSSフィードにはpreviewUrlが無いため、Lookup APIで補完
+            const d = await fetchJsonWithFallback(
+              "https://itunes.apple.com/lookup?id=" + ids + "&country=JP", true
+            );
+            recommendations = (d.results || [])
+              .filter(t => t.previewUrl)
+              .map(slim);
+            recsLabel = "TOP SONGS IN JAPAN";
+          }
+        } catch (e) { /* チャート取得失敗 → 下のシードプールへ */ }
+      }
+
+      // 3) 最終フォールバック: 人気アーティストのプールからランダムに3組選んで
+      //    Search API(JSONPフォールバック付き)で取得。これはどの環境でも動く
+      if (!recommendations.length) {
+        const pool = [
+          "YOASOBI", "Vaundy", "藤井風", "Ado", "King Gnu", "Creepy Nuts",
+          "Official髭男dism", "Mrs. GREEN APPLE", "あいみょん", "米津玄師",
+          "back number", "ヨルシカ", "Aimer", "星野源", "サカナクション", "TWICE"
+        ];
+        const picks = shuffle(pool.slice()).slice(0, 3);
+        const lists = await Promise.all(picks.map(artist =>
+          fetchJsonWithFallback("https://itunes.apple.com/search?" + new URLSearchParams({
+            term: artist, media: "music", entity: "song", country: "JP", limit: "10"
+          }), true).then(d => d.results || []).catch(() => [])
+        ));
+        const seen = new Set();
+        const merged = [];
+        lists.flat().forEach(t => {
+          if (t.previewUrl && !seen.has(t.trackId)) {
+            seen.add(t.trackId);
+            merged.push(slim(t));
+          }
+        });
+        recommendations = shuffle(merged).slice(0, 24);
+        recsLabel = "TODAY'S PICKS / " + picks.join(", ");
+      }
+    } catch (e) {
+      recommendations = [];
+    }
+    recsLoading = false;
+    if (view === "search" && !hasSearched) render();
+  }
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  /* ---------- views / rendering ---------- */
+  function listForView() {
+    if (view === "favs") return favs;
+    if (view === "history") return history.map(h => h.track);
+    return hasSearched ? searchResults : recommendations;
+  }
+
+  function switchView(v, rerender = true) {
+    view = v;
+    document.querySelectorAll(".tab").forEach(t => {
+      const on = t.dataset.view === v;
+      t.classList.toggle("active", on);
+      t.setAttribute("aria-selected", on);
+    });
+    $("searchUI").style.display = v === "search" ? "" : "none";
+    if (rerender) render();
+  }
+
+  function render() {
+    const list = listForView();
+    grid.innerHTML = "";
+
+    // ステータス行とクリアボタン
+    if (view === "favs") {
+      statusEl.textContent = list.length ? `${list.length} FAVORITES` : "";
+      clearBtn.style.display = "none";
+    } else if (view === "history") {
+      statusEl.textContent = list.length ? `${list.length} RECENTLY PLAYED` : "";
+      clearBtn.textContent = "履歴を消去";
+      clearBtn.style.display = list.length ? "" : "none";
+    } else {
+      clearBtn.style.display = "none";
+      if (!hasSearched) {
+        if (recsLoading) {
+          emptyEl.style.display = "none";
+          grid.innerHTML = '<div class="spinner" style="grid-column:1/-1"></div>';
+          statusEl.textContent = "LOADING RECOMMENDATIONS…";
+          return;
+        }
+        if (list.length) {
+          statusEl.textContent = recsLabel;
+          clearBtn.textContent = "おすすめを更新";
+          clearBtn.style.display = "";
+        } else {
+          statusEl.textContent = "";
+        }
+      }
+      // 検索後のstatusはsearch()側で設定済みのため維持
+    }
+
+    // 空状態
+    if (!list.length) {
+      emptyEl.style.display = "";
+      const big = emptyEl.querySelector(".big"), p = emptyEl.querySelector("p");
+      if (view === "favs") {
+        big.textContent = "NO FAVORITES";
+        p.textContent = "カードのハートをタップすると、ここに集まります";
+      } else if (view === "history") {
+        big.textContent = "NO HISTORY";
+        p.textContent = "曲を再生すると、ここに履歴が残ります";
+      } else {
+        big.textContent = "PRESS PLAY";
+        p.textContent = hasSearched
+          ? "キーワードを検索するか、上のタグをタップしてください"
+          : "おすすめを取得できませんでした。検索するか、上のタグをタップしてください";
+      }
+      return;
+    }
+    emptyEl.style.display = "none";
+
+    const cur = currentTrack();
+    list.forEach((t, i) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.style.animationDelay = (Math.min(i, 12) * 0.03) + "s";
+      card.dataset.trackId = t.trackId;
+      card.setAttribute("role", "button");
+      card.setAttribute("tabindex", "0");
+      card.setAttribute("aria-label", `${t.trackName} / ${t.artistName} を再生`);
+      const art = (t.artworkUrl100 || "").replace("100x100", "300x300");
+      const fav = isFav(t.trackId);
+      const when = view === "history" ? relTime(history[i].at) : "";
+      card.innerHTML = `
+        <div class="art">
+          <img src="${art}" alt="" loading="lazy">
+          <button class="heart ${fav ? "on" : ""}" aria-label="お気に入りに追加 / 解除" aria-pressed="${fav}">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+          </button>
+          <div class="overlay">
+            <div class="pbtn">
+              <svg class="ic-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              <div class="eq" style="display:none"><i></i><i></i><i></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="t">${esc(t.trackName)}</div>
+          <div class="a">${esc(t.artistName)}</div>
+          ${when ? `<div class="when">${when}</div>` : ""}
+        </div>`;
+      card.addEventListener("click", e => {
+        if (e.target.closest(".heart")) return;
+        toggleTrack(list, i);
+      });
+      card.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleTrack(list, i); }
+      });
+      const heartBtn = card.querySelector(".heart");
+      heartBtn.addEventListener("click", e => {
+        e.stopPropagation();
+        heartBtn.classList.add("pop");
+        heartBtn.addEventListener("animationend", () => heartBtn.classList.remove("pop"), { once: true });
+        toggleFav(t);
+      });
+      grid.appendChild(card);
+    });
+    updateCards();
+  }
+
+  /* ---------- playback ---------- */
+  function toggleTrack(list, i) {
+    const cur = currentTrack();
+    if (cur && list[i].trackId === cur.trackId) {
+      audio.paused ? audio.play() : audio.pause();
+      return;
+    }
+    queue = list.slice(); // このビューのリストをキューとして固定
+    playTrack(i);
+  }
+
+  function playTrack(i) {
+    const t = queue[i];
+    if (!t) return;
+    currentIndex = i;
+    audio.src = t.previewUrl;
+    audio.play().catch(() => {});
+    $("npArt").src = (t.artworkUrl100 || "").replace("100x100", "300x300");
+    $("npTitle").textContent = t.trackName;
+    $("npArtist").textContent = t.artistName + (t.collectionName ? " — " + t.collectionName : "");
+    player.classList.add("show");
+    document.title = "▶ " + t.trackName + " — KAITEN";
+    pushHistory(t);
+    syncFavUI();
+    if (view === "history") render(); // 履歴タブ表示中は順序を即反映
+    updateCards();
+  }
+
+  function updateCards() {
+    const cur = currentTrack();
+    document.querySelectorAll(".card").forEach(c => {
+      const isCur = cur && Number(c.dataset.trackId) === cur.trackId;
+      const playing = isCur && !audio.paused;
+      c.classList.toggle("playing", !!isCur);
+      const eq = c.querySelector(".eq"), ic = c.querySelector(".ic-play");
+      if (eq && ic) {
+        eq.style.display = playing ? "flex" : "none";
+        ic.style.display = playing ? "none" : "block";
+      }
+    });
+  }
+
+  function syncFavUI() {
+    const cur = currentTrack();
+    const on = cur && isFav(cur.trackId);
+    $("npFav").classList.toggle("fav-on", !!on);
+    $("npFav").setAttribute("aria-pressed", !!on);
+    // 表示中のカードのハートも同期
+    document.querySelectorAll(".card").forEach(c => {
+      const fav = isFav(Number(c.dataset.trackId));
+      const h = c.querySelector(".heart");
+      if (h) { h.classList.toggle("on", fav); h.setAttribute("aria-pressed", fav); }
+    });
+  }
+
+  $("npFav").addEventListener("click", () => {
+    const cur = currentTrack();
+    if (cur) toggleFav(cur);
+  });
+  $("playBtn").addEventListener("click", () => {
+    if (currentIndex < 0) {
+      const list = listForView();
+      if (list.length) { queue = list.slice(); playTrack(0); }
+      return;
+    }
+    audio.paused ? audio.play() : audio.pause();
+  });
+  $("nextBtn").addEventListener("click", () => {
+    if (queue.length) playTrack((currentIndex + 1) % queue.length);
+  });
+  $("prevBtn").addEventListener("click", () => {
+    if (!queue.length) return;
+    if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+    playTrack((currentIndex - 1 + queue.length) % queue.length);
+  });
+
+  audio.addEventListener("play", () => {
+    player.classList.add("spinning");
+    $("playIcon").style.display = "none";
+    $("pauseIcon").style.display = "block";
+    updateCards();
+  });
+  audio.addEventListener("pause", () => {
+    player.classList.remove("spinning");
+    $("playIcon").style.display = "block";
+    $("pauseIcon").style.display = "none";
+    updateCards();
+  });
+  audio.addEventListener("ended", () => {
+    if (queue.length) playTrack((currentIndex + 1) % queue.length);
+  });
+
+  /* ---------- timeline ---------- */
+  const seek = $("seek");
+  let seeking = false;
+  audio.addEventListener("timeupdate", () => {
+    if (!audio.duration) return;
+    const p = (audio.currentTime / audio.duration) * 100;
+    if (!seeking) { seek.value = p; seek.style.setProperty("--v", p); }
+    ring.style.setProperty("--p", p);
+    $("curTime").textContent = fmt(audio.currentTime);
+    $("durTime").textContent = fmt(audio.duration);
+  });
+  seek.addEventListener("input", () => {
+    seeking = true;
+    seek.style.setProperty("--v", seek.value);
+  });
+  seek.addEventListener("change", () => {
+    if (audio.duration) audio.currentTime = (seek.value / 100) * audio.duration;
+    seeking = false;
+  });
+  const vol = $("vol");
+  vol.style.setProperty("--v", 80);
+  vol.addEventListener("input", () => {
+    audio.volume = vol.value / 100;
+    vol.style.setProperty("--v", vol.value);
+  });
+
+  function fmt(s) {
+    s = Math.floor(s || 0);
+    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  }
+
+  /* ---------- clear history / refresh recommendations ---------- */
+  clearBtn.addEventListener("click", () => {
+    if (view === "history") {
+      history = [];
+      store.save("kaiten_history", history);
+      updateCounts();
+      render();
+    } else if (view === "search" && !hasSearched) {
+      loadRecommendations();
+    }
+  });
+
+  /* ---------- keyboard ---------- */
+  document.addEventListener("keydown", e => {
+    if (e.target.tagName === "INPUT") return;
+    if (e.key === " ") { e.preventDefault(); $("playBtn").click(); }
+    if (e.key === "ArrowRight" && e.shiftKey) $("nextBtn").click();
+    if (e.key === "ArrowLeft" && e.shiftKey) $("prevBtn").click();
+    if (e.key.toLowerCase() === "f") $("npFav").click();
+  });
+
+  /* ---------- wire up ---------- */
+  $("searchBtn").addEventListener("click", () => search($("searchInput").value));
+  $("searchInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") search($("searchInput").value);
+  });
+  $("chips").addEventListener("click", e => {
+    if (e.target.classList.contains("chip")) {
+      $("searchInput").value = e.target.textContent;
+      search(e.target.textContent);
+    }
+  });
+  document.querySelector(".tabs").addEventListener("click", e => {
+    const tab = e.target.closest(".tab");
+    if (tab) switchView(tab.dataset.view);
+  });
+
+  updateCounts();
+  loadRecommendations();
+})();
+</script>
+</body>
+</html>
