@@ -73,6 +73,16 @@
   .chmsg { font-size: 14px; font-weight: 700; color: #cdd3f2; }
   .chtime { font-family: "Space Mono", monospace; font-size: clamp(36px, 12vw, 64px); font-weight: 700; }
 
+  .memrow { font-size: clamp(36px, 12vw, 60px); letter-spacing: .2em; line-height: 1.2; }
+
+  .stroop { font-size: clamp(40px, 13vw, 72px); font-weight: 900; line-height: 1.2; }
+
+  .gbar { position: relative; width: min(80vw, 340px); height: 18px; border-radius: 9px; background: #1d2347; margin-top: 10px; }
+  .gzone { position: absolute; left: 44%; width: 12%; top: 0; bottom: 0; background: rgba(61, 255, 142, .35); border-radius: 4px; }
+  .gcur { position: absolute; left: 0; top: -7px; width: 4px; height: 32px; background: var(--me); border-radius: 2px; transform: translateX(-50%); }
+
+  .countfield { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: min(80vw, 320px); font-size: 26px; line-height: 1.2; }
+
   .mark { font-size: clamp(44px, 14vw, 80px); line-height: 1.1; }
   .rmsg { font-size: 20px; font-weight: 900; }
   .res.win .rmsg { color: #3dff8e; } .res.lose .rmsg { color: #ff5d5d; } .res.draw .rmsg { color: #8e97c9; }
@@ -433,6 +443,135 @@ const GAMES = {
         const w = g.rel[1] === g.rel[2] ? 0 : (g.rel[1] > g.rel[2] ? 1 : 2);
         winPoint(w, "両者セーフ! ねばったほうの勝ち", { 1: this.held(1), 2: this.held(2) });
       }
+    }
+  },
+  memory: {
+    name: "おぼえてタップ",
+    rule: "3つの絵文字をおぼえて、「出ていたもの」を先にタップ!",
+    start(now) {
+      const POOL = ["🍎", "🍌", "🍇", "🍓", "🍊", "⚽", "🚗", "🐶", "🎀", "🍩"];
+      const deck = [...POOL];
+      for (let i = deck.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [deck[i], deck[j]] = [deck[j], deck[i]]; }
+      const shown = deck.slice(0, 3);
+      const answer = shown[(Math.random() * 3) | 0];
+      const opts = [answer, deck[3], deck[4]];
+      for (let i = opts.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [opts[i], opts[j]] = [opts[j], opts[i]]; }
+      g = { answer, opts, quizAt: now + 1600, quiz: false, done: false };
+      setArenas(`<div class="hint">おぼえろ!</div><div class="memrow">${shown.join(" ")}</div>`);
+    },
+    tick(now) {
+      if (g.done || g.quiz || now < g.quizAt) return;
+      g.quiz = true;
+      setArenas(`<div class="hint">さっき出ていたのはどれ?</div><div class="ansrow">${g.opts.map(m => `<button class="ansbtn" data-m="${m}">${m}</button>`).join("")}</div>`);
+    },
+    tap(p, e) {
+      if (g.done || !g.quiz) return;
+      const btn = e.target.closest("[data-m]");
+      if (!btn) return;
+      g.done = true;
+      if (btn.dataset.m === g.answer) winPoint(p, "おみごと!");
+      else winPoint(other(p), `おてつき! 正解は ${g.answer}`);
+    }
+  },
+  stroop: {
+    name: "いろもじ",
+    rule: "文字の「いろ」と「いみ」がそろった瞬間にタップ! おてつきは相手の点",
+    start(now) {
+      g = { flipAt: now, flips: 0, match: false, matchShown: false, done: false };
+    },
+    tick(now) {
+      if (g.done || now < g.flipAt) return;
+      const C = [["あか", "#ff5d5d"], ["あお", "#4da3ff"], ["みどり", "#3dff8e"], ["きいろ", "#ffd84d"]];
+      g.flips++;
+      const isMatch = (g.flips >= 6 && !g.matchShown) || Math.random() < 0.3;
+      const w = (Math.random() * C.length) | 0;
+      let c = w;
+      if (!isMatch) { do { c = (Math.random() * C.length) | 0; } while (c === w); }
+      else g.matchShown = true;
+      g.match = isMatch;
+      setArenas(`<div class="stroop" style="color:${C[c][1]}">${C[w][0]}</div><div class="hint">いろ＝いみ になったらタップ!</div>`);
+      g.flipAt = now + 950;
+    },
+    tap(p) {
+      if (g.done || g.flips === 0) return;
+      g.done = true;
+      if (g.match) winPoint(p, "そろった瞬間をゲット!");
+      else winPoint(other(p), "おてつき! いろといみがちがう");
+    }
+  },
+  gauge: {
+    name: "ゲージストップ",
+    rule: "動くカーソルをまんなかのゾーンで止めろ! 中心に近いほうの勝ち",
+    start(now) {
+      g = { t0: now, stopped: { 1: null, 2: null }, done: false };
+      setArenas(`<div class="gbar"><div class="gzone"></div><div class="gcur"></div></div><div class="gval hint">タップでストップ!</div>`);
+    },
+    posAt(now) { const ph = ((now - g.t0) / 1200) % 2; return (ph < 1 ? ph : 2 - ph) * 100; },
+    tick(now) {
+      if (g.done) return;
+      const pos = this.posAt(now);
+      for (const p of [1, 2]) {
+        if (g.stopped[p] !== null) continue;
+        const c = q(p, ".gcur");
+        if (c) c.style.left = pos + "%";
+      }
+      if (now - g.t0 >= 9000) {
+        for (const p of [1, 2]) if (g.stopped[p] === null) g.stopped[p] = pos;
+        this.finish();
+      }
+    },
+    tap(p, e, now) {
+      if (g.done || g.stopped[p] !== null) return;
+      const pos = this.posAt(now);
+      g.stopped[p] = pos;
+      const c = q(p, ".gcur");
+      if (c) c.style.left = pos + "%";
+      const v = q(p, ".gval");
+      if (v) v.textContent = `中心から ${Math.abs(pos - 50).toFixed(1)} — 相手を待っています…`;
+      sTick();
+      if (g.stopped[1] !== null && g.stopped[2] !== null) this.finish();
+    },
+    finish() {
+      if (g.done) return;
+      g.done = true;
+      const d1 = Math.abs(g.stopped[1] - 50), d2 = Math.abs(g.stopped[2] - 50);
+      const w = d1 === d2 ? 0 : (d1 < d2 ? 1 : 2);
+      winPoint(w, null, {
+        1: `あなた 中心から${d1.toFixed(1)} / あいて ${d2.toFixed(1)}`,
+        2: `あなた 中心から${d2.toFixed(1)} / あいて ${d1.toFixed(1)}`
+      });
+    }
+  },
+  count: {
+    name: "かぞえタッチ",
+    rule: "おだいの絵文字をかぞえて、こたえを先にタップ! まちがいは相手の点",
+    start(now) {
+      const POOL = ["🍎", "⭐", "🐟", "🌸", "🎈", "🍀"];
+      for (let i = POOL.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [POOL[i], POOL[j]] = [POOL[j], POOL[i]]; }
+      const [target, k1, k2] = POOL;
+      const ans = 3 + ((Math.random() * 4) | 0);
+      const items = [];
+      for (let i = 0; i < ans; i++) items.push(target);
+      for (let i = 0, n = 2 + ((Math.random() * 4) | 0); i < n; i++) items.push(k1);
+      for (let i = 0, n = 2 + ((Math.random() * 4) | 0); i < n; i++) items.push(k2);
+      for (let i = items.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [items[i], items[j]] = [items[j], items[i]]; }
+      const set = new Set([ans]);
+      while (set.size < 3) {
+        const d = ans + (1 + ((Math.random() * 2) | 0)) * (Math.random() < 0.5 ? -1 : 1);
+        if (d > 0) set.add(d);
+      }
+      const opts = [...set];
+      for (let i = opts.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [opts[i], opts[j]] = [opts[j], opts[i]]; }
+      g = { ans, done: false };
+      setArenas(`<div class="hint">${target} はいくつ?</div><div class="countfield">${items.map(m => `<span>${m}</span>`).join("")}</div><div class="ansrow">${opts.map(v => `<button class="ansbtn" data-v="${v}">${v}</button>`).join("")}</div>`);
+    },
+    tap(p, e) {
+      if (g.done) return;
+      const btn = e.target.closest("[data-v]");
+      if (!btn) return;
+      g.done = true;
+      if (+btn.dataset.v === g.ans) winPoint(p, "かぞえ勝ち!");
+      else winPoint(other(p), `おてつき! 正解は ${g.ans}`);
     }
   },
   order: {
