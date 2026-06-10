@@ -67,8 +67,8 @@ Web Audioの音はiOSの消音スイッチ(マナーモード)で無音になる
 
 - `<meta name="description">` と OGP一式: `og:title` / `og:description` / `og:image` / `og:type`(website)/ `og:url` + `twitter:card`(summary_large_image)
 - `og:image` と `og:url` は**絶対URL**(https://nrtkumi.github.io/...)で書く
-- 既存例: `games/tanetori/index.html`、`suika-fever.html`
-- 画像は **1200x630**(またはタネトリの1200x800)、JPEG可。置き場所は `games/<ゲーム名>/assets/ogp.jpg`(ルート直下のゲームは `<名前>-ogp.jpg`)
+- 既存例: `games/tanetori/index.html`、`games/suika-fever/index.html`
+- 画像は **1200x630**(またはタネトリの1200x800)、JPEG可。置き場所は `games/<ゲーム名>/assets/ogp.jpg`
 - 画像の作り方は2通り。ゲームの見た目が伝わる方を選ぶ:
   1. **ゲームプレイのスクリーンショット**(進行中の画面が一番伝わる) — Playwrightで自動プレイさせて撮る。`deviceScaleFactor: 2` + 600x315のclipでちょうど1200x630になる。盤面が育つまで数十秒プレイさせ、複数タイミングで撮って目視で選ぶ。ポインタを左右にスイープすると操作が散って画になる(実例: スイカフィーバーのOGP制作)
   2. **画像生成** — codex経由のgpt-image-2でタイトルロゴ入りのキービジュアルを生成する(下の「画像アセット」参照)。プレイ画面がOGP映えしないゲームや、文字主体のビジュアルにしたい場合はこちら
