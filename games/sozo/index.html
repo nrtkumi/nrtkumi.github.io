@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#06040f">
+<title>SOZO 8192 — 宇宙創造パズル</title>
+<meta name="description" content="塵を重ね、星を紡ぎ、宇宙を創れ。6x6盤面で天体をマージして8192=宇宙の創造を目指す、脳汁系スライドパズル。">
+<meta property="og:title" content="SOZO 8192 — 宇宙創造パズル">
+<meta property="og:description" content="塵を重ね、星を紡ぎ、宇宙を創れ。6x6盤面で天体をマージして8192=宇宙の創造を目指す、脳汁系スライドパズル。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/sozo/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/sozo/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; touch-action: manipulation; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #030208;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    color: #fff;
+  }
+  /* PCワイド画面対策: 縦長カラムに制限して中央寄せ */
+  #stage {
+    position: fixed; top: 0; bottom: 0;
+    left: 50%; transform: translateX(-50%);
+    width: min(100vw, 520px, 64vh);
+    background: #06040f;
+    box-shadow: 0 0 70px rgba(40, 20, 90, 0.55);
+    padding-top: var(--sat);
+    padding-bottom: var(--sab);
+  }
+  #cv {
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+  }
+  #vignette {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    box-shadow: inset 0 0 90px rgba(0,0,0,0.55);
+  }
+  #mute {
+    position: absolute;
+    top: calc(var(--sat) + 8px); right: 10px;
+    z-index: 30;
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(20,14,40,0.6);
+    color: #fff; font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+    touch-action: none;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="vignette"></div>
+  <button id="mute" aria-label="サウンド切替">🔊</button>
+</div>
+<script>
+"use strict";
+(() => {
+
+  /* =========================================================
+     SOZO 8192 — 宇宙創造パズル
+     虚無の盤(6x6)で天体を重ね、塵(2)から宇宙(8192)を創る。
+     8192仕様: 6x6グリッド / 毎ターン2タイル出現 / 8192で勝利
+     ========================================================= */
+
+  /* ---------- 定数 ---------- */
+  const N = 6;                 // 盤面 6x6
+  const SLIDE_MS = 115;        // スライドアニメ時間
+  const FEVER_SEC = 12;        // 創造の刻の長さ
+  const TIERS = [
+    { v: 2,     name: "塵",           col: "#a89a84" },
+    { v: 4,     name: "礫",           col: "#c2a878" },
+    { v: 8,     name: "岩塊",         col: "#d98e54" },
+    { v: 16,    name: "彗星",         col: "#7fd8f7" },
+    { v: 32,    name: "月",           col: "#e9e4d0" },
+    { v: 64,    name: "惑星",         col: "#58d6a7" },
+    { v: 128,   name: "巨星",         col: "#ff9e4a" },
+    { v: 256,   name: "恒星",         col: "#ffd95e" },
+    { v: 512,   name: "超新星",       col: "#ff6fa5" },
+    { v: 1024,  name: "中性子星",     col: "#6ef2ff" },
+    { v: 2048,  name: "ブラックホール", col: "#ff8c42" },
+    { v: 4096,  name: "銀河",         col: "#b48bff" },
+    { v: 8192,  name: "宇宙",         col: "#ffffff" },
+    { v: 16384, name: "多元宇宙",     col: "#ffd1f0" },
+  ];
+  const tierIdx = v => Math.min(Math.round(Math.log2(v)) - 1, TIERS.length - 1);
+
+  /* ---------- DOM / canvas ---------- */
+  const stage = document.getElementById("stage");
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+  const muteBtn = document.getElementById("mute");
+  let dpr = 1, W = 360, H = 640;
+
+  /* ---------- レイアウト(resizeで再計算) ---------- */
+  let boardX = 10, boardY = 100, boardSize = 340, cell = 50, gap = 7;
+
+  /* ---------- 永続化 ---------- */
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+  let best = store.get("sozo8192_best", 0);
+  let bestTileEver = store.get("sozo8192_bestTile", 0);
+  let muted = store.get("sozo8192_muted", false);
+
+  /* ---------- ゲーム状態(ループが触る状態は全て宣言時に初期化) ---------- */
+  let mode = "title";          // title | play | over | win
+  let grid = Array.from({ length: N }, () => Array(N).fill(0));
+  let score = 0, dispScore = 0;
+  let bestTileRun = 0;
+  let moves = 0;
+  let chain = 0;               // 連鎖(マージを含む移動の連続数)
+  let gauge = 0;               // 創造の刻ゲージ 0..100
+  let fever = 0;               // 創造の刻 残り秒
+  let anim = null;             // {t, moves, merges, ng}
+  let pendingDir = null;       // アニメ中に入力された次の一手
+  let popMap = {};             // r*N+c -> 1..0 マージ後のパンチ
+  let spawnMap = {};           // r*N+c -> 0..1 出現アニメ
+  let particles = [];
+  let shocks = [];             // 衝撃波リング
+  let floats = [];             // 浮遊テキスト
+  let banners = [];            // 天体誕生バナー
+  let shakeT = 0, shakeAmp = 0, shakeX = 0, shakeY = 0;
+  let flashA = 0;              // 全画面フラッシュ
+  let hitstopT = 0;            // ヒットストップ(実時間ms)
+  let overT = 0;               // ゲームオーバー遷移待ち
+  let winT = 0;                // ビッグバン→勝利画面待ち
+  let winShown = false;        // 8192達成済み(続行モード)
+  let newRecord = false;
+  let time = 0;                // 累計秒(演出用)
+  let btns = [];               // オーバーレイのボタン判定領域
+  let stars = [];              // 星空 {x,y,z,tw}
+  let warp = 1;                // 星空の流速(フィーバーで加速)
+  for (let i = 0; i < 150; i++) {
+    stars.push({ x: Math.random(), y: Math.random(), z: 0.25 + Math.random() * 0.75, tw: Math.random() * 6.28 });
+  }
+  const kvImg = new Image();
+  let kvOk = false;
+  kvImg.onload = () => { kvOk = true; };
+  kvImg.onerror = () => { kvOk = false; };
+  kvImg.src = "assets/keyvisual.jpg";
+
+  /* ---------- audio (iOS消音スイッチ対策込み) ---------- */
+  let AC = null;
+  function audio() {
+    if (!AC) {
+      try {
+        AC = new (window.AudioContext || window.webkitAudioContext)();
+        AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+      } catch (e) {}
+    }
+    if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  let silentEl = null;
+  function silentWavUrl() {
+    const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE");
+    str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    str(36, "data"); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  function unlockAudio() {
+    if (!silentEl) {
+      silentEl = document.createElement("audio");
+      silentEl.setAttribute("playsinline", "");
+      silentEl.loop = true;
+      silentEl.volume = 0.01;
+      silentEl.src = silentWavUrl();
+    }
+    const p = silentEl.play();
+    if (p && p.catch) p.catch(() => {});
+    audio();
+    if (!AC) return;
+    const done = () => {
+      if (AC.state === "running") {
+        ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+      }
+    };
+    try { AC.resume().then(done); } catch (e) { done(); }
+  }
+  ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+  function tone(f, d, type, vol, slideTo, delay) {
+    if (muted || !audio()) return;
+    try {
+      const t0 = AC.currentTime + (delay || 0);
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || "sine"; o.frequency.setValueAtTime(f, t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + d);
+      g.gain.setValueAtTime(vol || 0.06, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+      o.connect(g); g.connect(AC.destination);
+      o.start(t0); o.stop(t0 + d);
+    } catch (e) {}
+  }
+  function noise(d, vol) {
+    if (muted || !audio()) return;
+    try {
+      const n = Math.floor(AC.sampleRate * d);
+      const buf = AC.createBuffer(1, n, AC.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const src = AC.createBufferSource(); src.buffer = buf;
+      const g = AC.createGain(); g.gain.value = vol || 0.08;
+      src.connect(g); g.connect(AC.destination); src.start();
+    } catch (e) {}
+  }
+  const vibe = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+  const sSwipe = () => noise(0.04, 0.018);
+  function sMerge(ti, comboIdx) {
+    const f = Math.min(2200, 230 * Math.pow(1.24, ti)) * (1 + comboIdx * 0.13);
+    tone(f, 0.1, "square", 0.035);
+    tone(f * 1.5, 0.14, "sine", 0.045);
+    tone(55 + ti * 9, 0.16, "sine", 0.07);
+    if (ti >= 8) { noise(0.18, 0.09); tone(70, 0.3, "sawtooth", 0.05); }
+  }
+  const sNewTier = () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, "square", 0.045, 0, i * 0.07));
+  const sFever = () => [392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.2, "square", 0.05, 0, i * 0.06));
+  const sOver = () => [330, 262, 196, 131].forEach((f, i) => tone(f, 0.4, "sawtooth", 0.05, 0, i * 0.18));
+  const sBigbang = () => {
+    noise(0.7, 0.14);
+    [131, 165, 196, 262, 330, 392, 523].forEach(f => tone(f, 1.6, "sawtooth", 0.035));
+    tone(1047, 1.2, "sine", 0.06, 2093);
+  };
+
+  muteBtn.textContent = muted ? "🔇" : "🔊";
+  muteBtn.addEventListener("pointerup", e => {
+    e.stopPropagation();
+    muted = !muted;
+    muteBtn.textContent = muted ? "🔇" : "🔊";
+    store.set("sozo8192_muted", muted);
+  });
+
+  /* ---------- ダブルタップズーム無効化 ---------- */
+  document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
+  document.addEventListener("gesturestart", e => e.preventDefault(), { passive: false });
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", e => {
+    const t = Date.now();
+    if (t - lastTouchEnd < 350) e.preventDefault();
+    lastTouchEnd = t;
+  }, { passive: false });
+
+  /* ---------- 乱数(スプライト用は決定的) ---------- */
+  function mulberry(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ---------- 天体スプライト(カード背景+天体本体を事前描画) ---------- */
+  let cardSprites = [], objSprites = [], glowSprites = [];
+  function makeCanvas(px) {
+    const c = document.createElement("canvas");
+    c.width = c.height = Math.max(2, Math.round(px * dpr));
+    const g = c.getContext("2d");
+    g.scale(dpr, dpr);
+    return [c, g];
+  }
+  function rounded(g, x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  }
+  function drawObj(g, ti, cx, cy, R) {
+    const col = TIERS[ti].col;
+    const rnd = mulberry(1234 + ti * 999);
+    g.save();
+    g.translate(cx, cy);
+    const ball = (r, c0, c1) => {
+      const gr = g.createRadialGradient(-r * 0.35, -r * 0.35, r * 0.1, 0, 0, r);
+      gr.addColorStop(0, c0); gr.addColorStop(1, c1);
+      g.fillStyle = gr;
+      g.beginPath(); g.arc(0, 0, r, 0, 6.2832); g.fill();
+    };
+    if (ti === 0) {            // 塵
+      for (let i = 0; i < 11; i++) {
+        const a = rnd() * 6.28, d = rnd() * R * 0.85;
+        g.fillStyle = `rgba(186,170,140,${0.35 + rnd() * 0.5})`;
+        g.beginPath(); g.arc(Math.cos(a) * d, Math.sin(a) * d, R * (0.06 + rnd() * 0.1), 0, 6.2832); g.fill();
+      }
+    } else if (ti === 1) {     // 礫
+      for (let i = 0; i < 4; i++) {
+        const a = i / 4 * 6.28 + rnd(), d = R * 0.42;
+        g.save(); g.translate(Math.cos(a) * d, Math.sin(a) * d); g.rotate(rnd() * 3);
+        g.fillStyle = i % 2 ? "#b59a6e" : "#9b8460";
+        g.beginPath();
+        for (let k = 0; k < 6; k++) {
+          const rr = R * (0.2 + rnd() * 0.1);
+          const aa = k / 6 * 6.28;
+          g[k ? "lineTo" : "moveTo"](Math.cos(aa) * rr, Math.sin(aa) * rr);
+        }
+        g.closePath(); g.fill(); g.restore();
+      }
+    } else if (ti === 2) {     // 岩塊
+      g.rotate(0.35);
+      g.beginPath();
+      for (let k = 0; k < 8; k++) {
+        const rr = R * (0.7 + rnd() * 0.25);
+        const aa = k / 8 * 6.28;
+        g[k ? "lineTo" : "moveTo"](Math.cos(aa) * rr, Math.sin(aa) * rr);
+      }
+      g.closePath();
+      const gr = g.createLinearGradient(-R, -R, R, R);
+      gr.addColorStop(0, "#d99c63"); gr.addColorStop(1, "#7a5538");
+      g.fillStyle = gr; g.fill();
+      g.fillStyle = "rgba(60,38,24,0.55)";
+      for (let i = 0; i < 3; i++) {
+        g.beginPath(); g.arc((rnd() - 0.5) * R, (rnd() - 0.5) * R, R * 0.16, 0, 6.2832); g.fill();
+      }
+    } else if (ti === 3) {     // 彗星
+      const tg = g.createLinearGradient(R * 0.5, R * 0.5, -R, -R);
+      tg.addColorStop(0, "rgba(160,225,255,0.9)"); tg.addColorStop(1, "rgba(120,200,255,0)");
+      g.fillStyle = tg;
+      g.beginPath();
+      g.moveTo(R * 0.42, R * 0.18); g.lineTo(-R * 0.95, -R * 0.95); g.lineTo(R * 0.18, R * 0.42);
+      g.closePath(); g.fill();
+      g.save(); g.translate(R * 0.3, R * 0.3); ball(R * 0.34, "#eafaff", "#5fb8e8"); g.restore();
+    } else if (ti === 4) {     // 月
+      ball(R * 0.72, "#f6f1dd", "#9a937c");
+      g.fillStyle = "rgba(110,102,82,0.5)";
+      [[-0.25, -0.2, 0.18], [0.25, 0.1, 0.13], [-0.05, 0.32, 0.1], [0.3, -0.3, 0.09]].forEach(([x, y, r]) => {
+        g.beginPath(); g.arc(x * R, y * R, r * R, 0, 6.2832); g.fill();
+      });
+    } else if (ti === 5) {     // 惑星
+      g.save();
+      g.beginPath(); g.arc(0, 0, R * 0.62, 0, 6.2832); g.clip();
+      ball(R * 0.62, "#8af0c8", "#1f8f68");
+      g.fillStyle = "rgba(255,255,255,0.18)";
+      g.fillRect(-R, -R * 0.28, R * 2, R * 0.14);
+      g.fillRect(-R, R * 0.1, R * 2, R * 0.1);
+      g.restore();
+      g.save(); g.rotate(-0.35);
+      g.strokeStyle = "rgba(190,255,228,0.75)"; g.lineWidth = R * 0.08;
+      g.beginPath(); g.ellipse(0, 0, R * 0.95, R * 0.28, 0, 0, 6.2832); g.stroke();
+      g.restore();
+    } else if (ti === 6) {     // 巨星
+      ball(R * 0.85, "#ffd9a0", "#e05a1e");
+      g.fillStyle = "rgba(255,120,40,0.35)";
+      g.beginPath(); g.arc(R * 0.2, R * 0.15, R * 0.4, 0, 6.2832); g.fill();
+    } else if (ti === 7) {     // 恒星
+      g.fillStyle = "rgba(255,220,90,0.5)";
+      for (let k = 0; k < 4; k++) {
+        g.save(); g.rotate(k * Math.PI / 4);
+        g.beginPath(); g.moveTo(-R * 0.08, 0); g.lineTo(0, -R); g.lineTo(R * 0.08, 0); g.lineTo(0, R);
+        g.closePath(); g.fill(); g.restore();
+      }
+      ball(R * 0.55, "#fffbe0", "#f5a623");
+    } else if (ti === 8) {     // 超新星
+      for (let k = 0; k < 12; k++) {
+        const a = k / 12 * 6.28, len = R * (0.6 + rnd() * 0.4);
+        g.strokeStyle = `rgba(255,${90 + rnd() * 110 | 0},190,0.8)`;
+        g.lineWidth = R * 0.06;
+        g.beginPath(); g.moveTo(Math.cos(a) * R * 0.2, Math.sin(a) * R * 0.2);
+        g.lineTo(Math.cos(a) * len, Math.sin(a) * len); g.stroke();
+      }
+      ball(R * 0.42, "#ffffff", "#ff4f9a");
+    } else if (ti === 9) {     // 中性子星
+      g.fillStyle = "rgba(120,240,255,0.4)";
+      [-1, 1].forEach(s => {
+        g.beginPath(); g.moveTo(-R * 0.1, 0); g.lineTo(s * R * 0.32, s * -R); g.lineTo(R * 0.1, 0);
+        g.closePath(); g.fill();
+      });
+      g.strokeStyle = "rgba(110,242,255,0.5)"; g.lineWidth = R * 0.045;
+      g.beginPath(); g.ellipse(0, 0, R * 0.62, R * 0.2, 0.5, 0, 6.2832); g.stroke();
+      ball(R * 0.26, "#ffffff", "#39c6e0");
+    } else if (ti === 10) {    // ブラックホール
+      g.save(); g.rotate(-0.4);
+      const dg = g.createRadialGradient(0, 0, R * 0.3, 0, 0, R * 0.95);
+      dg.addColorStop(0, "rgba(255,150,60,0.95)"); dg.addColorStop(1, "rgba(255,90,20,0)");
+      g.strokeStyle = dg; g.lineWidth = R * 0.2;
+      g.beginPath(); g.ellipse(0, 0, R * 0.7, R * 0.24, 0, 0, 6.2832); g.stroke();
+      g.restore();
+      g.fillStyle = "#000";
+      g.beginPath(); g.arc(0, 0, R * 0.4, 0, 6.2832); g.fill();
+      g.strokeStyle = "#ffc080"; g.lineWidth = R * 0.05;
+      g.beginPath(); g.arc(0, 0, R * 0.42, 0, 6.2832); g.stroke();
+    } else if (ti === 11) {    // 銀河
+      for (let arm = 0; arm < 2; arm++) {
+        for (let i = 0; i < 46; i++) {
+          const t = i / 46 * 3.4;
+          const rr = R * 0.14 * Math.exp(0.5 * t);
+          const a = t * 1.7 + arm * Math.PI;
+          const x = Math.cos(a) * rr, y = Math.sin(a) * rr * 0.62;
+          g.fillStyle = i % 5 === 0 ? "rgba(255,255,255,0.9)" : `rgba(186,140,255,${0.75 - i / 70})`;
+          g.beginPath(); g.arc(x, y, R * (0.07 - i * 0.001), 0, 6.2832); g.fill();
+        }
+      }
+      ball(R * 0.2, "#ffffff", "#caa6ff");
+    } else {                   // 宇宙 / 多元宇宙
+      g.save();
+      g.beginPath(); g.arc(0, 0, R * 0.78, 0, 6.2832); g.clip();
+      ball(R * 0.78, "#1b1340", "#05030f");
+      [["#ff6fa5", -0.3, -0.25], ["#6ef2ff", 0.3, 0.05], ["#ffd95e", -0.1, 0.35], ["#b48bff", 0.25, -0.35]].forEach(([c, x, y]) => {
+        const ng = g.createRadialGradient(x * R, y * R, 0, x * R, y * R, R * 0.5);
+        ng.addColorStop(0, c + "cc"); ng.addColorStop(1, c + "00");
+        g.fillStyle = ng;
+        g.beginPath(); g.arc(x * R, y * R, R * 0.5, 0, 6.2832); g.fill();
+      });
+      g.fillStyle = "#fff";
+      for (let i = 0; i < 16; i++) {
+        g.globalAlpha = 0.4 + rnd() * 0.6;
+        g.beginPath(); g.arc((rnd() - 0.5) * R * 1.4, (rnd() - 0.5) * R * 1.4, R * 0.035, 0, 6.2832); g.fill();
+      }
+      g.globalAlpha = 1;
+      g.restore();
+      g.strokeStyle = ti >= 13 ? "rgba(255,209,240,0.9)" : "rgba(255,255,255,0.8)";
+      g.lineWidth = R * 0.05;
+      g.beginPath(); g.arc(0, 0, R * 0.78, 0, 6.2832); g.stroke();
+      if (ti >= 13) {
+        g.strokeStyle = "rgba(255,209,240,0.45)";
+        g.beginPath(); g.arc(0, 0, R * 0.92, 0, 6.2832); g.stroke();
+        g.beginPath(); g.arc(0, 0, R * 1.05, 0, 6.2832); g.stroke();
+      }
+    }
+    g.restore();
+  }
+  function buildSprites() {
+    if (cell < 8) return;
+    cardSprites = []; objSprites = []; glowSprites = [];
+    for (let ti = 0; ti < TIERS.length; ti++) {
+      const col = TIERS[ti].col;
+      // カード背景
+      const [cc, cg] = makeCanvas(cell);
+      const grd = cg.createLinearGradient(0, 0, 0, cell);
+      grd.addColorStop(0, "#1d1736"); grd.addColorStop(1, "#0e0a20");
+      rounded(cg, 1.5, 1.5, cell - 3, cell - 3, cell * 0.16);
+      cg.fillStyle = grd; cg.fill();
+      cg.strokeStyle = col; cg.globalAlpha = 0.35 + ti * 0.045; cg.lineWidth = Math.max(1.5, cell * 0.035);
+      cg.stroke(); cg.globalAlpha = 1;
+      cardSprites.push(cc);
+      // 天体本体(透過)
+      const [oc, og] = makeCanvas(cell);
+      drawObj(og, ti, cell / 2, cell / 2 - cell * 0.05, cell * 0.3);
+      objSprites.push(oc);
+      // グロー
+      const gpx = cell * 1.6;
+      const [lc, lg] = makeCanvas(gpx);
+      const rg = lg.createRadialGradient(gpx / 2, gpx / 2, 0, gpx / 2, gpx / 2, gpx / 2);
+      rg.addColorStop(0, col + "66"); rg.addColorStop(1, col + "00");
+      lg.fillStyle = rg; lg.fillRect(0, 0, gpx, gpx);
+      glowSprites.push(lc);
+    }
+  }
+
+  /* ---------- リサイズ ---------- */
+  function resize() {
+    dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    W = cv.clientWidth || stage.clientWidth || 360;
+    H = cv.clientHeight || stage.clientHeight || 640;
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    boardSize = Math.min(W - 20, H - 215);
+    boardX = (W - boardSize) / 2;
+    boardY = 104 + Math.max(0, (H - 214 - boardSize) * 0.42);
+    gap = boardSize * 0.018;
+    cell = (boardSize - gap * (N + 1)) / N;
+    buildSprites();
+  }
+  window.addEventListener("resize", resize);
+  window.addEventListener("orientationchange", () => setTimeout(resize, 250));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => buildSprites());
+
+  /* ---------- 盤面ロジック ---------- */
+  function emptyCells(g) {
+    const out = [];
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!g[r][c]) out.push([r, c]);
+    return out;
+  }
+  function movesAvailable(g) {
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      if (!g[r][c]) return true;
+      if (c + 1 < N && g[r][c] === g[r][c + 1]) return true;
+      if (r + 1 < N && g[r][c] === g[r + 1][c]) return true;
+    }
+    return false;
+  }
+  // dir: 0=left 1=right 2=up 3=down
+  function computeMove(g, dir) {
+    const mv = [], merges = [];
+    const ng = Array.from({ length: N }, () => Array(N).fill(0));
+    let moved = false;
+    for (let line = 0; line < N; line++) {
+      const cells = [];
+      for (let i = 0; i < N; i++) {
+        if (dir === 0) cells.push([line, i]);
+        else if (dir === 1) cells.push([line, N - 1 - i]);
+        else if (dir === 2) cells.push([i, line]);
+        else cells.push([N - 1 - i, line]);
+      }
+      let write = 0, lastVal = 0, lastWrite = -1;
+      for (let i = 0; i < N; i++) {
+        const [r, c] = cells[i];
+        const v = g[r][c];
+        if (!v) continue;
+        if (v === lastVal) {
+          const [tr, tc] = cells[lastWrite];
+          ng[tr][tc] = v * 2;
+          mv.push({ v, fr: r, fc: c, tr, tc, merge: true });
+          merges.push({ r: tr, c: tc, v: v * 2 });
+          lastVal = 0;
+          moved = true;
+        } else {
+          const [tr, tc] = cells[write];
+          ng[tr][tc] = v;
+          mv.push({ v, fr: r, fc: c, tr, tc });
+          if (tr !== r || tc !== c) moved = true;
+          lastVal = v; lastWrite = write;
+          write++;
+        }
+      }
+    }
+    return { moved, mv, merges, ng };
+  }
+  function spawnTiles(count) {
+    const empties = emptyCells(grid);
+    for (let i = 0; i < count && empties.length; i++) {
+      const k = Math.floor(Math.random() * empties.length);
+      const [r, c] = empties.splice(k, 1)[0];
+      grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+      spawnMap[r * N + c] = 0;
+    }
+  }
+
+  /* ---------- 演出ヘルパー ---------- */
+  const cellXY = (r, c) => [boardX + gap + c * (cell + gap) + cell / 2, boardY + gap + r * (cell + gap) + cell / 2];
+  function shake(amp) { shakeAmp = Math.max(shakeAmp, amp); shakeT = Math.max(shakeT, 0.32); }
+  function burst(x, y, col, n, sp, suck) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.2832, s = sp * (0.3 + Math.random());
+      particles.push({
+        x: suck ? x + Math.cos(a) * sp * 1.6 : x,
+        y: suck ? y + Math.sin(a) * sp * 1.6 : y,
+        vx: suck ? 0 : Math.cos(a) * s,
+        vy: suck ? 0 : Math.sin(a) * s,
+        tx: x, ty: y, suck: !!suck,
+        life: 0.5 + Math.random() * 0.45,
+        max: 1, col, size: 1.5 + Math.random() * 2.8,
+      });
+    }
+    if (particles.length > 420) particles.splice(0, particles.length - 420);
+  }
+  function ring(x, y, col, w) {
+    shocks.push({ x, y, r: cell * 0.3, vr: cell * 9, life: 0.45, col, w: w || 3 });
+  }
+  function floatTxt(x, y, txt, col, size, font) {
+    floats.push({ x, y, txt, col, size: size || 15, life: 1, vy: -34, font: font || "Bungee" });
+  }
+  function banner(txt, col) { banners.push({ txt, col, t: 0 }); }
+
+  function mergeFx(r, c, v, comboIdx, comboTotal) {
+    const ti = tierIdx(v);
+    const [x, y] = cellXY(r, c);
+    popMap[r * N + c] = 1;
+    const col = TIERS[ti].col;
+    burst(x, y, col, 7 + ti * 3, cell * (2.4 + ti * 0.35));
+    if (ti >= 5) ring(x, y, col, 2 + ti * 0.4);
+    shake(1.2 + ti * 0.85);
+    const mul = fever > 0 ? 2 : 1;
+    floatTxt(x, y - cell * 0.42, "+" + (v * mul).toLocaleString() + (mul > 1 ? " ×2" : ""), col, 12 + ti * 1.4);
+    sMerge(ti, comboIdx);
+    vibe(8 + ti * 4);
+    if (ti >= 8) { flashA = Math.max(flashA, 0.16 + (ti - 8) * 0.1); hitstopT = Math.max(hitstopT, 40 + (ti - 8) * 38); }
+    if (v === 2048) {                       // ブラックホール: 吸い込み
+      burst(x, y, "#ffb36b", 36, cell * 2.2, true);
+      ring(x, y, "#ff8c42", 5);
+    }
+    if (v > bestTileRun) {
+      bestTileRun = v;
+      if (v >= 32) {
+        banner(`新天体『${TIERS[ti].name}』誕生`, col);
+        sNewTier();
+      }
+      if (v > bestTileEver) { bestTileEver = v; store.set("sozo8192_bestTile", v); }
+    }
+    if (v === 8192 && !winShown) bigbang(x, y);
+  }
+  function bigbang(x, y) {
+    hitstopT = 420;
+    flashA = 1;
+    shake(16);
+    for (let i = 0; i < 6; i++) ring(x, y, ["#fff", "#ffd95e", "#ff6fa5", "#6ef2ff", "#b48bff", "#fff"][i], 6);
+    burst(x, y, "#ffffff", 90, cell * 8);
+    burst(x, y, "#ffd95e", 60, cell * 6);
+    burst(x, y, "#6ef2ff", 60, cell * 7);
+    sBigbang();
+    vibe([60, 40, 120]);
+    winT = 1.5;
+  }
+  function startFever() {
+    fever = FEVER_SEC;
+    gauge = 100;
+    banner("創造の刻 ―― スコア2倍", "#ffd95e");
+    floatTxt(W / 2, boardY + boardSize / 2, "創造の刻!!", "#ffd95e", 30, "Zen Kaku Gothic New");
+    flashA = Math.max(flashA, 0.22);
+    shake(5);
+    sFever();
+    vibe([30, 30, 60]);
+  }
+
+  /* ---------- 移動の実行 ---------- */
+  function tryMove(dir, instant) {
+    if (mode !== "play") return false;
+    if (anim) { pendingDir = dir; return false; }
+    const res = computeMove(grid, dir);
+    if (!res.moved) return false;
+    popMap = {}; spawnMap = {};
+    sSwipe();
+    moves++;
+    if (instant) {
+      anim = { t: 1, mv: res.mv, merges: res.merges, ng: res.ng };
+      finalize();
+    } else {
+      anim = { t: 0, mv: res.mv, merges: res.merges, ng: res.ng };
+    }
+    return true;
+  }
+  function finalize() {
+    if (!anim) return;
+    const { merges, ng } = anim;
+    grid = ng;
+    anim = null;
+    const mul = fever > 0 ? 2 : 1;
+    if (merges.length > 0) {
+      chain++;
+      merges.forEach((m, i) => mergeFx(m.r, m.c, m.v, i, merges.length));
+      let gain = 0;
+      merges.forEach(m => { gain += m.v; });
+      score += gain * mul;
+      if (score > best) { best = score; newRecord = true; store.set("sozo8192_best", best); }
+      let gAdd = 0;
+      merges.forEach(m => { gAdd += 4 + tierIdx(m.v) * 2; });
+      gAdd += Math.min(20, chain * 3);
+      if (fever <= 0) {
+        gauge += gAdd;
+        if (gauge >= 100) startFever();
+      }
+      if (merges.length >= 2) {
+        const bx = boardX + boardSize / 2 + (Math.random() * 60 - 30);
+        const by = boardY + boardSize * 0.42 + (Math.random() * 40 - 20);
+        floatTxt(bx, by, `${merges.length} COMBO!`, "#ffd95e", 20 + merges.length * 3);
+      }
+      if (chain >= 3) floatTxt(boardX + boardSize - 8, boardY - 10, `連鎖 ×${chain}`, "#6ef2ff", 13, "Zen Kaku Gothic New");
+    } else {
+      chain = 0;
+    }
+    spawnTiles(Math.min(2, emptyCells(grid).length));
+    if (!movesAvailable(grid)) overT = 0.8;
+    if (pendingDir !== null) { const d = pendingDir; pendingDir = null; tryMove(d); }
+  }
+
+  /* ---------- 開始 / リセット ---------- */
+  function startRun() {
+    grid = Array.from({ length: N }, () => Array(N).fill(0));
+    score = 0; dispScore = 0; bestTileRun = 0; moves = 0;
+    chain = 0; gauge = 0; fever = 0;
+    anim = null; pendingDir = null;
+    popMap = {}; spawnMap = {};
+    particles = []; shocks = []; floats = []; banners = [];
+    overT = 0; winT = 0; winShown = false; newRecord = false;
+    flashA = 0; hitstopT = 0;
+    spawnTiles(3);
+    mode = "play";
+  }
+
+  /* ---------- 入力 ---------- */
+  let pDown = null, swiped = false;
+  stage.addEventListener("pointerdown", e => {
+    if (e.target === muteBtn) return;
+    pDown = { x: e.clientX, y: e.clientY };
+    swiped = false;
+  });
+  stage.addEventListener("pointermove", e => {
+    if (!pDown || swiped || mode !== "play") return;
+    const dx = e.clientX - pDown.x, dy = e.clientY - pDown.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 26) {
+      swiped = true;
+      tryMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 0) : (dy > 0 ? 3 : 2));
+    }
+  });
+  stage.addEventListener("pointerup", e => {
+    if (e.target === muteBtn) { pDown = null; return; }
+    if (!pDown) return;
+    const dx = e.clientX - pDown.x, dy = e.clientY - pDown.y;
+    const small = Math.hypot(dx, dy) < 12;
+    pDown = null;
+    if (swiped) return;
+    if (mode === "play" && !small) {
+      tryMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 0) : (dy > 0 ? 3 : 2));
+      return;
+    }
+    if (!small) return;
+    // タップ: 画面遷移/ボタン
+    const rect = stage.getBoundingClientRect();
+    const tx = e.clientX - rect.left, ty = e.clientY - rect.top;
+    for (const b of btns) {
+      if (tx >= b.x && tx <= b.x + b.w && ty >= b.y && ty <= b.y + b.h) { b.fn(); return; }
+    }
+    if (mode === "title") startRun();
+  });
+  stage.addEventListener("pointercancel", () => { pDown = null; });
+  window.addEventListener("keydown", e => {
+    const k = e.key;
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " "].includes(k)) e.preventDefault();
+    if (mode === "play") {
+      if (k === "ArrowLeft" || k === "a" || k === "A") tryMove(0);
+      else if (k === "ArrowRight" || k === "d" || k === "D") tryMove(1);
+      else if (k === "ArrowUp" || k === "w" || k === "W") tryMove(2);
+      else if (k === "ArrowDown" || k === "s" || k === "S") tryMove(3);
+    } else if (k === " " || k === "Enter") {
+      if (mode === "title" || mode === "over") startRun();
+      else if (mode === "win") { mode = "play"; }
+    }
+  });
+
+  /* ---------- 描画 ---------- */
+  const fmt = n => Math.round(n).toLocaleString("en-US");
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  function drawBG(dt) {
+    const g0 = ctx.createLinearGradient(0, 0, 0, H);
+    g0.addColorStop(0, "#0b0820"); g0.addColorStop(0.6, "#06040f"); g0.addColorStop(1, "#0a0616");
+    ctx.fillStyle = g0;
+    ctx.fillRect(0, 0, W, H);
+    // 星雲(到達天体で色が変わる)
+    const ti = Math.max(3, tierIdx(Math.max(2, bestTileRun)));
+    const nc = TIERS[Math.min(ti, 12)].col;
+    const ng1 = ctx.createRadialGradient(W * 0.85, H * 0.12, 0, W * 0.85, H * 0.12, W * 0.8);
+    ng1.addColorStop(0, nc + "1e"); ng1.addColorStop(1, nc + "00");
+    ctx.fillStyle = ng1; ctx.fillRect(0, 0, W, H);
+    const ng2 = ctx.createRadialGradient(W * 0.1, H * 0.85, 0, W * 0.1, H * 0.85, W * 0.7);
+    ng2.addColorStop(0, "#b48bff14"); ng2.addColorStop(1, "#b48bff00");
+    ctx.fillStyle = ng2; ctx.fillRect(0, 0, W, H);
+    // 星
+    const targetWarp = fever > 0 ? 16 : 1;
+    warp += (targetWarp - warp) * Math.min(1, dt * 3);
+    for (const s of stars) {
+      s.y += s.z * warp * dt * 0.045;
+      if (s.y > 1) { s.y -= 1; s.x = Math.random(); }
+      const x = s.x * W, y = s.y * H;
+      const a = 0.25 + 0.55 * s.z * (0.7 + 0.3 * Math.sin(time * 2 + s.tw));
+      if (warp > 3) {
+        ctx.strokeStyle = `rgba(190,210,255,${a})`;
+        ctx.lineWidth = s.z * 1.6;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - s.z * warp * 2.2); ctx.stroke();
+      } else {
+        ctx.fillStyle = `rgba(220,228,255,${a})`;
+        ctx.fillRect(x, y, s.z * 1.8, s.z * 1.8);
+      }
+    }
+  }
+  function drawHUD() {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#fff";
+    ctx.font = "18px Bungee";
+    ctx.fillText("SOZO 8192", 14, 32);
+    ctx.font = "10px 'Zen Kaku Gothic New'";
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.fillText("宇宙創造パズル", 15, 46);
+    // スコア
+    dispScore += (score - dispScore) * 0.18;
+    if (score - dispScore < 1) dispScore = score;
+    ctx.textAlign = "right";
+    const sx = W - 58;
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.font = "9px 'Space Mono'";
+    ctx.fillText("SCORE", sx, 20);
+    ctx.fillStyle = fever > 0 ? "#ffd95e" : "#fff";
+    ctx.font = "20px Bungee";
+    ctx.fillText(fmt(dispScore), sx, 41);
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.font = "10px 'Space Mono'";
+    ctx.fillText("BEST " + fmt(best), sx, 57);
+    // 創造の刻ゲージ
+    const gx = 14, gy = 74, gw = W - 28, gh = 11;
+    rounded(ctx, gx, gy, gw, gh, gh / 2);
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.fill();
+    const frac = fever > 0 ? fever / FEVER_SEC : Math.min(1, gauge / 100);
+    if (frac > 0.01) {
+      ctx.save();
+      rounded(ctx, gx, gy, gw, gh, gh / 2);
+      ctx.clip();
+      const gg = ctx.createLinearGradient(gx, 0, gx + gw, 0);
+      if (fever > 0) { gg.addColorStop(0, "#ffd95e"); gg.addColorStop(1, "#ff6fa5"); }
+      else { gg.addColorStop(0, "#6ef2ff"); gg.addColorStop(1, "#b48bff"); }
+      ctx.fillStyle = gg;
+      ctx.fillRect(gx, gy, gw * frac, gh);
+      if (fever > 0) {
+        ctx.fillStyle = `rgba(255,255,255,${0.25 + 0.2 * Math.sin(time * 10)})`;
+        ctx.fillRect(gx, gy, gw * frac, gh);
+      }
+      ctx.restore();
+    }
+    ctx.textAlign = "center";
+    ctx.font = "8px 'Zen Kaku Gothic New'";
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.fillText(fever > 0 ? "創造の刻 ―― スコア×2" : "創造の刻ゲージ", W / 2, gy + 8.5);
+  }
+  function drawBoard() {
+    rounded(ctx, boardX, boardY, boardSize, boardSize, cell * 0.18);
+    ctx.fillStyle = "rgba(14,10,32,0.82)";
+    ctx.fill();
+    if (fever > 0) {
+      ctx.strokeStyle = `rgba(255,217,94,${0.4 + 0.3 * Math.sin(time * 8)})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = "rgba(140,120,220,0.25)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const x = boardX + gap + c * (cell + gap), y = boardY + gap + r * (cell + gap);
+      rounded(ctx, x, y, cell, cell, cell * 0.16);
+      ctx.fillStyle = "rgba(255,255,255,0.045)";
+      ctx.fill();
+    }
+  }
+  function drawTile(cx, cy, v, scale) {
+    const ti = tierIdx(v);
+    if (!cardSprites[ti]) return;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    if (ti >= 7) {
+      const pulse = 0.5 + 0.35 * Math.sin(time * (2 + ti * 0.4));
+      ctx.globalAlpha = pulse;
+      const gs = cell * 1.6;
+      ctx.drawImage(glowSprites[ti], -gs / 2, -gs / 2, gs, gs);
+      ctx.globalAlpha = 1;
+    }
+    ctx.drawImage(cardSprites[ti], -cell / 2, -cell / 2, cell, cell);
+    if (ti === 10 || ti === 11) {
+      ctx.save();
+      ctx.translate(0, -cell * 0.05);
+      ctx.rotate(time * (ti === 10 ? 1.4 : 0.5));
+      ctx.drawImage(objSprites[ti], -cell / 2, -cell / 2 + cell * 0.05, cell, cell);
+      ctx.restore();
+    } else {
+      ctx.drawImage(objSprites[ti], -cell / 2, -cell / 2, cell, cell);
+    }
+    ctx.textAlign = "center";
+    ctx.fillStyle = TIERS[ti].col;
+    ctx.font = `${Math.round(cell * 0.13)}px 'Zen Kaku Gothic New'`;
+    ctx.fillText(TIERS[ti].name, 0, -cell * 0.3);
+    ctx.fillStyle = "#fff";
+    ctx.font = `${Math.round(cell * (v < 1000 ? 0.21 : 0.165))}px Bungee`;
+    ctx.fillText(String(v), 0, cell * 0.41);
+    ctx.restore();
+  }
+  function drawTiles(dt) {
+    if (anim) {
+      const t = easeOut(Math.min(1, anim.t));
+      for (const m of anim.mv) {
+        const [fx, fy] = cellXY(m.fr, m.fc);
+        const [tx, ty] = cellXY(m.tr, m.tc);
+        drawTile(fx + (tx - fx) * t, fy + (ty - fy) * t, m.v, 1);
+      }
+      return;
+    }
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const v = grid[r][c];
+      if (!v) continue;
+      const key = r * N + c;
+      let scale = 1;
+      if (popMap[key] > 0) {
+        popMap[key] = Math.max(0, popMap[key] - dt * 5.5);
+        scale = 1 + 0.3 * popMap[key];
+      }
+      if (spawnMap[key] !== undefined && spawnMap[key] < 1) {
+        spawnMap[key] = Math.min(1, spawnMap[key] + dt * 6.5);
+        scale = easeOut(spawnMap[key]);
+        if (scale < 0.04) continue;
+      }
+      const [x, y] = cellXY(r, c);
+      drawTile(x, y, v, scale);
+    }
+  }
+  function drawFx(dt) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life -= dt;
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+      if (p.suck) {
+        p.x += (p.tx - p.x) * Math.min(1, dt * 7);
+        p.y += (p.ty - p.y) * Math.min(1, dt * 7);
+      } else {
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.vx *= (1 - dt * 2.2); p.vy *= (1 - dt * 2.2);
+      }
+      ctx.globalAlpha = Math.min(1, p.life * 2.2);
+      ctx.fillStyle = p.col;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * Math.min(1, p.life * 3), 0, 6.2832); ctx.fill();
+    }
+    for (let i = shocks.length - 1; i >= 0; i--) {
+      const s = shocks[i];
+      s.life -= dt; s.r += s.vr * dt;
+      if (s.life <= 0) { shocks.splice(i, 1); continue; }
+      ctx.globalAlpha = s.life * 1.8;
+      ctx.strokeStyle = s.col;
+      ctx.lineWidth = s.w * s.life * 2.4;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.2832); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    for (let i = floats.length - 1; i >= 0; i--) {
+      const f = floats[i];
+      f.life -= dt * 0.9; f.y += f.vy * dt;
+      if (f.life <= 0) { floats.splice(i, 1); continue; }
+      ctx.globalAlpha = Math.min(1, f.life * 1.6);
+      ctx.textAlign = "center";
+      ctx.font = `${f.size}px '${f.font}'`;
+      ctx.fillStyle = f.col;
+      ctx.fillText(f.txt, f.x, f.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+  function drawBanners(dt) {
+    if (!banners.length) return;
+    const b = banners[0];
+    b.t += dt;
+    const D = 1.7;
+    if (b.t > D) { banners.shift(); return; }
+    const ease = b.t < 0.25 ? easeOut(b.t / 0.25) : b.t > D - 0.3 ? (D - b.t) / 0.3 : 1;
+    const y = boardY + boardSize * 0.18;
+    ctx.globalAlpha = Math.max(0, ease);
+    ctx.fillStyle = "rgba(8,5,22,0.85)";
+    const w = boardSize * 0.86;
+    rounded(ctx, W / 2 - w / 2, y - 21, w, 42, 12);
+    ctx.fill();
+    ctx.strokeStyle = b.col;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.fillStyle = b.col;
+    ctx.font = "16px 'Zen Kaku Gothic New'";
+    ctx.fillText(b.txt, W / 2, y + 6);
+    ctx.globalAlpha = 1;
+  }
+  function drawBtn(x, y, w, h, txt, fn, accent) {
+    rounded(ctx, x, y, w, h, h / 2);
+    ctx.fillStyle = accent ? "rgba(255,217,94,0.16)" : "rgba(255,255,255,0.08)";
+    ctx.fill();
+    ctx.strokeStyle = accent ? "#ffd95e" : "rgba(255,255,255,0.45)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.fillStyle = accent ? "#ffd95e" : "#fff";
+    ctx.font = "15px 'Zen Kaku Gothic New'";
+    ctx.fillText(txt, x + w / 2, y + h / 2 + 5.5);
+    btns.push({ x, y, w, h, fn });
+  }
+  function drawTitle() {
+    if (kvOk) {
+      const ih = W * (kvImg.height / kvImg.width || 1);
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(kvImg, 0, H * 0.07, W, ih);
+      const fade = ctx.createLinearGradient(0, H * 0.07 + ih * 0.55, 0, H * 0.07 + ih);
+      fade.addColorStop(0, "rgba(6,4,15,0)"); fade.addColorStop(1, "rgba(6,4,15,1)");
+      ctx.fillStyle = fade;
+      ctx.fillRect(0, H * 0.07 + ih * 0.5, W, ih * 0.5 + 4);
+      ctx.globalAlpha = 1;
+    } else {
+      // フォールバック: 手描きの銀河
+      ctx.save();
+      ctx.translate(W / 2, H * 0.3);
+      ctx.rotate(time * 0.15);
+      if (objSprites[11]) ctx.drawImage(objSprites[11], -W * 0.3, -W * 0.3, W * 0.6, W * 0.6);
+      ctx.restore();
+    }
+    const ly = kvOk ? H * 0.56 : H * 0.5;
+    ctx.textAlign = "center";
+    ctx.font = `${Math.round(W * 0.155)}px Bungee`;
+    const lg = ctx.createLinearGradient(0, ly - W * 0.13, 0, ly);
+    lg.addColorStop(0, "#fff"); lg.addColorStop(1, "#b48bff");
+    ctx.fillStyle = lg;
+    ctx.fillText("SOZO", W / 2, ly);
+    ctx.font = `${Math.round(W * 0.085)}px Bungee`;
+    ctx.fillStyle = "#ffd95e";
+    ctx.fillText("8192", W / 2, ly + W * 0.1);
+    ctx.font = "13px 'Zen Kaku Gothic New'";
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.fillText("― 宇宙創造パズル ―", W / 2, ly + W * 0.17);
+    ctx.font = "12px 'Zen Kaku Gothic New'";
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    const sy = ly + W * 0.25;
+    ctx.fillText("ここは、まだ何もない虚無。", W / 2, sy);
+    ctx.fillText("塵を重ね、星を紡ぎ、宇宙を創れ。", W / 2, sy + 19);
+    ctx.globalAlpha = 0.7 + 0.3 * Math.sin(time * 3.5);
+    ctx.font = "15px 'Zen Kaku Gothic New'";
+    ctx.fillStyle = "#fff";
+    ctx.fillText("タップして創造をはじめる", W / 2, H - 96);
+    ctx.globalAlpha = 1;
+    if (best > 0) {
+      ctx.font = "11px 'Space Mono'";
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      const bt = bestTileEver >= 2 ? ` / 最高天体: ${TIERS[tierIdx(bestTileEver)].name}` : "";
+      ctx.fillText(`BEST ${fmt(best)}${bt}`, W / 2, H - 66);
+    }
+  }
+  function drawOver() {
+    ctx.fillStyle = "rgba(2,1,8,0.8)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.font = "26px 'Zen Kaku Gothic New'";
+    ctx.fillStyle = "#cdbfff";
+    ctx.fillText("虚無に呑まれた…", W / 2, H * 0.27);
+    const ti = tierIdx(Math.max(2, bestTileRun));
+    if (objSprites[ti]) {
+      const s = W * 0.3;
+      ctx.drawImage(objSprites[ti], W / 2 - s / 2, H * 0.31, s, s);
+    }
+    ctx.font = "13px 'Zen Kaku Gothic New'";
+    ctx.fillStyle = TIERS[ti].col;
+    ctx.fillText(`到達天体『${TIERS[ti].name}』`, W / 2, H * 0.31 + W * 0.34);
+    ctx.font = "30px Bungee";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(fmt(score), W / 2, H * 0.6);
+    ctx.font = "11px 'Space Mono'";
+    ctx.fillStyle = newRecord ? "#ffd95e" : "rgba(255,255,255,0.55)";
+    ctx.fillText(newRecord ? "★ NEW RECORD ★" : `BEST ${fmt(best)}`, W / 2, H * 0.6 + 24);
+    drawBtn(W / 2 - 95, H * 0.71, 190, 48, "もういちど創る", startRun, true);
+  }
+  function drawWin() {
+    ctx.fillStyle = "rgba(8,5,20,0.72)";
+    ctx.fillRect(0, 0, W, H);
+    const pulse = 1 + 0.05 * Math.sin(time * 3);
+    if (objSprites[12]) {
+      const s = W * 0.45 * pulse;
+      ctx.drawImage(objSprites[12], W / 2 - s / 2, H * 0.16 + (W * 0.45 - s) / 2, s, s);
+    }
+    ctx.textAlign = "center";
+    ctx.font = "32px 'Zen Kaku Gothic New'";
+    ctx.fillStyle = "#ffd95e";
+    ctx.fillText("宇宙、誕生。", W / 2, H * 0.55);
+    ctx.font = "13px 'Zen Kaku Gothic New'";
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.fillText("あなたは見習いを卒業し、創造神となった。", W / 2, H * 0.55 + 26);
+    ctx.font = "22px Bungee";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(fmt(score), W / 2, H * 0.55 + 60);
+    drawBtn(W / 2 - 105, H * 0.7, 210, 46, "創造をつづける(多元宇宙へ)", () => { mode = "play"; }, true);
+    drawBtn(W / 2 - 105, H * 0.7 + 58, 210, 46, "最初から", startRun, false);
+  }
+
+  /* ---------- メインループ(タイトル時点から回る) ---------- */
+  let lastTs = 0;
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    const rdt = Math.min(50, ts - lastTs || 16) / 1000;
+    lastTs = ts;
+    let dt = rdt;
+    if (hitstopT > 0) { hitstopT -= rdt * 1000; dt = 0; }
+    time += dt;
+
+    // 進行
+    if (mode === "play") {
+      if (anim) {
+        anim.t += dt * 1000 / SLIDE_MS;
+        if (anim.t >= 1) finalize();
+      }
+      if (fever > 0) {
+        fever -= dt;
+        if (fever <= 0) { fever = 0; gauge = 0; }
+      }
+      if (overT > 0) {
+        overT -= dt;
+        if (overT <= 0) { mode = "over"; sOver(); }
+      }
+      if (winT > 0) {
+        winT -= dt;
+        if (winT <= 0) { winShown = true; mode = "win"; }
+      }
+    }
+    if (shakeT > 0) {
+      shakeT -= rdt;
+      const k = Math.max(0, shakeT / 0.32);
+      shakeX = (Math.random() * 2 - 1) * shakeAmp * k;
+      shakeY = (Math.random() * 2 - 1) * shakeAmp * k;
+      if (shakeT <= 0) { shakeAmp = 0; shakeX = 0; shakeY = 0; }
+    }
+    if (flashA > 0) flashA = Math.max(0, flashA - rdt * (flashA > 0.5 ? 1.4 : 2.6));
+
+    // 描画
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    btns = [];
+    drawBG(dt);
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+    if (mode === "title") {
+      drawTitle();
+    } else {
+      drawHUD();
+      drawBoard();
+      drawTiles(dt);
+      drawFx(dt);
+      drawBanners(dt);
+      ctx.textAlign = "center";
+      ctx.font = "10px 'Zen Kaku Gothic New'";
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.fillText("スワイプ / ←↑↓→ で天体を動かす ・ 同じ天体が重なると進化", W / 2, boardY + boardSize + 24);
+    }
+    ctx.restore();
+    if (mode === "over") drawOver();
+    if (mode === "win") drawWin();
+    if (flashA > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${flashA})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+  resize();
+  requestAnimationFrame(frame);
+
+  /* ---------- テスト用フック ---------- */
+  window.__sozo = {
+    start: startRun,
+    move: d => tryMove(d, true),
+    grid: () => grid,
+    setGrid: g => { grid = g; },
+    score: () => score,
+    mode: () => mode,
+    setMode: m => { mode = m; },
+    state: () => ({ score, best, bestTileRun, chain, gauge, fever, moves, mode }),
+    compute: (g, d) => computeMove(g, d),
+    movesAvailable,
+    finalize: () => { if (anim) { anim.t = 1; finalize(); } },
+  };
+
+})();
+</script>
+</body>
+</html>
