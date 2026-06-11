@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#04030d">
+<title>MEZAME -1/8192- 十三層の夢から目覚めろ</title>
+<meta name="description" content="2つの扉から1つを選び続けろ。13回連続で当てれば目覚める。確率は1/8192。外せば夢の最深層へ墜落する、脳汁系・運の試練。">
+<meta property="og:title" content="MEZAME -1/8192-">
+<meta property="og:description" content="2つの扉から1つを選び続けろ。13回連続で当てれば目覚める。確率は1/8192。外せば夢の最深層へ墜落する。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/mezame/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/mezame/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👁️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; touch-action: manipulation; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #020108;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    color: #fff;
+  }
+  /* PCワイド画面対策: 縦長カラムに制限して中央寄せ */
+  #stage {
+    position: fixed; top: 0; bottom: 0;
+    left: 50%; transform: translateX(-50%);
+    width: min(100vw, 520px, 64vh);
+    background: #04030d;
+    box-shadow: 0 0 60px rgba(0,0,0,0.85);
+    padding-top: var(--sat);
+    padding-bottom: var(--sab);
+  }
+  #cv {
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+  }
+  #mute {
+    position: absolute;
+    top: calc(var(--sat) + 10px); right: 12px;
+    z-index: 30;
+    width: 42px; height: 42px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    background: rgba(10,7,24,0.75);
+    color: #fff; font-size: 19px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .ov {
+    position: fixed; inset: 0;
+    z-index: 20;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 13px;
+    background: rgba(4,3,13,0.94);
+    padding: calc(var(--sat) + 16px) 18px calc(var(--sab) + 16px);
+    text-align: center;
+  }
+  .hidden { display: none !important; }
+  .kv {
+    width: min(58vw, 230px, 26vh);
+    border-radius: 18px;
+    border: 2px solid rgba(155,127,232,0.45);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.7), 0 0 34px rgba(155,127,232,0.2);
+    pointer-events: none;
+  }
+  .kv-light { border-color: rgba(255,224,160,0.55); box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 44px rgba(255,224,160,0.3); }
+  .title {
+    font-family: "Bungee", cursive;
+    font-size: clamp(36px, 12vw, 58px);
+    line-height: 1.02;
+    margin: 0;
+    background: linear-gradient(160deg, #cdb8ff 0%, #7f6fe0 45%, #ffd9a0 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 4px 16px rgba(155,127,232,0.4));
+  }
+  .sub {
+    font-family: "Space Mono", monospace;
+    letter-spacing: 0.34em;
+    font-size: 13px; color: #8d82c0;
+    margin: -6px 0 0;
+  }
+  .desc { font-size: 13.5px; color: #d6d0ee; line-height: 1.95; margin: 2px 0; max-width: 430px; }
+  .desc b { color: #ffd9a0; }
+  .desc .bad { color: #ff7a8a; font-weight: 700; }
+  .stat {
+    font-family: "Space Mono", monospace;
+    font-size: 12.5px; color: #8d82c0;
+    line-height: 1.8; margin: 0;
+  }
+  .stat b { color: #fff; font-size: 15px; }
+  .kbd { font-size: 11.5px; color: #5f578a; margin-top: 0; }
+  .btn {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700; font-size: 18px;
+    color: #16102e;
+    background: linear-gradient(135deg, #cdb8ff, #8d7ae8);
+    border: none; border-radius: 16px;
+    padding: 15px 46px;
+    cursor: pointer;
+    box-shadow: 0 6px 24px rgba(141,122,232,0.45);
+    touch-action: none;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-sub {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 500; font-size: 14px;
+    color: #cdc4ec;
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(205,184,255,0.35);
+    border-radius: 13px;
+    padding: 10px 28px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .btn-sub:active { transform: scale(0.96); }
+  .btn-gold {
+    color: #2e1d08;
+    background: linear-gradient(135deg, #ffe9b8, #ffb86a);
+    box-shadow: 0 6px 24px rgba(255,184,106,0.45);
+  }
+  #awakenTitle {
+    font-family: "Bungee", cursive;
+    font-size: clamp(34px, 11vw, 54px);
+    margin: 0;
+    color: #fff4d8;
+    text-shadow: 0 0 30px rgba(255,224,160,0.8), 0 0 70px rgba(255,184,106,0.5);
+  }
+  .odds {
+    font-family: "Space Mono", monospace;
+    font-size: 17px; color: #ffd9a0; font-weight: 700;
+    margin: 0;
+  }
+  .newrec {
+    font-weight: 700; color: #ff7ab0; font-size: 15px;
+    animation: blink 0.8s infinite alternate;
+  }
+  @keyframes blink { from { opacity: 1; } to { opacity: 0.35; } }
+  /* 夢日記 */
+  #diaryOv { justify-content: flex-start; overflow-y: auto; gap: 10px; }
+  #diaryOv h2 {
+    font-family: "Bungee", cursive;
+    font-size: 24px; margin: 6px 0 0; color: #cdb8ff;
+    text-shadow: 0 0 18px rgba(155,127,232,0.5);
+  }
+  #diaryOv .lead { font-size: 12px; color: #8d82c0; margin: -4px 0 4px; }
+  .entry {
+    width: min(88vw, 420px);
+    text-align: left;
+    background: rgba(255,255,255,0.045);
+    border: 1.5px solid rgba(155,127,232,0.28);
+    border-radius: 14px;
+    padding: 11px 15px;
+  }
+  .entry .lh {
+    display: flex; align-items: baseline; gap: 9px;
+    font-family: "Space Mono", monospace;
+    font-size: 12px; color: #8d82c0;
+  }
+  .entry .lh b { font-family: "Zen Kaku Gothic New", sans-serif; font-size: 15px; color: #ffd9a0; }
+  .entry p { margin: 5px 0 0; font-size: 12.5px; line-height: 1.8; color: #d6d0ee; }
+  .entry.locked { opacity: 0.45; }
+  .entry.locked .lh b { color: #6f6694; }
+  .entry.gold { border-color: rgba(255,224,160,0.5); background: rgba(255,224,160,0.06); }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="cv"></canvas><button id="mute" aria-label="ミュート">🔊</button></div>
+
+<div id="titleOv" class="ov">
+  <img class="kv" src="assets/keyvisual.jpg" alt="" onerror="this.style.display='none'">
+  <h1 class="title">MEZAME</h1>
+  <p class="sub">1 / 8192</p>
+  <p class="desc">
+    あなたは夢の最深層・<b>第13層</b>で眠っている。<br>
+    毎夜あらわれる、二つの扉。当たりはちょうど半分。<br>
+    <b>13回連続</b>で正しい扉を選べば——目覚める。<br>
+    外せば<span class="bad">最深層へ墜落</span>。その確率、<b>1/8192</b>。
+  </p>
+  <p class="stat" id="titleStat"></p>
+  <button class="btn" id="startBtn">眠りにつく</button>
+  <button class="btn-sub" id="diaryBtn">夢日記</button>
+  <p class="kbd">PC: ←→ / A・D で扉を選ぶ / Space 開始</p>
+</div>
+
+<div id="diaryOv" class="ov hidden">
+  <h2>夢日記</h2>
+  <p class="lead">初めて辿り着いた層の記憶が、ここに残る</p>
+  <div id="diaryList" style="display:flex;flex-direction:column;gap:9px;"></div>
+  <button class="btn-sub" id="diaryClose" style="margin:8px 0 14px;">とじる</button>
+</div>
+
+<div id="awakenOv" class="ov hidden">
+  <img class="kv kv-light" src="assets/awaken.jpg" alt="" onerror="this.style.display='none'">
+  <h2 id="awakenTitle">目覚めた。</h2>
+  <p class="odds">1 / 8192</p>
+  <p class="desc" id="awakenText"></p>
+  <p class="stat" id="awakenStat"></p>
+  <button class="btn btn-gold" id="againBtn">もう一度、眠る</button>
+  <button class="btn-sub" id="awakenDiaryBtn">夢日記</button>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+  const $ = id => document.getElementById(id);
+
+  /* ---------- 定数: 十三層の夢 ---------- */
+  const GOAL = 13;
+  // index = 現在の連勝数(その時いる層)。layer = 13 - streak
+  const LAYERS = [
+    { layer: 13, name: "忘却の底",   top: "#04030d", bot: "#0b0820", acc: "#5a4d96" },
+    { layer: 12, name: "沈黙の海",   top: "#040618", bot: "#0a1638", acc: "#4468b8" },
+    { layer: 11, name: "骨の庭",     top: "#0a0a1a", bot: "#1c1636", acc: "#8a7cb4" },
+    { layer: 10, name: "鏡の沼",     top: "#081224", bot: "#143048", acc: "#54aed0" },
+    { layer: 9,  name: "月の回廊",   top: "#120e2c", bot: "#2a1e54", acc: "#a98ef2" },
+    { layer: 8,  name: "囁きの森",   top: "#0a1c1a", bot: "#163a30", acc: "#62d0a2" },
+    { layer: 7,  name: "逆さの街",   top: "#1c1030", bot: "#3a2456", acc: "#cf8ae0" },
+    { layer: 6,  name: "硝子の塔",   top: "#0e1a34", bot: "#28426c", acc: "#86c2f0" },
+    { layer: 5,  name: "黄昏の駅",   top: "#281434", bot: "#52284a", acc: "#f08ab4" },
+    { layer: 4,  name: "暁の海岸",   top: "#2e1a34", bot: "#643652", acc: "#ffa888" },
+    { layer: 3,  name: "光の梯子",   top: "#342446", bot: "#75525c", acc: "#ffca74" },
+    { layer: 2,  name: "白い部屋",   top: "#403656", bot: "#8a7a80", acc: "#ffe2a8" },
+    { layer: 1,  name: "まぶたの裏", top: "#4e4468", bot: "#a8968e", acc: "#fff2cc" },
+    { layer: 0,  name: "目覚め",     top: "#9a86a0", bot: "#ffe8c0", acc: "#fffbe8" },
+  ];
+  const DIARY = [
+    "ここがいちばん深い場所。名前も、帰り方も、ぜんぶ置いてきた。ただ、二つの扉だけがいつも待っている。",
+    "音のない海を、巨大な魚の影がゆっくり横切っていく。誰かを呼んだ気がしたけれど、声は泡になって消えた。",
+    "白い骨でできた花が咲いている。土の代わりに、折れた時計の針が敷きつめられていた。",
+    "沼の面に映る自分は、こちらより少しだけ先に瞬きをする。",
+    "廊下の窓ぜんぶに、満ち欠けの違う月が掛かっている。13番目の窓だけ、カーテンが閉まっていた。",
+    "木々がわたしの昔の名前を囁き交わしている。聞き取れそうで、聞き取れない。",
+    "空に根を張った街。住人はみんな、落ちてしまわないように夢の続きを口に咥えて歩いている。",
+    "踏むたびに足元が薄く鳴る。下を見ると、いままで墜ちてきた夜が全部積もっていた。",
+    "誰も乗らない電車が定刻どおりに来る。行き先表示には「あさ」とだけ書いてある。",
+    "波が引くたび、砂浜に知らない記憶が打ち上げられる。拾うと少しだけ胸が痛い。",
+    "雲の裂け目から光の梯子が降りている。一段のぼるごとに、体が軽く、薄くなっていく。",
+    "なにもない白い部屋。ただ、目覚まし時計がひとつ、鳴る直前のかたちで止まっている。",
+    "もう、まぶた一枚の向こうに朝がある。光が透けて、世界がオレンジ色ににじむ。",
+    "8192分の1の朝。カーテンの隙間の光がまぶしくて、夢の名前をぜんぶ忘れた。それでいい。",
+  ];
+  const SIGILS = ["☾", "☀", "✶", "◯", "△", "▽", "✕", "∞", "✦", "❖"];
+  const MILESTONES = { 5: "1/32 — 夢が薄れていく", 8: "1/256 — 光が見えてきた", 10: "1/1024 — もうすぐ目覚める", 12: "1/4096 — あと、ひとつ。" };
+  const SUS_BASE = 0.85, SUS_PER = 0.11, SUS_MAX = 2.1;
+  const ASC_DUR = 0.8, FALL_DUR = 1.7;
+
+  /* ---------- 永続化 ---------- */
+  const LS = "mezame_";
+  function lsGet(k, d) { try { const v = localStorage.getItem(LS + k); return v === null ? d : +v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(LS + k, String(v)); } catch (e) {} }
+  let totalPicks = lsGet("picks", 0);
+  let totalFalls = lsGet("falls", 0);
+  let bestStreak = lsGet("best", 0);
+  let awakenCount = lsGet("awaken", 0);
+  let diaryBits = lsGet("diary", 1); // bit n = DIARY[n] 解禁。第13層(0)は最初から
+  let muted = false;
+  try { muted = localStorage.getItem(LS + "muted") === "1"; } catch (e) {}
+
+  /* ---------- ゲーム状態(ループが触るものは全て宣言時に初期化) ---------- */
+  let phase = "title";       // title | play | suspense | ascend | fall | awaken
+  let streak = 0;            // 現在の連勝 = 13 - 現在の層
+  let chosen = -1;           // 0=左 1=右
+  let outcome = false;       // この選択が当たりか
+  let correctSide = 0;       // 演出用: 当たりだった扉
+  let phaseT = 0;            // 現フェーズ経過秒
+  let susDur = SUS_BASE;
+  let fallFrom = 0;          // 墜落開始時のstreak
+  let sigilL = "☾", sigilR = "☀";
+  let runPicks = 0;          // 今回の眠り(セッション)内の選択数
+  let rigQueue = [];         // テスト用: 次の結果を強制
+  let now = 0, lastT = 0;
+  let lay = null;
+  let shake = 0;
+  let flashA = 0, flashCol = "#fff";
+  let parts = [], rings = [], banners = [];
+  let vign = 0;              // サスペンス用ビネット 0..1
+  let heartbeatNext = 0;
+  let ambNext = 0;
+
+  /* ---------- audio (iOS消音スイッチ対策込み / hakai方式) ---------- */
+  let AC = null;
+  function audio() {
+    if (!AC) {
+      try {
+        AC = new (window.AudioContext || window.webkitAudioContext)();
+        AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+      } catch (e) {}
+    }
+    if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  let silentEl = null;
+  function silentWavUrl() {
+    const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE");
+    str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    str(36, "data"); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  function unlockAudio() {
+    if (!silentEl) {
+      silentEl = document.createElement("audio");
+      silentEl.setAttribute("playsinline", "");
+      silentEl.loop = true;
+      silentEl.volume = 0.01;
+      silentEl.src = silentWavUrl();
+    }
+    const p = silentEl.play();
+    if (p && p.catch) p.catch(() => {});
+    audio();
+    if (!AC) return;
+    const done = () => {
+      if (AC.state === "running") {
+        ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+      }
+    };
+    try { AC.resume().then(done); } catch (e) { done(); }
+  }
+  ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+  function tone(f, d, type, vol, slideTo, at) {
+    if (muted || !audio()) return;
+    try {
+      const t0 = AC.currentTime + (at || 0);
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || "sine"; o.frequency.setValueAtTime(f, t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + d);
+      g.gain.setValueAtTime(vol || 0.06, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+      o.connect(g); g.connect(AC.destination);
+      o.start(t0); o.stop(t0 + d);
+    } catch (e) {}
+  }
+  function noise(d, vol, at) {
+    if (muted || !audio()) return;
+    try {
+      const n = Math.floor(AC.sampleRate * d);
+      const buf = AC.createBuffer(1, n, AC.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const src = AC.createBufferSource(); src.buffer = buf;
+      const g = AC.createGain(); g.gain.value = vol || 0.08;
+      src.connect(g); g.connect(AC.destination); src.start(AC.currentTime + (at || 0));
+    } catch (e) {}
+  }
+  const sBtn = () => tone(420, 0.07, "square", 0.03);
+  const sChoose = () => { tone(180, 0.18, "sine", 0.07, 90); noise(0.06, 0.03); };
+  const sHeart = (i) => { tone(58, 0.12, "sine", 0.12); tone(52, 0.1, "sine", 0.1, null, 0.1); };
+  // 連勝が伸びるほど高く・豪華に鳴る上昇アルペジオ
+  function sWin(stk) {
+    const base = 330 * Math.pow(2, (stk - 1) / 12);
+    tone(base, 0.32, "triangle", 0.08);
+    tone(base * 1.25, 0.32, "triangle", 0.07, null, 0.07);
+    tone(base * 1.5, 0.38, "triangle", 0.07, null, 0.14);
+    tone(base * 2, 0.5, "sine", 0.06, null, 0.21);
+    if (stk >= 8) tone(base * 3, 0.55, "sine", 0.045, null, 0.28);
+    noise(0.1, 0.02, 0.05);
+  }
+  function sLose() {
+    tone(220, 0.7, "sawtooth", 0.09, 38);
+    tone(110, 0.9, "sawtooth", 0.08, 30, 0.05);
+    tone(48, 1.1, "sine", 0.14, 26, 0.1);
+    noise(0.5, 0.07);
+  }
+  function sMilestone() {
+    [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.4, "triangle", 0.06, null, i * 0.08));
+  }
+  function sAwaken() {
+    [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.9, "triangle", 0.07, null, i * 0.12));
+    [2093, 2637, 3136].forEach((f, i) => tone(f, 1.4, "sine", 0.03, null, 0.7 + i * 0.15));
+    noise(0.25, 0.03, 0.6);
+  }
+  const sAmb = () => { const L = pal(); tone(160 + streak * 22 + Math.random() * 40, 1.6, "sine", 0.012); };
+
+  /* ---------- ドローン(層が上がるほど音程が上がる緊張の通奏低音) ---------- */
+  let droneOsc = null, droneOsc2 = null, droneGain = null;
+  function droneFreq() { return 46 * Math.pow(2, streak / 14); }
+  function startDrone() {
+    if (!audio() || droneOsc) return;
+    try {
+      droneGain = AC.createGain();
+      droneGain.gain.value = muted ? 0 : 0.028;
+      droneOsc = AC.createOscillator(); droneOsc.type = "sine"; droneOsc.frequency.value = droneFreq();
+      droneOsc2 = AC.createOscillator(); droneOsc2.type = "sine"; droneOsc2.frequency.value = droneFreq() * 1.007;
+      droneOsc.connect(droneGain); droneOsc2.connect(droneGain); droneGain.connect(AC.destination);
+      droneOsc.start(); droneOsc2.start();
+    } catch (e) { droneOsc = droneOsc2 = droneGain = null; }
+  }
+  function updateDrone() {
+    if (!droneOsc || !AC) return;
+    try {
+      const f = droneFreq(), t = AC.currentTime;
+      droneOsc.frequency.exponentialRampToValueAtTime(f, t + 0.5);
+      droneOsc2.frequency.exponentialRampToValueAtTime(f * 1.007, t + 0.5);
+      droneGain.gain.setTargetAtTime(muted ? 0 : 0.028 + streak * 0.0012, t, 0.3);
+    } catch (e) {}
+  }
+  function stopDrone() {
+    try { if (droneOsc) droneOsc.stop(); if (droneOsc2) droneOsc2.stop(); } catch (e) {}
+    droneOsc = droneOsc2 = droneGain = null;
+  }
+
+  /* ---------- ユーティリティ ---------- */
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  function hex2rgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function mixHex(a, b, t) {
+    const A = hex2rgb(a), B = hex2rgb(b);
+    return `rgb(${Math.round(lerp(A[0], B[0], t))},${Math.round(lerp(A[1], B[1], t))},${Math.round(lerp(A[2], B[2], t))})`;
+  }
+  const fmtOdds = n => "1/" + Math.pow(2, n);
+  const fmtNum = n => n.toLocaleString("ja-JP");
+
+  // 現在描画すべきパレット(遷移中は補間)
+  function pal() {
+    let a = LAYERS[clamp(streak, 0, 13)], b = a, t = 0;
+    if (phase === "ascend") {
+      a = LAYERS[streak - 1] || LAYERS[0];
+      b = LAYERS[clamp(streak, 0, 13)];
+      t = easeOut(clamp(phaseT / ASC_DUR, 0, 1));
+    } else if (phase === "fall") {
+      a = LAYERS[fallFrom]; b = LAYERS[0];
+      t = easeOut(clamp(phaseT / FALL_DUR, 0, 1));
+    }
+    return {
+      top: mixHex(a.top, b.top, t), bot: mixHex(a.bot, b.bot, t),
+      acc: mixHex(a.acc, b.acc, t),
+    };
+  }
+
+  /* ---------- レイアウト ---------- */
+  function layout() {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    const dw = Math.min(w * 0.37, 175);
+    const dh = dw * 1.5;
+    const dy = h * 0.52 - dh / 2;
+    return {
+      w, h,
+      doors: [
+        { x: w * 0.27 - dw / 2, y: dy, w: dw, h: dh, cx: w * 0.27 },
+        { x: w * 0.73 - dw / 2, y: dy, w: dw, h: dh, cx: w * 0.73 },
+      ],
+    };
+  }
+
+  /* ---------- ラウンド進行 ---------- */
+  function newDoors() {
+    let i = Math.floor(Math.random() * SIGILS.length);
+    let j = Math.floor(Math.random() * (SIGILS.length - 1));
+    if (j >= i) j++;
+    sigilL = SIGILS[i]; sigilR = SIGILS[j];
+    chosen = -1;
+    phase = "play";
+    phaseT = 0;
+  }
+
+  function startGame() {
+    $("titleOv").classList.add("hidden");
+    $("awakenOv").classList.add("hidden");
+    $("diaryOv").classList.add("hidden");
+    streak = 0; runPicks = 0;
+    parts = []; rings = []; banners = []; flashA = 0; shake = 0;
+    startDrone(); updateDrone();
+    newDoors();
+  }
+
+  function pick(i) {
+    if (phase !== "play" || i < 0 || i > 1) return;
+    chosen = i;
+    outcome = rigQueue.length ? !!rigQueue.shift() : (Math.random() < 0.5);
+    correctSide = outcome ? i : 1 - i;
+    totalPicks++; runPicks++;
+    lsSet("picks", totalPicks);
+    susDur = Math.min(SUS_BASE + streak * SUS_PER, SUS_MAX);
+    phase = "suspense";
+    phaseT = 0;
+    heartbeatNext = 0.25;
+    sChoose();
+  }
+
+  function resolve() {
+    const L = lay || layout();
+    const d = L.doors[chosen];
+    if (outcome) {
+      streak++;
+      if (streak > bestStreak) { bestStreak = streak; lsSet("best", bestStreak); }
+      let diaryNew = false;
+      if (streak <= 13 && !(diaryBits & (1 << streak))) {
+        diaryBits |= 1 << streak; lsSet("diary", diaryBits);
+        diaryNew = true;
+      }
+      flashA = 0.55; flashCol = LAYERS[streak].acc;
+      burst(d.cx, d.y + d.h * 0.45, LAYERS[streak].acc, 26 + streak * 3);
+      rings.push({ x: d.cx, y: d.y + d.h * 0.45, r: 10, vr: 380, life: 0.55, t: 0 });
+      shake = Math.min(4 + streak * 0.7, 13);
+      sWin(streak);
+      banner("正解", 30, "#fff", 0.9, 0);
+      banner(fmtOdds(streak) + " を生き残った", 14, LAYERS[streak].acc, 1.5, 0.18);
+      if (diaryNew) banner("夢日記に記録された", 13, "#cdb8ff", 1.6, 0.4);
+      if (MILESTONES[streak]) {
+        banner(MILESTONES[streak], 17, "#ffd9a0", 2.2, 0.55);
+        sMilestone();
+      }
+      phase = "ascend"; phaseT = 0;
+      updateDrone();
+    } else {
+      fallFrom = streak;
+      totalFalls++; lsSet("falls", totalFalls);
+      flashA = 0.4; flashCol = "#ff3a4e";
+      shake = 16;
+      shards(d.cx, d.y + d.h * 0.45);
+      sLose();
+      if (fallFrom >= 12) banner("目覚めの直前で、夢に呑まれた。", 16, "#ff7a8a", 2.6, 0.5);
+      else if (fallFrom >= 8) banner("あと " + (GOAL - fallFrom) + " 回だった——", 16, "#ff7a8a", 2.2, 0.5);
+      streak = 0;
+      phase = "fall"; phaseT = 0;
+      updateDrone();
+    }
+  }
+
+  function awaken() {
+    phase = "awaken";
+    stopDrone();
+    awakenCount++; lsSet("awaken", awakenCount);
+    if (!(diaryBits & (1 << 13))) { diaryBits |= 1 << 13; lsSet("diary", diaryBits); }
+    sAwaken();
+    $("awakenText").innerHTML = "13の扉をすべて当てた。<br>通算 <b>" + fmtNum(totalPicks) + "</b> 回目の扉で、あなたは目を開けた。";
+    $("awakenStat").innerHTML = "この眠りでの選択 " + fmtNum(runPicks) + " 回 / 通算の墜落 " + fmtNum(totalFalls) + " 回<br>目覚めた回数 <b>" + awakenCount + "</b>";
+    $("awakenOv").classList.remove("hidden");
+  }
+
+  /* ---------- エフェクト ---------- */
+  function burst(x, y, col, n) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 260;
+      parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: 0.5 + Math.random() * 0.7, t: 0, size: 1.5 + Math.random() * 3.5, col, grav: 60, type: "dot" });
+    }
+  }
+  function shards(x, y) {
+    for (let i = 0; i < 30; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 80 + Math.random() * 320;
+      parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.6 + Math.random() * 0.8, t: 0, size: 3 + Math.random() * 7, col: "#2a2040", grav: 480, type: "shard", rot: Math.random() * Math.PI, vrot: (Math.random() - 0.5) * 10 });
+    }
+  }
+  function banner(text, size, col, life, at) {
+    banners.push({ text, size, col, life, t: -(at || 0) });
+  }
+
+  /* ---------- 描画 ---------- */
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function doorPath(d, sc) {
+    const w = d.w * sc, h = d.h * sc;
+    const x = d.cx - w / 2, y = d.y + (d.h - h) / 2;
+    const r = w / 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y + h);
+    ctx.lineTo(x, y + r);
+    ctx.arc(x + r, y + r, r, Math.PI, 0);
+    ctx.lineTo(x + w, y + h);
+    ctx.closePath();
+    return { x, y, w, h };
+  }
+
+  function drawBG(P, dt) {
+    const { w, h } = lay;
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, P.top); g.addColorStop(1, P.bot);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    // 環境パーティクル(漂う夢の粒)
+    if (phase !== "title" && parts.filter(p => p.type === "amb").length < 26 && Math.random() < 0.3) {
+      parts.push({ x: Math.random() * w, y: h + 10, vx: (Math.random() - 0.5) * 14, vy: -(8 + Math.random() * 26 + streak * 2.5), life: 7, t: 0, size: 1 + Math.random() * 2.4, col: P.acc, grav: 0, type: "amb" });
+    }
+    // 墜落中: 上向きに流れるスピードライン(自分が落ちている)
+    if (phase === "fall") {
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 14; i++) {
+        const x = (i * 97.3 + phaseT * 80) % w;
+        const sp = 900 + (i % 5) * 300;
+        const y = (i * 211.7 - phaseT * sp) % (h + 160) ;
+        const yy = y < -80 ? y + h + 160 : y;
+        ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x, yy + 60 + (i % 3) * 40); ctx.stroke();
+      }
+    }
+    // 上昇中: 下向きに流れる光
+    if (phase === "ascend") {
+      ctx.strokeStyle = "rgba(255,255,255,0.1)";
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 10; i++) {
+        const x = (i * 131.7) % w;
+        const y = (i * 73.3 + phaseT * 1300) % (h + 120) - 60;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 50); ctx.stroke();
+      }
+    }
+  }
+
+  function drawHUD(P) {
+    const { w } = lay;
+    const layer = GOAL - streak;
+    // 層番号
+    ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.font = "700 13px 'Zen Kaku Gothic New'";
+    ctx.fillText("第", w / 2 - 44, 64);
+    ctx.fillText("層", w / 2 + 44, 64);
+    ctx.font = "44px Bungee";
+    ctx.fillStyle = P.acc;
+    ctx.shadowColor = P.acc; ctx.shadowBlur = 18;
+    ctx.fillText(String(layer), w / 2, 70);
+    ctx.shadowBlur = 0;
+    ctx.font = "500 14px 'Zen Kaku Gothic New'";
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.fillText(LAYERS[streak].name, w / 2, 92);
+    // 進捗オーブ x13
+    const ow = Math.min(w * 0.052, 22), gap = ow * 0.32;
+    const total = GOAL * ow + (GOAL - 1) * gap;
+    let x = w / 2 - total / 2 + ow / 2;
+    for (let i = 0; i < GOAL; i++) {
+      ctx.beginPath();
+      ctx.arc(x, 116, ow / 2 - 1.5, 0, Math.PI * 2);
+      if (i < streak) {
+        ctx.fillStyle = LAYERS[i + 1].acc;
+        ctx.shadowColor = LAYERS[i + 1].acc; ctx.shadowBlur = 8;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else {
+        ctx.strokeStyle = "rgba(255,255,255,0.22)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      x += ow + gap;
+    }
+    // 確率表示
+    ctx.font = "12px 'Space Mono'";
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    if (streak > 0) ctx.fillText("ここまで " + fmtOdds(streak) + " ／ 目覚めまで " + fmtOdds(GOAL - streak), w / 2, 142);
+    else ctx.fillText("目覚めまで 1/8192", w / 2, 142);
+  }
+
+  function drawBottom(P) {
+    const { w, h } = lay;
+    ctx.textAlign = "center";
+    ctx.font = "11.5px 'Space Mono'";
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.fillText("通算 " + fmtNum(totalPicks) + " 枚目の扉 ／ ベスト 連続" + bestStreak, w / 2, h - 18);
+    if (phase === "play") {
+      ctx.font = "500 13px 'Zen Kaku Gothic New'";
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.fillText("どちらかの扉が、上の層へつながっている", w / 2, h - 44);
+    }
+  }
+
+  function drawDoor(i, P) {
+    const d = lay.doors[i];
+    const isChosen = chosen === i;
+    const t = phaseT;
+    let sc = 1, alpha = 1, glow = 0.35;
+    const float = Math.sin(now * 1.4 + i * 2.4) * 4;
+    if (phase === "suspense") {
+      if (isChosen) {
+        sc = 1 + Math.sin(t * 9) * 0.018 + t * 0.04;
+        glow = 0.5 + Math.sin(t * 9) * 0.25 + (t / susDur) * 0.5;
+      } else alpha = clamp(1 - t * 2.2, 0.12, 1);
+    }
+    if (phase === "ascend" || phase === "fall") {
+      // リザルト直後: 正解の扉は光、ハズレは消失
+      if (i === correctSide) { glow = 1; sc = phase === "ascend" && isChosen ? 1 + t * 0.5 : 1; alpha = clamp(1 - t * 1.6, 0, 1); }
+      else alpha = clamp(0.5 - t * 1.8, 0, 0.5);
+      if (alpha <= 0) return;
+    }
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(0, float);
+    // 高層では扉が震える
+    if (phase === "play" && streak >= 8) ctx.translate((Math.random() - 0.5) * (streak - 7) * 0.7, 0);
+    const p = doorPath(d, sc);
+    // 本体
+    const g = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+    g.addColorStop(0, "rgba(16,12,32,0.92)");
+    g.addColorStop(1, "rgba(8,6,20,0.95)");
+    ctx.fillStyle = g; ctx.fill();
+    // 内側の淡い光
+    const ig = ctx.createRadialGradient(d.cx, p.y + p.h * 0.42, 4, d.cx, p.y + p.h * 0.42, p.w * 0.65);
+    ig.addColorStop(0, P.acc.replace("rgb", "rgba").replace(")", ",0.32)"));
+    ig.addColorStop(1, "rgba(0,0,0,0)");
+    doorPath(d, sc);
+    ctx.fillStyle = ig; ctx.fill();
+    // 枠
+    doorPath(d, sc);
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = P.acc;
+    ctx.shadowColor = P.acc;
+    ctx.shadowBlur = 24 * glow;
+    ctx.globalAlpha = alpha * (0.55 + glow * 0.45);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = alpha;
+    // 正解発表の輝き
+    if ((phase === "ascend" || phase === "fall") && i === correctSide) {
+      doorPath(d, sc);
+      ctx.fillStyle = "rgba(255,250,225," + (0.85 * alpha) + ")";
+      ctx.shadowColor = "#fff"; ctx.shadowBlur = 40;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    // 紋章
+    ctx.fillStyle = "rgba(255,255,255,0.88)";
+    ctx.font = (p.w * 0.34) + "px serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.shadowColor = P.acc; ctx.shadowBlur = 12 * glow;
+    ctx.fillText(i === 0 ? sigilL : sigilR, d.cx, p.y + p.h * 0.42);
+    ctx.shadowBlur = 0;
+    // 左/右ラベル
+    ctx.font = "11px 'Space Mono'";
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(i === 0 ? "L" : "R", d.cx, p.y + p.h + 20);
+    ctx.restore();
+  }
+
+  function drawFall() {
+    const { w, h } = lay;
+    const t = phaseT / FALL_DUR;
+    ctx.textAlign = "center";
+    ctx.globalAlpha = clamp(Math.sin(t * Math.PI) * 1.6, 0, 1);
+    ctx.font = "26px Bungee";
+    ctx.fillStyle = "#ff5a6e";
+    ctx.shadowColor = "#ff3a4e"; ctx.shadowBlur = 22;
+    ctx.fillText("FALL", w / 2, h * 0.4);
+    ctx.shadowBlur = 0;
+    ctx.font = "700 15px 'Zen Kaku Gothic New'";
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    if (fallFrom > 0) ctx.fillText("第" + (GOAL - fallFrom) + "層から、最深層へ", w / 2, h * 0.4 + 30);
+    else ctx.fillText("扉のむこうは、底だった", w / 2, h * 0.4 + 30);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawFx(dt) {
+    const { w, h } = lay;
+    // パーティクル
+    for (const p of parts) {
+      p.t += dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vy += (p.grav || 0) * dt;
+      const a = clamp(1 - p.t / p.life, 0, 1);
+      if (a <= 0) continue;
+      ctx.globalAlpha = p.type === "amb" ? a * 0.5 : a;
+      ctx.fillStyle = p.col;
+      if (p.type === "shard") {
+        ctx.save();
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot += p.vrot * dt);
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      } else {
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    parts = parts.filter(p => p.t < p.life && p.y > -30);
+    // 衝撃波リング
+    for (const r of rings) {
+      r.t += dt; r.r += r.vr * dt;
+      const a = clamp(1 - r.t / r.life, 0, 1);
+      ctx.globalAlpha = a * 0.7;
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 3 * a;
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    rings = rings.filter(r => r.t < r.life);
+    // バナー
+    let by = h * 0.27;
+    for (const b of banners) {
+      b.t += dt;
+      if (b.t < 0) continue;
+      const k = b.t / b.life;
+      const a = k < 0.12 ? k / 0.12 : k > 0.7 ? clamp((1 - k) / 0.3, 0, 1) : 1;
+      ctx.globalAlpha = a;
+      ctx.font = (b.size >= 24 ? b.size + "px Bungee" : "700 " + b.size + "px 'Zen Kaku Gothic New'");
+      ctx.textAlign = "center";
+      ctx.fillStyle = b.col;
+      ctx.shadowColor = b.col; ctx.shadowBlur = 14;
+      ctx.fillText(b.text, w / 2, by - easeOut(clamp(k, 0, 1)) * 14);
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+      by += b.size * 1.8;
+    }
+    banners = banners.filter(b => b.t < b.life);
+    // フラッシュ
+    if (flashA > 0) {
+      flashA = Math.max(0, flashA - dt * 1.8);
+      ctx.globalAlpha = flashA;
+      ctx.fillStyle = flashCol;
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = 1;
+    }
+    // サスペンスのビネット
+    if (vign > 0.01) {
+      const vg = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.max(w, h) * 0.75);
+      vg.addColorStop(0, "rgba(0,0,0,0)");
+      vg.addColorStop(1, "rgba(0,0,0," + (vign * 0.75) + ")");
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, w, h);
+    }
+  }
+
+  /* ---------- メインループ(タイトル時点から回す) ---------- */
+  function frame(t) {
+    requestAnimationFrame(frame);
+    const dt = Math.min((t - lastT) / 1000, 0.05) || 0;
+    lastT = t;
+    now += dt;
+    // dpr変換は毎フレーム再設定(コンテキスト喪失対策)
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const cw = cv.clientWidth, ch = cv.clientHeight;
+    if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(ch * dpr)) {
+      cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    lay = layout();
+    phaseT += dt;
+
+    // フェーズ遷移
+    if (phase === "suspense") {
+      vign = clamp(phaseT / susDur, 0, 1) * clamp(0.35 + streak * 0.06, 0, 0.95);
+      if (phaseT >= heartbeatNext && phaseT < susDur) {
+        sHeart();
+        heartbeatNext += Math.max(0.62 - (phaseT / susDur) * 0.34 - streak * 0.012, 0.2);
+      }
+      if (phaseT >= susDur) { vign = 0; resolve(); }
+    } else vign = Math.max(0, vign - dt * 3);
+    if (phase === "ascend" && phaseT >= ASC_DUR) {
+      if (streak >= GOAL) awaken();
+      else newDoors();
+    }
+    if (phase === "fall" && phaseT >= FALL_DUR) newDoors();
+    if (phase === "play" && now >= ambNext) { sAmb(); ambNext = now + 2.2 + Math.random() * 2.5; }
+
+    const P = pal();
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.save();
+    if (shake > 0) {
+      shake = Math.max(0, shake - dt * 30);
+      ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    }
+    drawBG(P, dt);
+    if (phase !== "title" && phase !== "awaken") {
+      drawHUD(P);
+      if (phase === "play" || phase === "suspense" || phase === "ascend" || phase === "fall") {
+        drawDoor(0, P); drawDoor(1, P);
+      }
+      if (phase === "fall") drawFall();
+      drawBottom(P);
+      drawFx(dt);
+    } else {
+      drawFx(dt);
+    }
+    ctx.restore();
+  }
+  requestAnimationFrame(frame);
+
+  /* ---------- 入力(Pointer Events、clickは使わない) ---------- */
+  cv.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    if (!lay) return;
+    if (phase === "fall" && phaseT > 0.45) { phaseT = FALL_DUR; return; } // タップで墜落スキップ
+    if (phase !== "play") return;
+    const rect = cv.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    for (let i = 0; i < 2; i++) {
+      const d = lay.doors[i];
+      if (x >= d.x - 8 && x <= d.x + d.w + 8 && y >= d.y - 8 && y <= d.y + d.h + 26) { pick(i); return; }
+    }
+  });
+
+  window.addEventListener("keydown", e => {
+    if (e.repeat) return;
+    if (phase === "title" && (e.code === "Enter" || e.code === "Space")) { e.preventDefault(); sBtn(); startGame(); return; }
+    if (phase === "awaken" && (e.code === "Enter" || e.code === "Space")) { e.preventDefault(); sBtn(); startGame(); return; }
+    if (phase === "fall" && (e.code === "Enter" || e.code === "Space")) { e.preventDefault(); phaseT = FALL_DUR; return; }
+    if (phase !== "play") return;
+    if (e.code === "ArrowLeft" || e.code === "KeyA") { e.preventDefault(); pick(0); }
+    if (e.code === "ArrowRight" || e.code === "KeyD") { e.preventDefault(); pick(1); }
+  });
+
+  /* ---------- オーバーレイ ---------- */
+  function refreshTitleStat() {
+    $("titleStat").innerHTML =
+      "通算の扉 <b>" + fmtNum(totalPicks) + "</b> ／ 墜落 <b>" + fmtNum(totalFalls) + "</b> 回<br>" +
+      "最高到達 <b>" + (bestStreak >= GOAL ? "目覚め (連続13)" : bestStreak > 0 ? "第" + (GOAL - bestStreak) + "層 (連続" + bestStreak + ")" : "—") + "</b>" +
+      (awakenCount > 0 ? " ／ 目覚め <b>" + awakenCount + "</b> 回" : "");
+  }
+  function openDiary() {
+    const list = $("diaryList");
+    list.innerHTML = "";
+    for (let i = 0; i <= 13; i++) {
+      const got = !!(diaryBits & (1 << i));
+      const L = LAYERS[i];
+      const div = document.createElement("div");
+      div.className = "entry" + (got ? (i === 13 ? " gold" : "") : " locked");
+      const label = i === 13 ? "目覚め" : "第" + L.layer + "層";
+      div.innerHTML =
+        '<div class="lh"><span>' + (i === 13 ? "1/8192" : fmtOdds(i)) + "</span><b>" +
+        (got ? label + "　" + L.name : label + "　???") + "</b></div>" +
+        "<p>" + (got ? DIARY[i] : "まだ辿り着いていない。") + "</p>";
+      list.appendChild(div);
+    }
+    $("diaryOv").classList.remove("hidden");
+  }
+  $("startBtn").addEventListener("pointerup", e => { e.preventDefault(); sBtn(); startGame(); });
+  $("againBtn").addEventListener("pointerup", e => { e.preventDefault(); sBtn(); startGame(); });
+  $("diaryBtn").addEventListener("pointerup", e => { e.preventDefault(); sBtn(); openDiary(); });
+  $("awakenDiaryBtn").addEventListener("pointerup", e => { e.preventDefault(); sBtn(); openDiary(); });
+  $("diaryClose").addEventListener("pointerup", e => {
+    e.preventDefault(); sBtn();
+    $("diaryOv").classList.add("hidden");
+  });
+  $("mute").addEventListener("pointerup", e => {
+    e.preventDefault();
+    muted = !muted;
+    $("mute").textContent = muted ? "🔇" : "🔊";
+    try { localStorage.setItem(LS + "muted", muted ? "1" : "0"); } catch (er) {}
+    updateDrone();
+  });
+  $("mute").textContent = muted ? "🔇" : "🔊";
+  refreshTitleStat();
+
+  /* ---------- ダブルタップズーム無効化(3点セット) ---------- */
+  document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
+  document.addEventListener("gesturestart", e => e.preventDefault(), { passive: false });
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", e => {
+    const t = Date.now();
+    if (t - lastTouchEnd < 350) e.preventDefault();
+    lastTouchEnd = t;
+  }, { passive: false });
+
+  /* ---------- テストフック ---------- */
+  window.__MEZ__ = {
+    state: () => ({
+      phase, streak, chosen, outcome, correctSide, fallFrom,
+      totalPicks, totalFalls, bestStreak, awakenCount, diaryBits, runPicks,
+      susDur, phaseT,
+    }),
+    doorRect: i => {
+      if (!lay) lay = layout();
+      const d = lay.doors[i], b = cv.getBoundingClientRect();
+      return { x: b.left + d.x, y: b.top + d.y, w: d.w, h: d.h };
+    },
+    start: () => startGame(),
+    pick: i => pick(i),
+    rig: v => rigQueue.push(!!v),
+    skipSuspense: () => { if (phase === "suspense") { phaseT = susDur; } },
+    skipAnim: () => { if (phase === "ascend") phaseT = ASC_DUR; if (phase === "fall") phaseT = FALL_DUR; },
+  };
+})();
+</script>
+</body>
+</html>
