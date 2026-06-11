@@ -96,6 +96,7 @@ Web Audioの音はiOSの消音スイッチ(マナーモード)で無音になる
    - スクリーンショットを撮って見た目を目視確認
    - 過去、ヘッドレステストだけでは「スタート前のフレームで例外→ループ停止」を見逃した。**実ブラウザE2Eを省略しない**
    - 雛形: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` を executablePath に、一時ディレクトリに `npm install puppeteer-core`
+   - **`file://` ではなくローカルHTTPサーバ経由でテストする**(`python3 -m http.server`)。file://だと同梱画像を読んだ時点でcanvasが汚染され `getImageData` がSecurityErrorになる(SOZO 8192で実際に起きた)
 
 ## 5. ドキュメント
 
