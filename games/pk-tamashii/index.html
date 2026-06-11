@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#06101e">
+<title>PK魂 — 世界一決定PKトーナメント</title>
+<meta name="description" content="引っぱって狙え、揺れる照準を見極めて蹴れ!PK戦だけで世界の頂点を目指す5連戦トーナメント。勝つたび強化を選ぶローグライト風サッカーゲーム。">
+<meta property="og:title" content="PK魂 — 世界一決定PKトーナメント">
+<meta property="og:description" content="引っぱって狙え、揺れる照準を見極めて蹴れ!PK戦だけで世界の頂点を目指す5連戦トーナメント。勝つたび強化を選ぶローグライト風サッカーゲーム。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/pk-tamashii/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/pk-tamashii/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; touch-action: manipulation; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #030810;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    color: #fff;
+  }
+  body {
+    background-image:
+      radial-gradient(ellipse 70% 45% at 50% -5%, rgba(64, 156, 255, 0.10), transparent),
+      radial-gradient(ellipse 55% 35% at 85% 105%, rgba(46, 204, 113, 0.07), transparent);
+  }
+  /* PCワイド画面対策: 縦長カラムに制限して中央寄せ */
+  #stage {
+    position: fixed; top: 0; bottom: 0;
+    left: 50%; transform: translateX(-50%);
+    width: min(100vw, 520px, 64vh);
+    background: #06101e;
+    box-shadow: 0 0 60px rgba(0,0,0,0.8);
+  }
+  #cv {
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+  }
+  #mute {
+    position: absolute;
+    top: calc(var(--sat) + 10px); right: 12px;
+    z-index: 30;
+    width: 42px; height: 42px;
+    border: 2px solid rgba(255,255,255,0.22);
+    border-radius: 12px;
+    background: rgba(10,22,40,0.75);
+    color: #fff; font-size: 19px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .ov {
+    position: absolute; inset: 0;
+    z-index: 20;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 13px;
+    background: rgba(4,10,20,0.93);
+    padding: calc(var(--sat) + 16px) 18px calc(var(--sab) + 16px);
+    text-align: center;
+    overflow-y: auto;
+  }
+  .hidden { display: none !important; }
+  .kv {
+    width: min(78vw, 380px);
+    max-height: 30vh;
+    object-fit: cover;
+    border-radius: 16px;
+    border: 2px solid rgba(255,214,84,0.45);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 0 30px rgba(255,196,40,0.18);
+    pointer-events: none;
+  }
+  .title {
+    font-family: "Bungee", "Zen Kaku Gothic New", cursive;
+    font-size: clamp(38px, 12vw, 60px);
+    line-height: 1.02;
+    margin: 0;
+    background: linear-gradient(135deg, #ffe27a 0%, #ffb02e 45%, #ff5d3a 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 4px 14px rgba(255,140,40,0.4));
+  }
+  .sub {
+    font-family: "Space Mono", monospace;
+    letter-spacing: 0.28em;
+    font-size: 12px; color: #8fb0d8;
+    margin: -6px 0 0;
+  }
+  .desc { font-size: 13.5px; color: #d6e4f5; line-height: 1.85; margin: 2px 0; max-width: 430px; }
+  .desc b { color: #ffd54f; }
+  .desc .sv { color: #6ee7ff; font-weight: 700; }
+  .stat {
+    font-family: "Space Mono", monospace;
+    font-size: 13px; color: #8fb0d8;
+  }
+  .stat b { color: #fff; font-size: 16px; }
+  .kbd { font-size: 11px; color: #5e7799; margin-top: 0; }
+  .btn {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700; font-size: 18px;
+    color: #0b1c0d;
+    background: linear-gradient(135deg, #7dff8e, #1fd45f);
+    border: none; border-radius: 16px;
+    padding: 15px 46px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(46,213,115,0.4);
+    touch-action: manipulation;
+  }
+  .btn:active { transform: scale(0.96); }
+  h2.ovh {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700;
+    font-size: 22px; margin: 0;
+    color: #ffd54f;
+    text-shadow: 0 2px 12px rgba(255,180,40,0.4);
+  }
+  .upcard {
+    width: min(86vw, 360px);
+    display: flex; align-items: center; gap: 14px;
+    background: linear-gradient(135deg, rgba(28,52,86,0.9), rgba(14,28,50,0.9));
+    border: 2px solid rgba(110,231,255,0.35);
+    border-radius: 16px;
+    padding: 13px 16px;
+    cursor: pointer;
+    color: #fff;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    text-align: left;
+    touch-action: manipulation;
+  }
+  .upcard:active { transform: scale(0.97); border-color: #ffd54f; }
+  .upcard .ic { font-size: 30px; flex: 0 0 auto; }
+  .upcard .nm { font-weight: 700; font-size: 16.5px; color: #ffe27a; }
+  .upcard .lv { font-size: 11px; color: #6ee7ff; font-family: "Space Mono", monospace; margin-left: 6px; }
+  .upcard .ds { font-size: 12.5px; color: #c4d6ec; line-height: 1.5; }
+  .endbig { font-size: clamp(30px, 9vw, 44px); font-weight: 700; margin: 0; line-height: 1.2; }
+  .endbig.win { color: #ffd54f; text-shadow: 0 0 24px rgba(255,200,60,0.55); }
+  .endbig.lose { color: #93a7c0; }
+  .trophy { font-size: clamp(56px, 18vw, 90px); line-height: 1; margin: 0; filter: drop-shadow(0 8px 24px rgba(255,200,60,0.45)); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <button id="mute" aria-label="サウンド切替">🔊</button>
+
+  <div id="ovTitle" class="ov">
+    <img id="kvImg" class="kv hidden" alt="PK魂 キービジュアル">
+    <h1 class="title">PK魂</h1>
+    <p class="sub">PK TAMASHII &mdash; WORLD KNOCKOUT</p>
+    <p class="desc">
+      PK戦だけで世界の頂点を決める<b>5連戦トーナメント</b>。<br>
+      攻撃: <b>ドラッグで狙い、指を離してシュート!</b><br>
+      照準は揺れる。<b>静まる瞬間</b>を見極めろ。<br>
+      守備: <span class="sv">ゴールをタップして横っ飛びセーブ!</span><br>
+      矢印は相手の視線&hellip;だがウソかもしれない。<br>
+      勝ち抜くたびに<b>強化を1つ</b>選んで決勝へ。
+    </p>
+    <p class="stat" id="titleStat"></p>
+    <button class="btn" id="btnStart">キックオフ ⚽</button>
+    <p class="kbd">PC: ←→↑↓で照準/コース、Spaceでシュート・ダイブ</p>
+  </div>
+
+  <div id="ovUpgrade" class="ov hidden">
+    <h2 class="ovh">勝ち抜き!! 強化を選べ</h2>
+    <p class="desc" id="upRound"></p>
+    <button class="upcard" id="up0"></button>
+    <button class="upcard" id="up1"></button>
+    <button class="upcard" id="up2"></button>
+  </div>
+
+  <div id="ovEnd" class="ov hidden">
+    <p class="trophy" id="endIcon">🏆</p>
+    <p class="endbig win" id="endTitle">世界の頂点!!</p>
+    <p class="desc" id="endDesc"></p>
+    <p class="stat" id="endStat"></p>
+    <button class="btn" id="btnRetry">もう一度挑む</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
+
+  /* ---------- オーディオ(iOS消音スイッチ対策込み) ---------- */
+  let AC = null;
+  let muted = false;
+  try { muted = localStorage.getItem("pk_muted") === "1"; } catch (e) {}
+  function audio() {
+    if (!AC) {
+      try {
+        AC = new (window.AudioContext || window.webkitAudioContext)();
+        AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+      } catch (e) {}
+    }
+    if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  let silentEl = null;
+  function silentWavUrl() {
+    const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE");
+    str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    str(36, "data"); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  function unlockAudio() {
+    if (!silentEl) {
+      silentEl = document.createElement("audio");
+      silentEl.setAttribute("playsinline", "");
+      silentEl.loop = true;
+      silentEl.volume = 0.01;
+      silentEl.src = silentWavUrl();
+    }
+    const p = silentEl.play();
+    if (p && p.catch) p.catch(() => {});
+    audio();
+    if (!AC) return;
+    const done = () => {
+      if (AC.state === "running") {
+        ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+      }
+    };
+    try { AC.resume().then(done); } catch (e) { done(); }
+  }
+  ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+  function tone(f, d, type, vol, slideTo, at) {
+    if (muted || !audio()) return;
+    try {
+      const t0 = AC.currentTime + (at || 0);
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || "sine"; o.frequency.setValueAtTime(f, t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + d);
+      g.gain.setValueAtTime(vol || 0.06, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+      o.connect(g); g.connect(AC.destination);
+      o.start(t0); o.stop(t0 + d);
+    } catch (e) {}
+  }
+  function noiseBurst(d, vol, at, lpFreq) {
+    if (muted || !audio()) return;
+    try {
+      const n = Math.floor(AC.sampleRate * d);
+      const buf = AC.createBuffer(1, n, AC.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const src = AC.createBufferSource(); src.buffer = buf;
+      const g = AC.createGain(); g.gain.value = vol || 0.08;
+      src.connect(g);
+      if (lpFreq) {
+        const f = AC.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = lpFreq;
+        g.connect(f); f.connect(AC.destination);
+      } else {
+        g.connect(AC.destination);
+      }
+      src.start(AC.currentTime + (at || 0));
+    } catch (e) {}
+  }
+  /* 観客のざわめき(常時ループ)と歓声 */
+  let crowdGain = null;
+  function startCrowd() {
+    if (muted || !audio() || crowdGain) return;
+    try {
+      const n = AC.sampleRate * 2;
+      const buf = AC.createBuffer(1, n, AC.sampleRate);
+      const data = buf.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < n; i++) { last = (last + (Math.random() * 2 - 1) * 0.04) * 0.985; data[i] = last * 3; }
+      const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+      const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 700;
+      crowdGain = AC.createGain(); crowdGain.gain.value = 0.018;
+      const lfo = AC.createOscillator(); lfo.frequency.value = 0.13;
+      const lfoG = AC.createGain(); lfoG.gain.value = 0.006;
+      lfo.connect(lfoG); lfoG.connect(crowdGain.gain);
+      src.connect(lp); lp.connect(crowdGain); crowdGain.connect(AC.destination);
+      src.start(); lfo.start();
+    } catch (e) {}
+  }
+  function roar(big) {
+    if (muted || !audio()) return;
+    noiseBurst(big ? 1.5 : 0.8, big ? 0.16 : 0.09, 0, 1100);
+    if (crowdGain) {
+      try {
+        crowdGain.gain.cancelScheduledValues(AC.currentTime);
+        crowdGain.gain.setValueAtTime(big ? 0.07 : 0.045, AC.currentTime);
+        crowdGain.gain.exponentialRampToValueAtTime(0.018, AC.currentTime + (big ? 2.4 : 1.4));
+      } catch (e) {}
+    }
+  }
+  const sWhistle = () => { tone(2350, 0.13, "square", 0.035); tone(2350, 0.22, "square", 0.035, null, 0.17); };
+  const sWhistleLong = () => { tone(2350, 0.5, "square", 0.04); tone(2480, 0.45, "square", 0.025, null, 0.04); };
+  const sKick = () => { noiseBurst(0.06, 0.12, 0, 900); tone(110, 0.13, "sine", 0.14, 55); };
+  const sNet = () => noiseBurst(0.16, 0.06, 0, 2400);
+  const sPost = () => { tone(640, 0.35, "square", 0.05, 600); tone(960, 0.28, "triangle", 0.035, 900, 0.01); };
+  const sCatch = () => { noiseBurst(0.05, 0.1, 0, 1400); tone(180, 0.1, "sine", 0.1, 90); };
+  const sGroan = () => { tone(230, 0.6, "sawtooth", 0.045, 130); noiseBurst(0.5, 0.04, 0, 500); };
+  const sHeart = () => { tone(54, 0.1, "sine", 0.16); tone(48, 0.12, "sine", 0.13, null, 0.16); };
+  const sBtn = () => tone(520, 0.07, "square", 0.03);
+  const sChime = () => { [660, 880, 1320].forEach((f, i) => tone(f, 0.16, "triangle", 0.05, null, i * 0.07)); };
+  const sBanner = () => { noiseBurst(0.12, 0.05, 0, 3000); tone(330, 0.18, "triangle", 0.05, 660); };
+  function sFanfare() {
+    const seq = [523, 523, 523, 659, 784, 659, 784, 1047];
+    seq.forEach((f, i) => tone(f, i === seq.length - 1 ? 0.7 : 0.16, "triangle", 0.06, null, i * 0.16));
+    seq.forEach((f, i) => tone(f / 2, i === seq.length - 1 ? 0.7 : 0.16, "square", 0.025, null, i * 0.16));
+    noiseBurst(1.2, 0.1, 0.9, 1500);
+  }
+  const vib = ms => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} };
+
+  /* ---------- データ定義 ---------- */
+  const ROUNDS = [
+    { name: "1回戦",   label: "BEST 32",       read: 0.22, reach: 30, cueTruth: 0.90, oppMiss: 0.18, acc: 15, flight: 0.66 },
+    { name: "2回戦",   label: "BEST 16",       read: 0.30, reach: 32, cueTruth: 0.80, oppMiss: 0.15, acc: 12, flight: 0.62 },
+    { name: "準々決勝", label: "QUARTER FINAL", read: 0.38, reach: 34, cueTruth: 0.70, oppMiss: 0.12, acc: 10, flight: 0.58 },
+    { name: "準決勝",   label: "SEMI FINAL",    read: 0.46, reach: 36, cueTruth: 0.60, oppMiss: 0.10, acc: 8,  flight: 0.54 },
+    { name: "決勝",     label: "FINAL",         read: 0.55, reach: 38, cueTruth: 0.50, oppMiss: 0.08, acc: 6,  flight: 0.50 },
+  ];
+  const REACHED = ["ベスト32", "ベスト16", "ベスト8", "ベスト4", "準優勝", "優勝"];
+  const TEAM_TIERS = [
+    [
+      { flag: "🇺🇸", name: "USA",         jersey: "#c0392b", gk: "#888f99" },
+      { flag: "🇦🇺", name: "AUSTRALIA",   jersey: "#e8b923", gk: "#3a7d44" },
+      { flag: "🇸🇦", name: "SAUDI",       jersey: "#2e8b57", gk: "#cccccc" },
+      { flag: "🇲🇽", name: "MEXICO",      jersey: "#1f7a4d", gk: "#7a3fa0" },
+    ],
+    [
+      { flag: "🇰🇷", name: "KOREA",       jersey: "#d4334a", gk: "#333a44" },
+      { flag: "🇺🇾", name: "URUGUAY",     jersey: "#5dade2", gk: "#c47f17" },
+      { flag: "🇨🇭", name: "SUISSE",      jersey: "#d63031", gk: "#e8c020" },
+      { flag: "🇩🇰", name: "DANMARK",     jersey: "#cf3a4a", gk: "#2bb3a3" },
+    ],
+    [
+      { flag: "🇳🇱", name: "NEDERLAND",   jersey: "#e67e22", gk: "#3fa45a" },
+      { flag: "🇵🇹", name: "PORTUGAL",    jersey: "#a93226", gk: "#d9d9d9" },
+      { flag: "🇧🇪", name: "BELGIUM",     jersey: "#b03a2e", gk: "#e8c020" },
+      { flag: "🇭🇷", name: "HRVATSKA",    jersey: "#d44", gk: "#3a6fd8" },
+    ],
+    [
+      { flag: "🇩🇪", name: "DEUTSCH",     jersey: "#ececec", gk: "#1d8f4e" },
+      { flag: "🇪🇸", name: "ESPANA",      jersey: "#c0392b", gk: "#222831" },
+      { flag: "🇮🇹", name: "ITALIA",      jersey: "#2471a3", gk: "#888f99" },
+      { flag: "🇫🇷", name: "FRANCE",      jersey: "#1a3263", gk: "#cf3a4a" },
+    ],
+    [
+      { flag: "🇧🇷", name: "BRASIL",      jersey: "#f1c40f", gk: "#2ecc71" },
+      { flag: "🇦🇷", name: "ARGENTINA",   jersey: "#7fc4e8", gk: "#444c56" },
+    ],
+  ];
+  const ME = { flag: "🇯🇵", name: "NIPPON", jersey: "#1b3f9e", gk: "#ff8c2e" };
+  const UPGRADES = [
+    { id: "seimitsu", icon: "🎯", name: "精密キック",   desc: "照準の揺れが25%小さくなる", max: 2 },
+    { id: "kokoro",   icon: "❤️‍🔥", name: "鋼の心臓",   desc: "プレッシャーで照準が乱れなくなる", max: 1 },
+    { id: "senrigan", icon: "👁️", name: "千里眼",       desc: "相手キッカーの視線(矢印)が正直になりやすい", max: 2 },
+    { id: "kami",     icon: "🧤", name: "神の手",       desc: "セーブできる範囲が20%広がる", max: 2 },
+    { id: "zone",     icon: "🐢", name: "ゾーン",       desc: "相手のシュートがスローに見える", max: 1 },
+    { id: "curve",    icon: "🌀", name: "魔球カーブ",   desc: "敵キーパーにコースを読まれにくくなる", max: 2 },
+    { id: "iatsu",    icon: "🔥", name: "威圧オーラ",   desc: "相手キッカーが枠を外しやすくなる", max: 2 },
+    { id: "retry",    icon: "🔁", name: "もう一蹴り",   desc: "1試合に1回、失敗したキックをやり直せる", max: 1 },
+  ];
+
+  /* ---------- 永続化 ---------- */
+  let recs = { champs: 0, best: -1, plays: 0 };
+  try {
+    const raw = localStorage.getItem("pk_tamashii");
+    if (raw) { const p = JSON.parse(raw); if (p && typeof p === "object") recs = Object.assign(recs, p); }
+  } catch (e) {}
+  function saveRecs() { try { localStorage.setItem("pk_tamashii", JSON.stringify(recs)); } catch (e) {} }
+
+  /* ---------- キャンバス ---------- */
+  const stage = $("stage");
+  const cv = $("cv");
+  const ctx = cv.getContext("2d");
+  let dpr = 1, cssW = 390, cssH = 700, scale = 1;
+  const LW = 400;          // 論理幅は固定
+  let LH = 700;            // 論理高さ
+  const L = { postL: 62, postR: 338, barY: 160, groundY: 272, ballX: 200, ballY: 560, ballR: 11 };
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 3);
+    cssW = stage.clientWidth || 390;
+    cssH = stage.clientHeight || 700;
+    cv.width = Math.round(cssW * dpr);
+    cv.height = Math.round(cssH * dpr);
+    scale = cssW / LW;
+    LH = cssH / scale;
+    L.groundY = clamp(LH * 0.44, 240, 320);
+    L.barY = L.groundY - 116;
+    L.ballY = L.groundY + (LH - L.groundY) * 0.56;
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  /* ---------- 画像アセット(失敗時はcanvas描画にフォールバック) ---------- */
+  const imgStadium = new Image();
+  let stadiumOk = false;
+  imgStadium.onload = () => { stadiumOk = true; };
+  imgStadium.src = "assets/stadium.jpg";
+  const kvEl = $("kvImg");
+  const kvProbe = new Image();
+  kvProbe.onload = () => { kvEl.src = kvProbe.src; kvEl.classList.remove("hidden"); };
+  kvProbe.src = "assets/keyvisual.jpg";
+
+  /* ---------- 状態(ループが触るものは全てここで初期化) ---------- */
+  let phase = "title";   // title|intro|aim|shotFly|shotResult|keepWait|keepFly|keepResult|matchEnd|upgrade|end
+  let phT = 0;
+  let now = 0;
+  let roundIdx = 0;
+  let upg = {};                      // id -> count
+  let stats = { goals: 0, saves: 0, kicks: 0, faced: 0 };
+  let match = null;                  // {opp,kick,turn,pMarks,oMarks,sd,retryUsed,winner}
+  let aim = { active: false, x: 200, y: 200, px: 0, py: 0, kb: false };
+  let shot = null;                   // {tx,ty,t,dur,inGoal,post,kdx,kdy,saved,outcome}
+  let keep = null;                   // {tx,ty,willMiss,cueSide,runDur,dur,t,phase,dive,outcome}
+  let cutin = null;                  // {text,color,t,sub}
+  let confetti = [];
+  let shake = 0;
+  let flashV = 0;
+  let heartT = 0;
+  let hintShoot = true, hintKeep = true;
+  let lastOutcome = "";              // テスト用
+  const keys = {};
+  const rig = {};                    // テスト用の固定化フック
+
+  /* ---------- ゲームフロー ---------- */
+  function effWobble() {
+    let amp = 22 * Math.pow(0.75, upg.seimitsu || 0);
+    if (isPressure() && !(upg.kokoro)) amp *= 1.5;
+    return amp;
+  }
+  function isPressure() {
+    if (!match) return false;
+    return match.sd || match.kick >= 3;
+  }
+  function cueTruthEff() { return clamp(ROUNDS[roundIdx].cueTruth + 0.18 * (upg.senrigan || 0), 0, 0.97); }
+  function reachEff(commit) { return 50 * (1 + 0.2 * (upg.kami || 0)) * commit; }
+  function readEff() { return ROUNDS[roundIdx].read * Math.pow(0.65, upg.curve || 0); }
+  function oppMissEff() { return ROUNDS[roundIdx].oppMiss + 0.08 * (upg.iatsu || 0); }
+  function flightEff() { return ROUNDS[roundIdx].flight * ((upg.zone) ? 1.4 : 1); }
+
+  function enter(p) {
+    phase = p; phT = 0;
+    if (p === "intro") { sBanner(); startCrowd(); }
+    if (p === "aim") { aim = { active: false, x: 200, y: L.groundY - 40, px: 0, py: 0, kb: false }; }
+    if (p === "keepWait") setupOppKick();
+  }
+
+  function startRun() {
+    roundIdx = 0; upg = {}; stats = { goals: 0, saves: 0, kicks: 0, faced: 0 };
+    recs.plays++; saveRecs();
+    $("ovTitle").classList.add("hidden");
+    startMatch();
+  }
+  function startMatch() {
+    const pool = TEAM_TIERS[roundIdx];
+    const opp = pool[Math.floor(Math.random() * pool.length)];
+    match = { opp, kick: 0, turn: "P", pMarks: [], oMarks: [], sd: false, retryUsed: false, winner: null };
+    enter("intro");
+  }
+  function goals(marks) { return marks.reduce((s, m) => s + m, 0); }
+  function decided() {
+    const pG = goals(match.pMarks), oG = goals(match.oMarks);
+    const pN = match.pMarks.length, oN = match.oMarks.length;
+    if (!match.sd) {
+      const pLeft = 5 - pN, oLeft = 5 - oN;
+      if (pG > oG + oLeft) return "P";
+      if (oG > pG + pLeft) return "O";
+      if (pN === 5 && oN === 5) {
+        if (pG !== oG) return pG > oG ? "P" : "O";
+        match.sd = true;
+      }
+      return null;
+    }
+    // サドンデス: 両者が同数蹴り終えた時点で差があれば決着
+    if (pN === oN && pN > 5 && pG !== oG) return pG > oG ? "P" : "O";
+    return null;
+  }
+  function afterKick() {
+    const w = decided();
+    if (w) {
+      match.winner = w;
+      lastOutcome = "match:" + w;
+      enter("matchEnd");
+      if (w === "P") { roar(true); sWhistleLong(); } else { sGroan(); sWhistleLong(); }
+      return;
+    }
+    if (match.turn === "P") {
+      match.turn = "O";
+      enter("keepWait");
+    } else {
+      match.turn = "P";
+      match.kick++;
+      enter("aim");
+      sWhistle();
+    }
+  }
+
+  /* --- 自分のキック --- */
+  function releaseShot(forceTx, forceTy) {
+    if (phase !== "aim") return;
+    const wob = wobbleNow();
+    let tx = forceTx != null ? forceTx : aim.x + wob.x;
+    let ty = forceTy != null ? forceTy : aim.y + wob.y;
+    stats.kicks++;
+    // 敵キーパーの判断
+    const R = ROUNDS[roundIdx];
+    let kdx, kdy;
+    const zonesX = [L.postL + 42, 200, L.postR - 42];
+    const zonesY = [L.barY + 32, L.groundY - 28];
+    if (rig.keeperDive === "on") { kdx = tx; kdy = ty; }
+    else if (rig.keeperDive === "away") { kdx = tx > 200 ? L.postL + 30 : L.postR - 30; kdy = L.groundY - 28; }
+    else if (rig.keeperDive && typeof rig.keeperDive === "object") { kdx = rig.keeperDive.x; kdy = rig.keeperDive.y; }
+    else if (Math.random() < readEff()) {
+      kdx = tx + rnd(-14, 14); kdy = ty + rnd(-12, 12);
+    } else {
+      const zx = zonesX[Math.floor(Math.random() * 3)];
+      const zy = zonesY[Math.floor(Math.random() * 2)];
+      kdx = zx + rnd(-12, 12); kdy = zy + rnd(-10, 10);
+    }
+    // 結果判定
+    const inX = tx > L.postL + 7 && tx < L.postR - 7;
+    const inY = ty > L.barY + 7 && ty < L.groundY - 2;
+    const nearFrame = tx > L.postL - 12 && tx < L.postR + 12 && ty > L.barY - 12 && ty < L.groundY;
+    const inGoal = inX && inY;
+    const post = !inGoal && nearFrame;
+    let saved = false;
+    if (inGoal) saved = dist(kdx, kdy, tx, ty) <= R.reach;
+    shot = { tx, ty, t: 0, dur: 0.55, inGoal, post, kdx, kdy, saved, outcome: inGoal ? (saved ? "saved" : "goal") : (post ? "post" : "miss") };
+    sKick();
+    enter("shotFly");
+  }
+  function resolveShot() {
+    const o = shot.outcome;
+    lastOutcome = "P:" + o;
+    const failed = o !== "goal";
+    if (failed && (upg.retry) && !match.retryUsed) {
+      match.retryUsed = true;
+      cutin = { text: "もう一蹴り!!", color: "#6ee7ff", sub: "外したキックをやり直す!", t: 0 };
+      sChime();
+      enter("shotResult");
+      shot.retrying = true;
+      return;
+    }
+    if (o === "goal") {
+      match.pMarks.push(1);
+      stats.goals++;
+      cutin = { text: "GOAL!!", color: "#ffd54f", sub: null, t: 0 };
+      burst(shot.tx, shot.ty, 60, true);
+      flashV = 0.55; shake = 7; roar(false); sNet(); vib(60);
+    } else {
+      match.pMarks.push(0);
+      if (o === "saved") { cutin = { text: "止められた…", color: "#ff7a6e", sub: null, t: 0 }; sCatch(); sGroan(); }
+      else if (o === "post") { cutin = { text: "ポスト直撃!", color: "#cfd8e3", sub: null, t: 0 }; sPost(); sGroan(); shake = 5; }
+      else { cutin = { text: "枠の外…", color: "#93a7c0", sub: null, t: 0 }; sGroan(); }
+    }
+    enter("shotResult");
+  }
+
+  /* --- 相手のキック --- */
+  function setupOppKick() {
+    const R = ROUNDS[roundIdx];
+    let willMiss = rig.oppMiss != null ? rig.oppMiss : Math.random() < oppMissEff();
+    let tx, ty;
+    if (rig.oppTarget) { tx = rig.oppTarget.x; ty = rig.oppTarget.y; willMiss = rig.oppMiss != null ? rig.oppMiss : false; }
+    else if (willMiss) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      if (Math.random() < 0.6) { tx = 200 + side * (200 - L.postL + rnd(8, 30)); ty = rnd(L.barY + 10, L.groundY - 20); }
+      else { tx = rnd(L.postL + 30, L.postR - 30); ty = L.barY - rnd(10, 32); }
+    } else if (Math.random() < 0.62) {
+      const cx = Math.random() < 0.5 ? L.postL + 26 : L.postR - 26;
+      const cy = Math.random() < 0.5 ? L.barY + 26 : L.groundY - 22;
+      tx = cx + rnd(-R.acc, R.acc); ty = cy + rnd(-R.acc, R.acc);
+      tx = clamp(tx, L.postL + 9, L.postR - 9); ty = clamp(ty, L.barY + 9, L.groundY - 4);
+    } else {
+      tx = rnd(L.postL + 40, L.postR - 40); ty = rnd(L.barY + 24, L.groundY - 10);
+    }
+    const truth = rig.cueTruth != null ? rig.cueTruth : Math.random() < cueTruthEff();
+    let side = tx >= 200 ? 1 : -1;
+    if (Math.abs(tx - 200) < 35) side = Math.random() < 0.5 ? 1 : -1;
+    const cueSide = truth ? side : -side;
+    keep = { tx, ty, willMiss, cueSide, runDur: 1.15, dur: flightEff(), t: 0, dive: null, outcome: null };
+    stats.faced++;
+    sWhistle();
+  }
+  function commitDive(x, y) {
+    if (!keep || keep.dive) return;
+    if (phase !== "keepWait" && phase !== "keepFly") return;
+    const commit = phase === "keepWait" ? 1 : Math.max(0.15, 1 - (keep.t / keep.dur) * 0.8);
+    keep.dive = {
+      x: clamp(x, L.postL - 20, L.postR + 20),
+      y: clamp(y, L.barY - 10, L.groundY),
+      commit,
+      at: phase === "keepWait" ? 0 : keep.t,
+    };
+  }
+  function resolveKeep() {
+    let outcome;
+    if (keep.willMiss) {
+      const overBar = keep.ty < L.barY;
+      outcome = "oppmiss";
+      cutin = { text: overBar ? "枠の上!助かった!" : "枠の外!助かった!", color: "#7dff8e", sub: null, t: 0 };
+      roar(false);
+      match.oMarks.push(0);
+    } else {
+      let saved = false;
+      if (keep.dive) {
+        saved = dist(keep.dive.x, keep.dive.y, keep.tx, keep.ty) <= reachEff(keep.dive.commit);
+      } else {
+        saved = dist(200, L.groundY - 38, keep.tx, keep.ty) <= 26;
+      }
+      if (saved) {
+        outcome = "save";
+        match.oMarks.push(0);
+        stats.saves++;
+        cutin = { text: "SUPER SAVE!!", color: "#6ee7ff", sub: null, t: 0 };
+        burst(keep.tx, keep.ty, 40, false);
+        flashV = 0.5; shake = 6; roar(true); sCatch(); vib(80);
+      } else {
+        outcome = "goal";
+        match.oMarks.push(1);
+        cutin = { text: "決められた…", color: "#ff7a6e", sub: null, t: 0 };
+        sNet(); sGroan();
+      }
+    }
+    keep.outcome = outcome;
+    lastOutcome = "O:" + outcome;
+    enter("keepResult");
+  }
+
+  /* --- 試合終了/強化/エンド --- */
+  function onMatchEndDone() {
+    if (match.winner === "P") {
+      if (roundIdx >= 4) { endRun(true); return; }
+      showUpgrades();
+    } else {
+      endRun(false);
+    }
+  }
+  function showUpgrades() {
+    enter("upgrade");
+    const cand = UPGRADES.filter(u => (upg[u.id] || 0) < u.max);
+    const picks = [];
+    while (picks.length < 3 && cand.length) {
+      const i = Math.floor(Math.random() * cand.length);
+      picks.push(cand.splice(i, 1)[0]);
+    }
+    upChoices = picks;
+    picks.forEach((u, i) => {
+      const el = $("up" + i);
+      el.classList.remove("hidden");
+      const lv = upg[u.id] ? `<span class="lv">Lv${(upg[u.id] || 0) + 1}</span>` : "";
+      el.innerHTML = `<span class="ic">${u.icon}</span><span><span class="nm">${u.name}${lv}</span><br><span class="ds">${u.desc}</span></span>`;
+    });
+    for (let i = picks.length; i < 3; i++) $("up" + i).classList.add("hidden");
+    $("upRound").innerHTML = `${ROUNDS[roundIdx].name}を突破!次は<b>${ROUNDS[roundIdx + 1].name}</b>だ。`;
+    $("ovUpgrade").classList.remove("hidden");
+    sChime();
+  }
+  let upChoices = [];
+  function pickUpgrade(i) {
+    if (phase !== "upgrade" || !upChoices[i]) return;
+    const u = upChoices[i];
+    upg[u.id] = (upg[u.id] || 0) + 1;
+    $("ovUpgrade").classList.add("hidden");
+    sBtn();
+    roundIdx++;
+    startMatch();
+  }
+  function endRun(champion) {
+    enter("end");
+    const reached = champion ? 5 : roundIdx;
+    if (reached > recs.best) recs.best = reached;
+    if (champion) recs.champs++;
+    saveRecs();
+    $("endIcon").textContent = champion ? "🏆" : "😭";
+    const t = $("endTitle");
+    t.textContent = champion ? "世界の頂点!!" : `${ROUNDS[roundIdx].name}で敗退…`;
+    t.className = "endbig " + (champion ? "win" : "lose");
+    $("endDesc").innerHTML = champion
+      ? `PK戦5連勝、<b>NIPPONが世界一</b>に輝いた!!`
+      : `今回の成績: <b>${REACHED[reached]}</b>。揺れが静まる瞬間を狙え。次こそ頂点へ。`;
+    $("endStat").innerHTML =
+      `ゴール <b>${stats.goals}</b>/${stats.kicks} ・ セーブ <b>${stats.saves}</b>/${stats.faced}<br>` +
+      `優勝回数 <b>${recs.champs}</b> ・ 最高成績 <b>${recs.best >= 0 ? REACHED[recs.best] : "—"}</b>`;
+    $("ovEnd").classList.remove("hidden");
+    if (champion) { sFanfare(); bigConfetti(); } else { sGroan(); }
+  }
+
+  /* ---------- パーティクル ---------- */
+  function burst(x, y, n, gold) {
+    for (let i = 0; i < n; i++) {
+      const a = rnd(0, Math.PI * 2), sp = rnd(40, 260);
+      confetti.push({
+        x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
+        life: rnd(0.5, 1.3), t: 0, sz: rnd(2.5, 5.5),
+        col: gold ? ["#ffd54f", "#ffb02e", "#fff3c0", "#ff8c4a"][i % 4] : ["#6ee7ff", "#b3f3ff", "#3fa9ff", "#dffaff"][i % 4],
+      });
+    }
+  }
+  function bigConfetti() {
+    for (let i = 0; i < 130; i++) {
+      confetti.push({
+        x: rnd(0, LW), y: rnd(-LH * 0.4, 0), vx: rnd(-25, 25), vy: rnd(60, 160),
+        life: rnd(2.2, 4.2), t: 0, sz: rnd(3, 7),
+        col: ["#ffd54f", "#ff6e9c", "#6ee7ff", "#7dff8e", "#ffb02e", "#c79bff"][i % 6],
+      });
+    }
+  }
+
+  /* ---------- 入力 ---------- */
+  function toLogical(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
+  }
+  cv.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    const p = toLogical(e);
+    if (phase === "aim") {
+      aim.active = true; aim.kb = false;
+      aim.px = p.x; aim.py = p.y;
+      aim.x = 200; aim.y = L.groundY - 40;
+      try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    } else if (phase === "keepWait" || phase === "keepFly") {
+      commitDive(p.x, p.y);
+    }
+  }, { passive: false });
+  cv.addEventListener("pointermove", e => {
+    if (phase === "aim" && aim.active && !aim.kb) {
+      const p = toLogical(e);
+      aim.x = clamp(200 + (p.x - aim.px) * 2.4, L.postL - 26, L.postR + 26);
+      aim.y = clamp(L.groundY - 40 + (p.y - aim.py) * 2.4, L.barY - 24, L.groundY);
+    }
+  });
+  cv.addEventListener("pointerup", e => {
+    e.preventDefault();
+    if (phase === "aim" && aim.active && !aim.kb) releaseShot();
+  }, { passive: false });
+
+  window.addEventListener("keydown", e => {
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " "].includes(e.key)) e.preventDefault();
+    keys[e.key] = true;
+    if (phase === "title" && (e.key === " " || e.key === "Enter")) { startRun(); return; }
+    if (phase === "aim") {
+      if (e.key.startsWith("Arrow") && !aim.active) { aim.active = true; aim.kb = true; aim.x = 200; aim.y = L.groundY - 40; }
+      if ((e.key === " " || e.key === "Enter") && aim.active) releaseShot();
+    } else if (phase === "keepWait" || phase === "keepFly") {
+      const cx = 200, w = (L.postR - L.postL) / 2 - 30;
+      const hY = L.barY + 30, mY = L.barY + 64, lY = L.groundY - 24;
+      const map = {
+        q: [cx - w, hY], e: [cx + w, hY], a: [cx - w, mY], d: [cx + w, mY], s: [cx, lY],
+        ArrowLeft: [cx - w, mY], ArrowRight: [cx + w, mY], ArrowUp: [cx, hY], ArrowDown: [cx, lY], " ": [cx, mY],
+      };
+      const m = map[e.key];
+      if (m) commitDive(m[0], m[1]);
+    }
+  });
+  window.addEventListener("keyup", e => { keys[e.key] = false; });
+
+  $("btnStart").addEventListener("pointerup", () => { sBtn(); startRun(); });
+  $("btnRetry").addEventListener("pointerup", () => {
+    sBtn();
+    $("ovEnd").classList.add("hidden");
+    $("ovTitle").classList.remove("hidden");
+    updateTitleStat();
+    enter("title");
+  });
+  [0, 1, 2].forEach(i => $("up" + i).addEventListener("pointerup", () => pickUpgrade(i)));
+  $("mute").addEventListener("pointerup", () => {
+    muted = !muted;
+    $("mute").textContent = muted ? "🔇" : "🔊";
+    try { localStorage.setItem("pk_muted", muted ? "1" : "0"); } catch (e) {}
+  });
+  $("mute").textContent = muted ? "🔇" : "🔊";
+
+  function updateTitleStat() {
+    $("titleStat").innerHTML =
+      recs.best >= 0
+        ? `最高成績 <b>${REACHED[recs.best]}</b> ・ 優勝 <b>${recs.champs}</b>回`
+        : "世界の頂点はまだ遠い。最初の一蹴りを。";
+  }
+  updateTitleStat();
+
+  /* ---------- 描画 ---------- */
+  function wobbleNow() {
+    const amp = effWobble();
+    return {
+      x: amp * (0.62 * Math.sin(now * 4.7) + 0.38 * Math.sin(now * 8.3 + 1.7)),
+      y: amp * 0.8 * (0.62 * Math.sin(now * 5.6 + 0.9) + 0.38 * Math.sin(now * 9.1 + 3.1)),
+    };
+  }
+  function drawStadium() {
+    const horizon = L.groundY + 6;
+    if (stadiumOk) {
+      // cover配置で上部に観客席画像
+      const iw = imgStadium.width, ih = imgStadium.height;
+      const dw = LW, dh = horizon + 14;
+      const s = Math.max(dw / iw, dh / ih);
+      const sw = dw / s, sh = dh / s;
+      ctx.drawImage(imgStadium, (iw - sw) / 2, (ih - sh) * 0.42, sw, sh, 0, 0, dw, dh);
+      ctx.fillStyle = "rgba(4,12,26,0.32)";
+      ctx.fillRect(0, 0, dw, dh);
+    } else {
+      // フォールバック: 手描きスタンド
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#091a30"); g.addColorStop(1, "#13304f");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, LW, horizon);
+      for (let row = 0; row < 7; row++) {
+        const y = 18 + row * (horizon - 40) / 7;
+        for (let i = 0; i < 26; i++) {
+          ctx.fillStyle = `hsla(${(i * 47 + row * 91) % 360},60%,${58 + ((i + row) % 3) * 8}%,0.5)`;
+          ctx.beginPath();
+          ctx.arc(8 + i * (LW - 16) / 25 + (row % 2) * 4, y + Math.sin(i * 2.7 + row) * 2, 2.1, 0, 7);
+          ctx.fill();
+        }
+      }
+      // フラッドライト
+      [[40, 8], [360, 8]].forEach(([x, y]) => {
+        const lg = ctx.createRadialGradient(x, y, 2, x, y, 90);
+        lg.addColorStop(0, "rgba(255,250,220,0.55)"); lg.addColorStop(1, "transparent");
+        ctx.fillStyle = lg;
+        ctx.fillRect(x - 90, y - 90, 180, 180);
+      });
+    }
+    // ピッチ
+    const pg = ctx.createLinearGradient(0, horizon, 0, LH);
+    pg.addColorStop(0, "#2c7a3f"); pg.addColorStop(0.5, "#256b37"); pg.addColorStop(1, "#1c5a2c");
+    ctx.fillStyle = pg;
+    ctx.fillRect(0, horizon, LW, LH - horizon);
+    // 芝目(遠近感のある横縞)
+    ctx.fillStyle = "rgba(255,255,255,0.045)";
+    let y = horizon, band = 7;
+    let k = 0;
+    while (y < LH) {
+      if (k % 2 === 0) ctx.fillRect(0, y, LW, band);
+      y += band; band *= 1.38; k++;
+    }
+    // ペナルティスポット
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.beginPath(); ctx.ellipse(L.ballX, L.ballY + 2, 5, 2.2, 0, 0, 7); ctx.fill();
+  }
+  function drawGoal() {
+    const { postL, postR, barY, groundY } = L;
+    const depth = 26;
+    // ネット(奥行き)
+    ctx.strokeStyle = "rgba(230,240,255,0.32)";
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    for (let i = 0; i <= 14; i++) {
+      const x = lerp(postL, postR, i / 14);
+      ctx.moveTo(x, barY);
+      ctx.lineTo(lerp(x, 200, 0.10), barY - 0 + 2);
+      ctx.lineTo(lerp(x, 200, 0.10), groundY - depth * 0.4);
+    }
+    for (let j = 0; j <= 8; j++) {
+      const yy = lerp(barY, groundY - depth * 0.4, j / 8);
+      ctx.moveTo(lerp(postL, 200, 0.10), yy);
+      ctx.lineTo(lerp(postR, 200, 0.10), yy);
+    }
+    ctx.stroke();
+    // サイドネット
+    ctx.strokeStyle = "rgba(230,240,255,0.22)";
+    ctx.beginPath();
+    for (let j = 0; j <= 5; j++) {
+      const yy = lerp(barY, groundY, j / 5);
+      ctx.moveTo(postL, yy); ctx.lineTo(postL + depth * 0.4, lerp(yy, groundY - depth * 0.35, 0.4));
+      ctx.moveTo(postR, yy); ctx.lineTo(postR - depth * 0.4, lerp(yy, groundY - depth * 0.35, 0.4));
+    }
+    ctx.stroke();
+    // ゴールフレーム
+    ctx.lineWidth = 6;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#f4f8ff";
+    ctx.beginPath();
+    ctx.moveTo(postL, groundY);
+    ctx.lineTo(postL, barY);
+    ctx.lineTo(postR, barY);
+    ctx.lineTo(postR, groundY);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(140,160,190,0.6)";
+    ctx.beginPath();
+    ctx.moveTo(postL + 3, groundY); ctx.lineTo(postL + 3, barY + 3); ctx.lineTo(postR + 0, barY + 3);
+    ctx.stroke();
+    // ゴールライン
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillRect(0, groundY - 1.5, LW, 3);
+  }
+  function drawPlayerBody(x, y, jersey, opts) {
+    // opts: {rot, armL, armR, legSpread, s, back}
+    const o = Object.assign({ rot: 0, armL: -2.4, armR: -0.7, legSpread: 0.45, s: 1, back: false, headTint: "#e8b88a" }, opts);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(o.rot);
+    ctx.scale(o.s, o.s);
+    ctx.lineCap = "round";
+    // 脚
+    ctx.strokeStyle = "#1c2430";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(0, -16); ctx.lineTo(-9 * o.legSpread * 2, 0);
+    ctx.moveTo(0, -16); ctx.lineTo(9 * o.legSpread * 2, -1);
+    ctx.stroke();
+    // 胴体
+    ctx.fillStyle = jersey;
+    ctx.beginPath();
+    ctx.roundRect(-9, -38, 18, 24, 6);
+    ctx.fill();
+    // 腕
+    ctx.strokeStyle = jersey;
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(-7, -33); ctx.lineTo(-7 + Math.cos(o.armL) * 14, -33 + Math.sin(o.armL) * 14);
+    ctx.moveTo(7, -33); ctx.lineTo(7 + Math.cos(o.armR) * 14, -33 + Math.sin(o.armR) * 14);
+    ctx.stroke();
+    // 頭
+    ctx.fillStyle = o.back ? "#3a2c20" : o.headTint;
+    ctx.beginPath();
+    ctx.arc(0, -45, 6.5, 0, 7);
+    ctx.fill();
+    if (o.back) { ctx.fillStyle = "#2a2018"; ctx.beginPath(); ctx.arc(0, -47, 5.2, 0, 7); ctx.fill(); }
+    ctx.restore();
+  }
+  function drawKeeper(team, mode, prog, dx, dy) {
+    // mode: stand | dive ; (dx,dy)=ダイブ目標
+    const baseX = 200, baseY = L.groundY - 2;
+    if (mode === "stand") {
+      const sway = Math.sin(now * 2.2) * 3;
+      drawPlayerBody(baseX + sway, baseY, team.gk, { armL: -2.6, armR: -0.5, legSpread: 0.6, s: 1.06 });
+    } else {
+      const p = clamp(prog, 0, 1);
+      const px = lerp(baseX, clamp(dx, L.postL + 6, L.postR - 6), p);
+      const py = lerp(baseY, clamp(dy + 26, L.barY + 40, L.groundY + 2), p);
+      const dir = dx >= baseX ? 1 : -1;
+      const rot = dir * p * 1.25;
+      drawPlayerBody(px, py, team.gk, { rot, armL: dir > 0 ? -0.5 : -2.6, armR: dir > 0 ? -0.6 : -2.5, legSpread: 0.8, s: 1.06 });
+    }
+  }
+  function drawStriker(team, x, y, pose, back) {
+    if (pose === "kick") drawPlayerBody(x, y, team.jersey, { legSpread: 1.15, armL: -2.9, armR: -0.2, s: 1.12, back });
+    else if (pose === "run") {
+      const c = Math.sin(now * 16) * 0.5;
+      drawPlayerBody(x, y, team.jersey, { legSpread: 0.7 + c * 0.4, armL: -2.4 + c, armR: -0.8 - c, s: 1.12, back });
+    } else {
+      drawPlayerBody(x, y, team.jersey, { legSpread: 0.4, armL: -2.2, armR: -0.9, s: 1.12, back });
+    }
+  }
+  function drawBall(x, y, r) {
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.beginPath(); ctx.ellipse(x, Math.min(y + r + 5, L.groundY + (L.ballY - L.groundY) * 0.97 + r), r * 0.9, r * 0.35, 0, 0, 7); ctx.fill();
+    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.2, x, y, r);
+    g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#c9d2de");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    ctx.fillStyle = "#2a3240";
+    const a0 = now * 7;
+    for (let i = 0; i < 3; i++) {
+      const a = a0 + i * 2.09;
+      ctx.beginPath();
+      ctx.arc(x + Math.cos(a) * r * 0.55, y + Math.sin(a) * r * 0.55, r * 0.26, 0, 7);
+      ctx.fill();
+    }
+    ctx.strokeStyle = "rgba(80,95,115,0.5)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x, y, r - 0.5, 0, 7); ctx.stroke();
+  }
+  function drawScoreboard() {
+    if (!match) return;
+    const y0 = 14;
+    ctx.save();
+    ctx.fillStyle = "rgba(5,14,28,0.78)";
+    ctx.beginPath(); ctx.roundRect(20, y0, LW - 40, 64, 12); ctx.fill();
+    ctx.strokeStyle = "rgba(110,180,255,0.25)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(20, y0, LW - 40, 64, 12); ctx.stroke();
+    const R = ROUNDS[roundIdx];
+    ctx.fillStyle = "#8fb0d8";
+    ctx.font = "9px 'Space Mono', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(R.label + (match.sd ? " — SUDDEN DEATH" : ""), 200, y0 + 12);
+    ctx.font = "700 13px 'Zen Kaku Gothic New', sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(`${ME.flag} ${ME.name}`, 34, y0 + 30);
+    ctx.fillText(`${match.opp.flag} ${match.opp.name}`, 34, y0 + 50);
+    // スコア
+    ctx.font = "700 17px 'Space Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#ffd54f";
+    ctx.fillText(String(goals(match.pMarks)), 372, y0 + 31);
+    ctx.fillText(String(goals(match.oMarks)), 372, y0 + 51);
+    // キックマーク(直近5本)
+    const drawMarks = (marks, n, yy, isTurn) => {
+      const start = Math.max(0, marks.length - 5 + (match.sd ? 1 : 0));
+      const view = match.sd ? marks.slice(-5) : marks.slice(0, 5);
+      for (let i = 0; i < 5; i++) {
+        const x = 168 + i * 19;
+        const idx = (match.sd ? start : 0) + i;
+        const m = view[i];
+        ctx.beginPath(); ctx.arc(x, yy, 5.5, 0, 7);
+        if (m === 1) { ctx.fillStyle = "#3fd06c"; ctx.fill(); }
+        else if (m === 0) { ctx.fillStyle = "#d04a3f"; ctx.fill(); }
+        else {
+          ctx.strokeStyle = idx === n && isTurn ? "#ffd54f" : "rgba(160,180,205,0.5)";
+          ctx.lineWidth = idx === n && isTurn ? 2 : 1.2;
+          ctx.stroke();
+        }
+      }
+    };
+    drawMarks(match.pMarks, match.pMarks.length, y0 + 26, match.turn === "P");
+    drawMarks(match.oMarks, match.oMarks.length, y0 + 46, match.turn === "O");
+    ctx.restore();
+  }
+  function drawCutin() {
+    if (!cutin) return;
+    const t = cutin.t;
+    const inT = 0.14, stay = 1.0, outT = 0.25;
+    if (t > inT + stay + outT) { cutin = null; return; }
+    let k;
+    if (t < inT) k = t / inT;
+    else if (t < inT + stay) k = 1;
+    else k = 1 - (t - inT - stay) / outT;
+    const ease = 1 - Math.pow(1 - clamp(k, 0, 1), 3);
+    ctx.save();
+    ctx.globalAlpha = ease;
+    const cy = LH * 0.42;
+    ctx.fillStyle = "rgba(3,8,16,0.82)";
+    const bandH = 74;
+    ctx.fillRect(0, cy - bandH / 2, LW, bandH);
+    ctx.fillStyle = cutin.color;
+    ctx.fillRect(0, cy - bandH / 2 - 3, LW, 3);
+    ctx.fillRect(0, cy + bandH / 2, LW, 3);
+    ctx.translate(LW / 2 + (1 - ease) * 120, cy);
+    ctx.font = "700 34px 'Bungee','Zen Kaku Gothic New',sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = cutin.color;
+    ctx.shadowColor = cutin.color;
+    ctx.shadowBlur = 18;
+    ctx.fillText(cutin.text, 0, cutin.sub ? -10 : 0);
+    if (cutin.sub) {
+      ctx.shadowBlur = 0;
+      ctx.font = "700 13px 'Zen Kaku Gothic New',sans-serif";
+      ctx.fillStyle = "#dbe7f5";
+      ctx.fillText(cutin.sub, 0, 20);
+    }
+    ctx.restore();
+  }
+  function drawIntro() {
+    const R = ROUNDS[roundIdx];
+    ctx.save();
+    ctx.textAlign = "center";
+    const a = clamp(phT / 0.3, 0, 1) * (phT > 1.9 ? clamp(1 - (phT - 1.9) / 0.3, 0, 1) : 1);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "rgba(3,8,16,0.72)";
+    ctx.fillRect(0, LH * 0.3, LW, LH * 0.3);
+    ctx.fillStyle = "#ffd54f";
+    ctx.font = "700 30px 'Zen Kaku Gothic New',sans-serif";
+    ctx.fillText(R.name, 200, LH * 0.385);
+    ctx.fillStyle = "#8fb0d8";
+    ctx.font = "11px 'Space Mono',monospace";
+    ctx.fillText(R.label, 200, LH * 0.415);
+    ctx.fillStyle = "#fff";
+    ctx.font = "700 21px 'Zen Kaku Gothic New',sans-serif";
+    ctx.fillText(`${ME.flag} ${ME.name}  vs  ${match.opp.flag} ${match.opp.name}`, 200, LH * 0.47);
+    ctx.fillStyle = "#9fe0ff";
+    ctx.font = "700 14px 'Zen Kaku Gothic New',sans-serif";
+    ctx.fillText("PK戦 — 先攻: NIPPON", 200, LH * 0.525);
+    ctx.restore();
+  }
+  function drawHintText(text, y) {
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.font = "700 14px 'Zen Kaku Gothic New',sans-serif";
+    ctx.fillStyle = "rgba(7,16,30,0.7)";
+    const w = ctx.measureText(text).width + 26;
+    ctx.beginPath(); ctx.roundRect(200 - w / 2, y - 15, w, 26, 13); ctx.fill();
+    ctx.fillStyle = "#ffe9a8";
+    ctx.fillText(text, 200, y + 3);
+    ctx.restore();
+  }
+  function drawReticle() {
+    const wob = wobbleNow();
+    const x = aim.x + wob.x, y = aim.y + wob.y;
+    const inX = x > L.postL + 7 && x < L.postR - 7;
+    const inY = y > L.barY + 7 && y < L.groundY - 2;
+    const danger = !(inX && inY);
+    ctx.save();
+    ctx.strokeStyle = danger ? "#ff5d4a" : "#7dff8e";
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = danger ? "#ff5d4a" : "#7dff8e";
+    ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(x, y, 13, 0, 7); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 20, y); ctx.lineTo(x - 8, y);
+    ctx.moveTo(x + 8, y); ctx.lineTo(x + 20, y);
+    ctx.moveTo(x, y - 20); ctx.lineTo(x, y - 8);
+    ctx.moveTo(x, y + 8); ctx.lineTo(x, y + 20);
+    ctx.stroke();
+    ctx.restore();
+  }
+  function drawPressure() {
+    if (!isPressure() || (upg.kokoro)) return;
+    const pulse = 0.5 + 0.5 * Math.sin(now * 5);
+    ctx.save();
+    const g = ctx.createRadialGradient(200, LH / 2, LH * 0.32, 200, LH / 2, LH * 0.62);
+    g.addColorStop(0, "transparent");
+    g.addColorStop(1, `rgba(200,30,30,${0.10 + pulse * 0.10})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, LW, LH);
+    ctx.textAlign = "center";
+    ctx.font = "700 12px 'Space Mono',monospace";
+    ctx.fillStyle = `rgba(255,110,100,${0.6 + pulse * 0.4})`;
+    ctx.fillText("!! PRESSURE !!", 200, 96);
+    ctx.restore();
+  }
+
+  /* ---------- メインループ(タイトル時点から回す) ---------- */
+  let lastTs = 0;
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016);
+    lastTs = ts;
+    now += dt;
+    phT += dt;
+    update(dt);
+    render(dt);
+  }
+  function update(dt) {
+    if (cutin) cutin.t += dt;
+    shake = Math.max(0, shake - dt * 22);
+    flashV = Math.max(0, flashV - dt * 1.8);
+    for (let i = confetti.length - 1; i >= 0; i--) {
+      const c = confetti[i];
+      c.t += dt;
+      if (c.t > c.life) { confetti.splice(i, 1); continue; }
+      c.x += c.vx * dt; c.y += c.vy * dt;
+      c.vy += 150 * dt;
+      c.vx *= (1 - dt * 0.7);
+    }
+    if (phase === "intro" && phT > 2.2) { enter("aim"); sWhistle(); }
+    else if (phase === "aim") {
+      if (isPressure() && !(upg.kokoro)) {
+        heartT += dt;
+        if (heartT > 0.85) { heartT = 0; sHeart(); }
+      }
+      if (aim.kb && aim.active) {
+        const sp = 150 * dt;
+        if (keys.ArrowLeft) aim.x -= sp;
+        if (keys.ArrowRight) aim.x += sp;
+        if (keys.ArrowUp) aim.y -= sp;
+        if (keys.ArrowDown) aim.y += sp;
+        aim.x = clamp(aim.x, L.postL - 26, L.postR + 26);
+        aim.y = clamp(aim.y, L.barY - 24, L.groundY);
+      }
+    } else if (phase === "shotFly") {
+      shot.t += dt;
+      if (shot.t >= shot.dur) resolveShot();
+    } else if (phase === "shotResult") {
+      if (phT > 1.55) {
+        if (shot && shot.retrying) { enter("aim"); sWhistle(); }
+        else afterKick();
+      }
+    } else if (phase === "keepWait") {
+      if (phT >= keep.runDur) { sKick(); enter("keepFly"); }
+    } else if (phase === "keepFly") {
+      keep.t += dt;
+      if (keep.t >= keep.dur) resolveKeep();
+    } else if (phase === "keepResult") {
+      if (phT > 1.55) afterKick();
+    } else if (phase === "matchEnd") {
+      if (phT > 2.3) onMatchEndDone();
+    }
+  }
+  function render() {
+    // dpr+論理スケールを毎フレーム再設定(コンテキスト喪失対策)
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+    ctx.clearRect(0, 0, LW, LH);
+    ctx.save();
+    if (shake > 0) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
+
+    drawStadium();
+    drawGoal();
+
+    const opp = match ? match.opp : TEAM_TIERS[0][0];
+    if (phase === "aim" || phase === "shotFly" || phase === "shotResult") {
+      // 自分のキック: 敵キーパー+自分(後ろ姿)
+      if (phase === "aim") {
+        drawKeeper(opp, "stand", 0, 0, 0);
+        drawStriker(ME, L.ballX - 30, L.ballY + 18, "idle", true);
+        drawBall(L.ballX, L.ballY, L.ballR);
+        drawReticle();
+        drawPressure();
+        if (hintShoot) drawHintText("ドラッグで狙い、離してシュート!揺れの静まる瞬間を蹴れ", L.ballY + 52);
+      } else if (shot) {
+        const p = clamp(shot.t / shot.dur, 0, 1);
+        const kp = clamp((shot.t - 0.08) / (shot.dur - 0.08), 0, 1);
+        drawKeeper(opp, kp <= 0 ? "stand" : "dive", kp, shot.kdx, shot.kdy);
+        drawStriker(ME, L.ballX - 30, L.ballY + 18, "kick", true);
+        if (phase === "shotFly") {
+          const bx = lerp(L.ballX, shot.tx, p);
+          const by = lerp(L.ballY, shot.ty, p) - Math.sin(p * Math.PI) * 26;
+          drawBall(bx, by, lerp(L.ballR, 6.5, p));
+        } else {
+          // 結果静止画
+          if (shot.outcome === "goal") drawBall(shot.tx, shot.ty + 6, 6.5);
+          else if (shot.outcome === "saved") drawBall(shot.kdx + 18, L.groundY - 8, 7.5);
+          else drawBall(clamp(shot.tx, -10, LW + 10), Math.max(shot.ty, L.barY - 30), 6.5);
+        }
+      }
+    } else if (phase === "keepWait" || phase === "keepFly" || phase === "keepResult") {
+      // 相手のキック: 自分のキーパー(後ろ姿)+敵ストライカー
+      const k = keep;
+      const runP = phase === "keepWait" ? clamp(phT / k.runDur, 0, 1) : 1;
+      const sx = L.ballX - 30 - (1 - runP) * 60, sy = L.ballY + 18 + (1 - runP) * 24;
+      // 自分のキーパー
+      if (k.dive) {
+        const dp = phase === "keepWait" ? 0.25 : clamp((k.t - k.dive.at) / Math.max(0.18, k.dur - k.dive.at), 0, 1);
+        drawKeeper(ME, "dive", dp, k.dive.x, k.dive.y);
+      } else {
+        drawKeeper(ME, "stand", 0, 0, 0);
+      }
+      drawStriker(opp, sx, sy, phase === "keepWait" ? (runP > 0.15 ? "run" : "idle") : "kick", false);
+      // 視線キュー(走り込み中盤で点滅)
+      if (phase === "keepWait" && runP > 0.25 && runP < 0.85) {
+        const blink = Math.sin(now * 14) > -0.2;
+        if (blink) {
+          ctx.save();
+          ctx.font = "700 26px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#ffe27a";
+          ctx.shadowColor = "#ffb02e"; ctx.shadowBlur = 12;
+          ctx.fillText(k.cueSide > 0 ? "👉" : "👈", sx + (k.cueSide > 0 ? 46 : -46), sy - 52);
+          ctx.restore();
+        }
+      }
+      if (phase === "keepWait" || phase === "keepFly") {
+        // ダイブ予約マーカー
+        if (k.dive) {
+          ctx.save();
+          ctx.strokeStyle = "#6ee7ff";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath(); ctx.arc(k.dive.x, k.dive.y, reachEff(k.dive.commit), 0, 7); ctx.stroke();
+          ctx.restore();
+        }
+        if (phase === "keepFly") {
+          const p = clamp(k.t / k.dur, 0, 1);
+          const bx = lerp(L.ballX, k.tx, p);
+          const by = lerp(L.ballY, k.ty, p) - Math.sin(p * Math.PI) * 24;
+          drawBall(bx, by, lerp(L.ballR, 6.5, p));
+        } else {
+          drawBall(L.ballX, L.ballY, L.ballR);
+        }
+        if (hintKeep) drawHintText("ゴールをタップして横っ飛び!早いほど遠くまで届く", L.ballY + 52);
+      } else {
+        // keepResult
+        if (k.outcome === "goal") drawBall(k.tx, k.ty + 6, 6.5);
+        else if (k.outcome === "save" && k.dive) drawBall(k.dive.x + 14, L.groundY - 8, 7.5);
+        else drawBall(clamp(k.tx, -10, LW + 10), Math.max(k.ty, L.barY - 34), 6.5);
+      }
+    } else {
+      // title / intro / matchEnd / upgrade / end の背景
+      drawKeeper(match ? ME : { gk: ME.gk }, "stand", 0, 0, 0);
+      drawBall(L.ballX, L.ballY, L.ballR);
+    }
+
+    // 紙吹雪
+    for (const c of confetti) {
+      ctx.globalAlpha = clamp(1 - c.t / c.life, 0, 1);
+      ctx.fillStyle = c.col;
+      ctx.fillRect(c.x - c.sz / 2, c.y - c.sz / 2, c.sz, c.sz * 0.7);
+    }
+    ctx.globalAlpha = 1;
+
+    drawScoreboard();
+    if (phase === "intro") drawIntro();
+    if (phase === "matchEnd" && match) {
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(3,8,16,0.75)";
+      ctx.fillRect(0, LH * 0.36, LW, LH * 0.18);
+      ctx.font = "700 30px 'Zen Kaku Gothic New',sans-serif";
+      ctx.fillStyle = match.winner === "P" ? "#ffd54f" : "#93a7c0";
+      ctx.fillText(match.winner === "P" ? "勝ち抜き!!" : "PK戦 敗退…", 200, LH * 0.44);
+      ctx.font = "700 15px 'Space Mono',monospace";
+      ctx.fillStyle = "#dbe7f5";
+      ctx.fillText(`${goals(match.pMarks)} - ${goals(match.oMarks)}`, 200, LH * 0.49);
+      ctx.restore();
+    }
+    drawCutin();
+
+    if (flashV > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${flashV})`;
+      ctx.fillRect(0, 0, LW, LH);
+    }
+    ctx.restore();
+  }
+  requestAnimationFrame(frame);
+
+  /* ---------- ダブルタップズーム無効化(3点セット) ---------- */
+  document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
+  document.addEventListener("gesturestart", e => e.preventDefault(), { passive: false });
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", e => {
+    const t = Date.now();
+    if (t - lastTouchEnd < 350) e.preventDefault();
+    lastTouchEnd = t;
+  }, { passive: false });
+
+  /* ---------- ヒント消し(初回キック/セーブ後) ---------- */
+  const origResolveShot = resolveShot;
+  resolveShot = function () { hintShoot = false; origResolveShot(); };
+  const origResolveKeep = resolveKeep;
+  resolveKeep = function () { hintKeep = false; origResolveKeep(); };
+
+  /* ---------- テストフック ---------- */
+  window.__PK__ = {
+    state: () => ({
+      phase, roundIdx, lastOutcome,
+      upg: { ...upg }, recs: { ...recs }, stats: { ...stats },
+      match: match ? {
+        opp: match.opp.name, kick: match.kick, turn: match.turn,
+        pMarks: match.pMarks.slice(), oMarks: match.oMarks.slice(),
+        pGoals: goals(match.pMarks), oGoals: goals(match.oMarks),
+        sd: match.sd, winner: match.winner, retryUsed: match.retryUsed,
+      } : null,
+      aim: { x: aim.x, y: aim.y, active: aim.active },
+      geom: { postL: L.postL, postR: L.postR, barY: L.barY, groundY: L.groundY, ballX: L.ballX, ballY: L.ballY, LW, LH },
+    }),
+    rig,
+    start: () => { if (phase === "title") startRun(); },
+    shoot: (x, y) => { if (phase === "aim") { aim.active = true; releaseShot(x, y); } },
+    dive: (x, y) => commitDive(x, y),
+    pickUp: i => pickUpgrade(i),
+    ff: () => { phT += 99; if (keep && phase === "keepFly") keep.t += 99; if (shot && phase === "shotFly") shot.t += 99; if (cutin) cutin.t += 99; },
+    toClient: (x, y) => {
+      const r = cv.getBoundingClientRect();
+      return { x: r.left + x * scale, y: r.top + y * scale };
+    },
+  };
+})();
+</script>
+</body>
+</html>
