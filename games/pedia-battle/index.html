@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#070b16">
+<title>ペディアバトル — どっちが読まれた?</title>
+<meta name="description" content="2つのWikipedia記事、先月多く読まれたのはどっち?実データで挑む連勝クイズ。記事は毎月自動更新。">
+<meta property="og:title" content="ペディアバトル — どっちが読まれた?">
+<meta property="og:description" content="2つのWikipedia記事、先月多く読まれたのはどっち?実データで挑む連勝クイズ。記事は毎月自動更新。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/pedia-battle/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/pedia-battle/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --blue: #4fc3f7;
+    --purple: #b388ff;
+    --gold: #ffd54f;
+    --red: #ff6e6e;
+    --green: #69f0ae;
+  }
+  * { box-sizing: border-box; touch-action: manipulation; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #04060d;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    color: #fff;
+  }
+  body {
+    background-image:
+      radial-gradient(ellipse 70% 45% at 50% -5%, rgba(79, 195, 247, 0.08), transparent),
+      radial-gradient(ellipse 55% 35% at 85% 105%, rgba(179, 136, 255, 0.07), transparent);
+  }
+  /* PCワイド画面対策: 縦長カラムに制限して中央寄せ */
+  #stage {
+    position: fixed; top: 0; bottom: 0;
+    left: 50%; transform: translateX(-50%);
+    width: min(100vw, 520px, 64vh);
+    background: linear-gradient(180deg, #0b1224 0%, #070b16 55%, #0a0918 100%);
+    box-shadow: 0 0 60px rgba(0,0,0,0.8);
+    display: flex; flex-direction: column;
+    padding: calc(var(--sat) + 8px) 10px calc(var(--sab) + 10px);
+  }
+  #mute {
+    position: absolute;
+    top: calc(var(--sat) + 8px); right: 10px;
+    z-index: 30;
+    width: 40px; height: 40px;
+    border: 2px solid rgba(255,255,255,0.22);
+    border-radius: 12px;
+    background: rgba(13,20,40,0.75);
+    color: #fff; font-size: 18px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  /* ---------- HUD ---------- */
+  #hud {
+    display: flex; gap: 6px; align-items: stretch;
+    margin: 0 46px 8px 0;
+    min-height: 40px;
+  }
+  .hudbox {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 3px 6px;
+    text-align: center;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .hudbox .lbl { font-size: 9px; color: #8fa3c8; letter-spacing: 0.12em; }
+  .hudbox .val { font-family: "Space Mono", monospace; font-size: 16px; font-weight: 700; line-height: 1.1; }
+  #streakV { color: var(--gold); }
+  #shieldV { font-size: 13px; letter-spacing: 0.05em; }
+  #monthV { font-size: 11px; color: #cfe3ff; }
+  /* ---------- アリーナ ---------- */
+  #arena {
+    flex: 1;
+    display: flex; flex-direction: column;
+    gap: 0;
+    min-height: 0;
+    position: relative;
+  }
+  .card {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.13);
+    background: #101a30;
+    transition: border-color 0.25s, box-shadow 0.25s, opacity 0.4s, transform 0.4s;
+  }
+  .card.win { border-color: var(--green); box-shadow: 0 0 24px rgba(105,240,174,0.35); }
+  .card.lose { border-color: var(--red); box-shadow: 0 0 24px rgba(255,110,110,0.35); }
+  .card.fadeout { opacity: 0; transform: translateY(-24px); }
+  .card.slidein { animation: slidein 0.4s ease-out; }
+  @keyframes slidein {
+    from { opacity: 0; transform: translateY(28px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .cardbg {
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center 22%;
+    filter: saturate(1.05);
+  }
+  .cardshade {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(7,11,22,0.25) 0%, rgba(7,11,22,0.45) 45%, rgba(7,11,22,0.92) 100%);
+  }
+  .cardin {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 10px 14px 10px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .ctitle {
+    font-weight: 700;
+    font-size: clamp(17px, 5.4vw, 24px);
+    line-height: 1.25;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .cdesc {
+    font-size: 11.5px; color: #b9c8e4; line-height: 1.45;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    min-height: 2.9em;
+  }
+  .cviews {
+    font-family: "Space Mono", monospace;
+    display: flex; align-items: baseline; gap: 6px;
+    margin-top: 2px;
+    min-height: 30px;
+  }
+  .cnum { font-size: clamp(20px, 6.4vw, 28px); font-weight: 700; color: var(--blue); }
+  .cnum.hidden-num { color: #6f7fa3; letter-spacing: 0.1em; }
+  .cunit { font-size: 11px; color: #8fa3c8; }
+  .crank {
+    margin-left: auto;
+    font-size: 10px; color: #8fa3c8;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .crank.show { opacity: 1; }
+  /* ---------- VS + 質問 ---------- */
+  #mid {
+    position: relative;
+    height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 5;
+  }
+  #vsBadge {
+    position: absolute;
+    font-family: "Bungee", cursive;
+    font-size: 19px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 8px rgba(79,195,247,0.4));
+  }
+  #quest {
+    position: absolute;
+    left: 50%; transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 11px; color: #8fa3c8;
+    background: rgba(7,11,22,0.9);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 999px;
+    padding: 4px 14px;
+    transition: opacity 0.3s;
+  }
+  /* ---------- 回答ボタン ---------- */
+  #answers {
+    display: flex; gap: 8px;
+    margin-top: 8px;
+  }
+  .abtn {
+    flex: 1;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700; font-size: 17px;
+    color: #fff;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 14px;
+    padding: 13px 6px;
+    cursor: pointer;
+    touch-action: none;
+    transition: transform 0.1s, opacity 0.2s, filter 0.2s;
+  }
+  .abtn:active { transform: scale(0.96); }
+  .abtn[disabled] { opacity: 0.45; filter: grayscale(0.6); }
+  #btnUp { background: linear-gradient(135deg, #1565c0, #00838f); box-shadow: 0 4px 16px rgba(21,101,192,0.4); }
+  #btnDown { background: linear-gradient(135deg, #6a1b9a, #880e4f); box-shadow: 0 4px 16px rgba(106,27,154,0.4); }
+  .abtn b { font-family: "Space Mono", monospace; margin-right: 4px; }
+  .abtn .kbd { display: block; font-size: 9px; color: rgba(255,255,255,0.55); font-weight: 400; margin-top: 1px; }
+  /* ---------- オーバーレイ ---------- */
+  .ov {
+    position: absolute; inset: 0;
+    z-index: 20;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 13px;
+    background: rgba(5,8,16,0.94);
+    padding: calc(var(--sat) + 16px) 20px calc(var(--sab) + 16px);
+    text-align: center;
+  }
+  .hidden { display: none !important; }
+  .title {
+    font-family: "Bungee", cursive;
+    font-size: clamp(32px, 10.5vw, 52px);
+    line-height: 1.05;
+    margin: 0;
+    background: linear-gradient(135deg, #4fc3f7 0%, #b388ff 55%, #ff80ab 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 4px 14px rgba(79,195,247,0.3));
+  }
+  .jtitle { font-size: 21px; font-weight: 700; margin: -6px 0 0; letter-spacing: 0.25em; color: #cfe3ff; }
+  .sub {
+    font-family: "Space Mono", monospace;
+    letter-spacing: 0.28em;
+    font-size: 11px; color: #8fa3c8;
+    margin: 0;
+  }
+  .desc { font-size: 13.5px; color: #d4ddf0; line-height: 1.95; margin: 2px 0; max-width: 420px; }
+  .desc b { color: var(--gold); }
+  .stat { font-family: "Space Mono", monospace; font-size: 13px; color: #8fa3c8; }
+  .stat b { color: #fff; font-size: 17px; }
+  .kbd-hint { font-size: 11px; color: #5e6c8c; }
+  .btn {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700; font-size: 17px;
+    color: #061224;
+    background: linear-gradient(135deg, #4fc3f7, #b388ff);
+    border: none; border-radius: 16px;
+    padding: 14px 44px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(79,195,247,0.35);
+    touch-action: none;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn.ghost {
+    background: transparent;
+    color: #cfe3ff;
+    border: 2px solid rgba(255,255,255,0.25);
+    box-shadow: none;
+    font-size: 14px;
+    padding: 10px 28px;
+  }
+  .credit { font-size: 10px; color: #5e6c8c; line-height: 1.7; }
+  .credit a { color: #7e9bd4; }
+  #overTitle {
+    font-family: "Bungee", cursive;
+    font-size: clamp(26px, 8vw, 40px);
+    margin: 0;
+    color: var(--red);
+    filter: drop-shadow(0 3px 12px rgba(255,110,110,0.35));
+  }
+  #overStreak { font-size: 44px; font-family: "Space Mono", monospace; font-weight: 700; color: var(--gold); line-height: 1; }
+  #overStreak small { font-size: 15px; color: #8fa3c8; font-family: "Zen Kaku Gothic New", sans-serif; }
+  #newRecord {
+    font-weight: 700; color: var(--green); font-size: 15px;
+    animation: pulse 1s infinite alternate;
+  }
+  @keyframes pulse { from { opacity: 0.7; transform: scale(1); } to { opacity: 1; transform: scale(1.06); } }
+  #overAnswer {
+    font-size: 12px; color: #b9c8e4; line-height: 1.9;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 10px 16px;
+    max-width: 420px;
+  }
+  #overAnswer b { font-family: "Space Mono", monospace; color: var(--blue); }
+  #overAnswer a { color: #7e9bd4; }
+  #loadMsg { font-size: 14px; color: #b9c8e4; line-height: 2; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 4px solid rgba(79,195,247,0.2);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* ストリーク演出 */
+  #streakPop {
+    position: absolute;
+    top: 42%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 15;
+    font-family: "Bungee", cursive;
+    font-size: 50px;
+    color: var(--gold);
+    pointer-events: none;
+    opacity: 0;
+    filter: drop-shadow(0 4px 16px rgba(255,213,79,0.5));
+  }
+  #streakPop.pop { animation: popjump 0.8s ease-out; }
+  @keyframes popjump {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+    25% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    60% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -70%) scale(1); }
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <button id="mute" aria-label="mute">🔊</button>
+  <div id="hud">
+    <div class="hudbox"><span class="lbl">連勝</span><span class="val" id="streakV">0</span></div>
+    <div class="hudbox"><span class="lbl">ベスト</span><span class="val" id="bestV">0</span></div>
+    <div class="hudbox"><span class="lbl">しおり</span><span class="val" id="shieldV">-</span></div>
+    <div class="hudbox"><span class="lbl">対象月</span><span class="val" id="monthV">----</span></div>
+  </div>
+  <div id="arena">
+    <div class="card" id="cardA">
+      <div class="cardbg"></div>
+      <div class="cardshade"></div>
+      <div class="cardin">
+        <div class="ctitle"></div>
+        <div class="cdesc"></div>
+        <div class="cviews"><span class="cnum"></span><span class="cunit">回/月</span><span class="crank"></span></div>
+      </div>
+    </div>
+    <div id="mid">
+      <span id="vsBadge">VS</span>
+      <span id="quest" class="hidden">下の記事の閲覧数は上より…?</span>
+    </div>
+    <div class="card" id="cardB">
+      <div class="cardbg"></div>
+      <div class="cardshade"></div>
+      <div class="cardin">
+        <div class="ctitle"></div>
+        <div class="cdesc"></div>
+        <div class="cviews"><span class="cnum"></span><span class="cunit">回/月</span><span class="crank"></span></div>
+      </div>
+    </div>
+    <div id="streakPop"></div>
+  </div>
+  <div id="answers">
+    <button class="abtn" id="btnUp"><b>▲</b>多い<span class="kbd">[↑]</span></button>
+    <button class="abtn" id="btnDown"><b>▼</b>少ない<span class="kbd">[↓]</span></button>
+  </div>
+
+  <div class="ov" id="titleOv">
+    <h1 class="title">PEDIA<br>BATTLE</h1>
+    <p class="jtitle">ペディアバトル</p>
+    <p class="sub">WIKIPEDIA PAGEVIEW BATTLE</p>
+    <p class="desc">
+      2つのWikipedia記事 — <b>先月多く読まれたのはどっち?</b><br>
+      下の記事が上より「多い」か「少ない」かを当てて連勝を狙え。<br>
+      <b>5連勝ごとに「しおり🔖」</b>を獲得。ミスを1回だけ帳消しにできる。
+    </p>
+    <p class="stat">ベスト連勝: <b id="titleBest">0</b></p>
+    <button class="btn" id="startBtn">バトル開始</button>
+    <p class="kbd-hint">PC: ↑↓キーで回答 / Spaceで開始</p>
+    <p class="credit">
+      出典: 日本語版Wikipedia 閲覧数ランキング(毎月自動更新)<br>
+      データ: Wikimedia Pageviews API / 記事概要・画像: Wikipedia (CC BY-SA 4.0)
+    </p>
+  </div>
+
+  <div class="ov hidden" id="loadOv">
+    <div class="spinner" id="loadSpin"></div>
+    <p id="loadMsg">ランキングを取得中…</p>
+    <button class="btn hidden" id="retryBtn">再試行</button>
+  </div>
+
+  <div class="ov hidden" id="overOv">
+    <h2 id="overTitle">BATTLE OVER</h2>
+    <div id="overStreak">0<small> 連勝</small></div>
+    <p id="newRecord" class="hidden">🏆 NEW RECORD!</p>
+    <p class="stat">ベスト連勝: <b id="overBest">0</b></p>
+    <div id="overAnswer"></div>
+    <button class="btn" id="retryGameBtn">もう一度</button>
+    <div style="display:flex; gap:10px;">
+      <button class="btn ghost" id="shareBtn">𝕏 でシェア</button>
+      <button class="btn ghost" id="homeBtn">タイトルへ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================
+   ペディアバトル — Wikipedia閲覧数 Higher/Lower
+   データ: Wikimedia Pageviews API(キー不要・CORS対応)
+   ===================================================== */
+
+const $ = (id) => document.getElementById(id);
+
+/* ---------- オーディオ(iOS消音スイッチ対策込み) ---------- */
+let AC = null;
+let muted = false;
+try { muted = localStorage.getItem("pediabattle_muted") === "1"; } catch (e) {}
+
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+    } catch (e) {}
+  }
+  if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  str(36, "data"); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline", "");
+    silentEl.loop = true;
+    silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play();
+  if (p && p.catch) p.catch(() => {});
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === "running") {
+      ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+    }
+  };
+  try { AC.resume().then(done); } catch (e) { done(); }
+}
+["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+function tone(f, d, type, vol, slideTo, at) {
+  if (muted || !audio()) return;
+  try {
+    const t0 = AC.currentTime + (at || 0);
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "sine"; o.frequency.setValueAtTime(f, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + d);
+    g.gain.setValueAtTime(vol || 0.06, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t0); o.stop(t0 + d);
+  } catch (e) {}
+}
+function noise(d, vol, at) {
+  if (muted || !audio()) return;
+  try {
+    const n = Math.floor(AC.sampleRate * d);
+    const buf = AC.createBuffer(1, n, AC.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = AC.createBufferSource(); src.buffer = buf;
+    const g = AC.createGain(); g.gain.value = vol || 0.08;
+    src.connect(g); g.connect(AC.destination); src.start(AC.currentTime + (at || 0));
+  } catch (e) {}
+}
+const sBtn = () => tone(440, 0.07, "square", 0.035);
+const sTick = () => tone(1200 + Math.random() * 400, 0.025, "square", 0.018);
+function sGood(st) {
+  const base = [523, 659, 784, 1047];
+  const n = Math.min(2 + Math.floor(st / 5), 4);
+  for (let i = 0; i < n; i++) tone(base[i], 0.13, "triangle", 0.05, null, i * 0.07);
+  if (st > 0 && st % 5 === 0) { tone(1568, 0.35, "sine", 0.045, null, n * 0.07); noise(0.2, 0.025, n * 0.07); }
+}
+const sBad = () => { tone(220, 0.45, "sawtooth", 0.07, 70); noise(0.18, 0.06); };
+const sShield = () => { tone(660, 0.15, "triangle", 0.05); tone(990, 0.25, "triangle", 0.045, null, 0.1); tone(1320, 0.3, "sine", 0.035, null, 0.2); };
+const sRecord = () => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.2, "triangle", 0.05, null, i * 0.09)); };
+const sStart = () => { tone(523, 0.1, "square", 0.04); tone(784, 0.18, "square", 0.04, null, 0.09); };
+
+/* ---------- データ取得 ---------- */
+const TOP_API = (y, m) => `https://wikimedia.org/api/rest_v1/metrics/pageviews/top/ja.wikipedia/all-access/${y}/${String(m).padStart(2, "0")}/all-days`;
+const SUMMARY_API = (title) => `https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}?redirect=true`;
+
+// 名前空間ページ・メインページを除外
+const NS_RE = /^(メインページ$|Main_Page$|特別:|Special:|Wikipedia:|Portal:|Help:|ヘルプ:|ノート:|Template:|テンプレート:|Category:|カテゴリ:|プロジェクト:|ファイル:|File:|モジュール:|Module:|MediaWiki:|利用者:|User:|Draft:|TimedText:)/;
+// 一般向けサイトのため露骨な性的話題の記事は出題から除外
+const NG_WORDS = ["射精", "セックス", "性行為", "性交", "性的", "オナニー", "自慰", "ペニス", "陰茎", "陰核", "クリトリス", "膣", "乳首", "アナル", "肛門", "ポルノ", "AV女優", "AV男優", "アダルトビデオ", "アダルトゲーム", "風俗", "ソープランド", "デリヘル", "痴漢", "強姦", "レイプ", "売春", "援助交際", "フェラチオ", "クンニ", "手コキ", "潮吹き", "乱交", "近親相姦", "獣姦", "淫", "ヌード", "巨乳", "貧乳", "童貞", "処女"];
+
+function filterArticles(items) {
+  const out = [];
+  for (const a of items) {
+    const t = a.article || "";
+    if (NS_RE.test(t)) continue;
+    if (NG_WORDS.some(w => t.includes(w))) continue;
+    out.push({ t, v: a.views, r: a.rank });
+  }
+  return out;
+}
+
+// 直近の取得可能な月(先月→先々月→その前)を順に試す
+function candidateMonths(now) {
+  const list = [];
+  let y = now.getFullYear(), m = now.getMonth() + 1; // 1-12
+  for (let i = 0; i < 3; i++) {
+    m--; if (m === 0) { m = 12; y--; }
+    list.push([y, m]);
+  }
+  return list;
+}
+
+async function fetchTopList() {
+  // localStorageキャッシュ(月単位)
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem("pediabattle_top_v1") || "null"); } catch (e) {}
+  const months = candidateMonths(new Date());
+  if (cached && cached.key === `${months[0][0]}-${months[0][1]}` && Array.isArray(cached.items) && cached.items.length > 100) {
+    return cached;
+  }
+  let lastErr = null;
+  for (const [y, m] of months) {
+    try {
+      const res = await fetch(TOP_API(y, m));
+      if (!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
+      const json = await res.json();
+      const items = filterArticles(json.items[0].articles);
+      if (items.length < 100) { lastErr = new Error("記事数が不足"); continue; }
+      const data = { key: `${months[0][0]}-${months[0][1]}`, year: y, month: m, items };
+      try { localStorage.setItem("pediabattle_top_v1", JSON.stringify(data)); } catch (e) {}
+      return data;
+    } catch (e) { lastErr = e; }
+  }
+  // 取得失敗でも古いキャッシュがあればそれで遊べるようにする
+  if (cached && Array.isArray(cached.items) && cached.items.length > 100) return cached;
+  throw lastErr || new Error("取得失敗");
+}
+
+/* ---------- 記事概要(画像・説明)の取得とプリフェッチ ---------- */
+const summaryCache = new Map(); // title -> Promise<{desc, img}>
+function fetchSummary(title) {
+  if (summaryCache.has(title)) return summaryCache.get(title);
+  const p = (async () => {
+    try {
+      const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timer = ctl ? setTimeout(() => ctl.abort(), 6000) : null;
+      const res = await fetch(SUMMARY_API(title), ctl ? { signal: ctl.signal } : {});
+      if (timer) clearTimeout(timer);
+      if (!res.ok) return { desc: "", img: "" };
+      const j = await res.json();
+      let img = (j.thumbnail && j.thumbnail.source) || "";
+      // サムネは330px想定なので640pxに引き上げを試みる(失敗時はonerrorで戻す)
+      const desc = j.description || (j.extract ? j.extract.slice(0, 60) : "");
+      return { desc, img, imgFallback: img ? "" : "", extract: j.extract || "" };
+    } catch (e) {
+      return { desc: "", img: "" };
+    }
+  })();
+  summaryCache.set(title, p);
+  return p;
+}
+
+/* ---------- 状態(ループ・UIが触るものは全てここで初期化) ---------- */
+let phase = "title";   // title | loading | guess | reveal | over
+let topData = null;    // {year, month, items}
+let pool = [];         // 出題候補(シャッフル済み)
+let champion = null;   // {t, v, r, desc, img}
+let challenger = null;
+let nextPick = null;   // プリフェッチ済みの次の挑戦者
+let streak = 0;
+let shields = 0;
+let best = 0;
+try { best = parseInt(localStorage.getItem("pediabattle_best") || "0", 10) || 0; } catch (e) {}
+let countUpRaf = 0;
+let lastGuess = null;  // "up" | "down"
+
+const SHIELD_MAX = 2;
+const SHIELD_EVERY = 5;
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// 連勝数に応じて接戦(閲覧数の比が小さいペア)を出す
+function ratioFloor(st) {
+  if (st < 3) return 2.5;
+  if (st < 7) return 1.7;
+  if (st < 12) return 1.35;
+  if (st < 20) return 1.15;
+  return 1.0;
+}
+
+function pickChallenger(champ, st) {
+  if (pool.length === 0) refillPool([champ && champ.t]);
+  const floor = ratioFloor(st);
+  const start = Math.floor(Math.random() * pool.length);
+  let fallbackIdx = -1;
+  for (let k = 0; k < pool.length; k++) {
+    const i = (start + k) % pool.length;
+    const c = pool[i];
+    if (champ && c.t === champ.t) continue;
+    if (fallbackIdx < 0) fallbackIdx = i;
+    const ratio = Math.max(c.v, champ.v) / Math.max(1, Math.min(c.v, champ.v));
+    if (ratio >= floor) return pool.splice(i, 1)[0];
+  }
+  if (fallbackIdx >= 0) return pool.splice(fallbackIdx, 1)[0];
+  return null;
+}
+
+function refillPool(excludeTitles) {
+  const ex = new Set((excludeTitles || []).filter(Boolean));
+  pool = shuffle(topData.items.filter(a => !ex.has(a.t)).slice());
+}
+
+/* ---------- 表示ヘルパー ---------- */
+const dispTitle = (t) => t.replace(/_/g, " ");
+const fmt = (n) => n.toLocaleString("ja-JP");
+
+function setCard(cardEl, art, revealed) {
+  const bg = cardEl.querySelector(".cardbg");
+  if (art.img) {
+    bg.style.background = "none";
+    bg.style.backgroundImage = `url("${art.img}")`;
+    bg.style.backgroundSize = "cover";
+    bg.style.backgroundPosition = "center 22%";
+    // サムネは330px想定なので高解像度版に差し替えを試みる(取得できた時だけ反映)
+    const hi = art.img.replace(/\/(\d+)px-/, "/640px-");
+    if (hi !== art.img) {
+      const probe = new Image();
+      probe.onload = () => {
+        if (cardEl.querySelector(".ctitle").textContent === dispTitle(art.t)) {
+          bg.style.backgroundImage = `url("${hi}")`;
+        }
+      };
+      probe.src = hi;
+    }
+  } else {
+    const hue = (art.t.charCodeAt(0) * 37) % 360;
+    bg.style.background = `linear-gradient(150deg, hsl(${hue}, 35%, 24%), hsl(${(hue + 60) % 360}, 40%, 12%))`;
+  }
+  cardEl.querySelector(".ctitle").textContent = dispTitle(art.t);
+  cardEl.querySelector(".cdesc").textContent = art.desc || "";
+  const num = cardEl.querySelector(".cnum");
+  const rank = cardEl.querySelector(".crank");
+  if (revealed) {
+    num.textContent = fmt(art.v);
+    num.classList.remove("hidden-num");
+    rank.textContent = `先月ランク #${art.r}`;
+    rank.classList.add("show");
+  } else {
+    num.textContent = "???";
+    num.classList.add("hidden-num");
+    rank.textContent = "";
+    rank.classList.remove("show");
+  }
+}
+
+function updateHud() {
+  $("streakV").textContent = streak;
+  $("bestV").textContent = best;
+  $("shieldV").textContent = shields > 0 ? "🔖".repeat(shields) : "-";
+  if (topData) $("monthV").textContent = `${topData.year}/${topData.month}`;
+}
+
+function setAnswerEnabled(on) {
+  $("btnUp").disabled = !on;
+  $("btnDown").disabled = !on;
+}
+
+/* ---------- カウントアップ演出 ---------- */
+function countUp(cardEl, target, dur, done) {
+  const num = cardEl.querySelector(".cnum");
+  num.classList.remove("hidden-num");
+  const t0 = performance.now();
+  let lastTick = 0;
+  cancelAnimationFrame(countUpRaf);
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    num.textContent = fmt(Math.round(target * eased));
+    if (now - lastTick > 50 && p < 1) { sTick(); lastTick = now; }
+    if (p < 1) countUpRaf = requestAnimationFrame(step);
+    else if (done) done();
+  };
+  countUpRaf = requestAnimationFrame(step);
+}
+
+/* ---------- ゲーム進行 ---------- */
+async function startGame() {
+  sStart();
+  $("titleOv").classList.add("hidden");
+  $("overOv").classList.add("hidden");
+  phase = "loading";
+  $("loadOv").classList.remove("hidden");
+  $("loadSpin").classList.remove("hidden");
+  $("retryBtn").classList.add("hidden");
+  $("loadMsg").textContent = "Wikipediaランキングを取得中…";
+  try {
+    if (!topData) topData = await fetchTopList();
+  } catch (e) {
+    phase = "title";
+    $("loadSpin").classList.add("hidden");
+    $("loadMsg").textContent = "ランキングの取得に失敗しました。\n通信環境を確認してください。";
+    $("retryBtn").classList.remove("hidden");
+    return;
+  }
+  streak = 0;
+  shields = 0;
+  refillPool([]);
+  champion = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+  challenger = pickChallenger(champion, 0);
+  // 概要を並行取得してからカードを見せる
+  $("loadMsg").textContent = "対戦カードを準備中…";
+  const [s1, s2] = await Promise.all([fetchSummary(champion.t), fetchSummary(challenger.t)]);
+  Object.assign(champion, s1);
+  Object.assign(challenger, s2);
+  $("loadOv").classList.add("hidden");
+  setCard($("cardA"), champion, true);
+  setCard($("cardB"), challenger, false);
+  $("cardA").classList.remove("win", "lose", "fadeout", "slidein");
+  $("cardB").classList.remove("win", "lose", "fadeout", "slidein");
+  $("quest").classList.remove("hidden");
+  updateHud();
+  setAnswerEnabled(true);
+  phase = "guess";
+  prefetchNext();
+}
+
+// 次の挑戦者を先に選んで概要を取得しておく(リビール中に裏で済ませる)
+function prefetchNext() {
+  nextPick = pickChallenger(challenger, streak + 1);
+  if (nextPick) fetchSummary(nextPick.t);
+}
+
+function guess(dir) {
+  if (phase !== "guess") return;
+  phase = "reveal";
+  lastGuess = dir;
+  sBtn();
+  setAnswerEnabled(false);
+  $("quest").classList.add("hidden");
+  const correct = (challenger.v === champion.v) ||
+    (dir === "up" ? challenger.v > champion.v : challenger.v < champion.v);
+  countUp($("cardB"), challenger.v, 900, () => {
+    const rank = $("cardB").querySelector(".crank");
+    rank.textContent = `先月ランク #${challenger.r}`;
+    rank.classList.add("show");
+    setTimeout(() => resolveGuess(correct), 150);
+  });
+}
+
+function resolveGuess(correct) {
+  if (correct) {
+    streak++;
+    $("cardB").classList.add("win");
+    sGood(streak);
+    if (streak % SHIELD_EVERY === 0 && shields < SHIELD_MAX) {
+      shields++;
+      sShield();
+      popText("🔖+1");
+    } else {
+      popText(`${streak}連勝!`);
+    }
+    updateHud();
+    setTimeout(nextRound, 950);
+  } else if (shields > 0) {
+    shields--;
+    $("cardB").classList.add("lose");
+    sBad();
+    setTimeout(() => { sShield(); popText("🔖でセーフ!"); }, 400);
+    updateHud();
+    setTimeout(nextRound, 1500);
+  } else {
+    $("cardB").classList.add("lose");
+    sBad();
+    updateHud();
+    setTimeout(gameOver, 1300);
+  }
+}
+
+function popText(text) {
+  const el = $("streakPop");
+  el.textContent = text;
+  el.classList.remove("pop");
+  void el.offsetWidth; // reflowでアニメ再発火
+  el.classList.add("pop");
+}
+
+async function nextRound() {
+  // 挑戦者が新王者としてカードAへ
+  champion = challenger;
+  challenger = nextPick || pickChallenger(champion, streak);
+  nextPick = null;
+  if (!challenger) { gameOver(); return; }
+  Object.assign(challenger, await fetchSummary(challenger.t));
+  $("cardA").classList.add("fadeout");
+  setTimeout(() => {
+    setCard($("cardA"), champion, true);
+    $("cardA").classList.remove("fadeout", "win", "lose");
+    setCard($("cardB"), challenger, false);
+    $("cardB").classList.remove("win", "lose");
+    $("cardB").classList.add("slidein");
+    setTimeout(() => $("cardB").classList.remove("slidein"), 450);
+    $("quest").classList.remove("hidden");
+    setAnswerEnabled(true);
+    phase = "guess";
+    prefetchNext();
+  }, 320);
+}
+
+function gameOver() {
+  phase = "over";
+  const isRecord = streak > best;
+  if (isRecord) {
+    best = streak;
+    try { localStorage.setItem("pediabattle_best", String(best)); } catch (e) {}
+    sRecord();
+  }
+  updateHud();
+  $("overStreak").innerHTML = `${streak}<small> 連勝</small>`;
+  $("overBest").textContent = best;
+  $("newRecord").classList.toggle("hidden", !isRecord);
+  const aUrl = `https://ja.wikipedia.org/wiki/${encodeURIComponent(champion.t)}`;
+  const bUrl = `https://ja.wikipedia.org/wiki/${encodeURIComponent(challenger.t)}`;
+  $("overAnswer").innerHTML =
+    `<a href="${aUrl}" target="_blank" rel="noopener">${dispTitle(champion.t)}</a> <b>${fmt(champion.v)}</b>回 / ` +
+    `<a href="${bUrl}" target="_blank" rel="noopener">${dispTitle(challenger.t)}</a> <b>${fmt(challenger.v)}</b>回<br>` +
+    `答えは「${challenger.v >= champion.v ? "▲ 多い" : "▼ 少ない"}」でした`;
+  $("overOv").classList.remove("hidden");
+}
+
+function shareX() {
+  const text = `📖ペディアバトル — Wikipedia閲覧数バトルで ${streak}連勝!(ベスト${best}連勝)\nどっちの記事が多く読まれたか、当てられる?`;
+  const url = "https://nrtkumi.github.io/games/pedia-battle/";
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank", "noopener");
+}
+
+/* ---------- 入力(Pointer Events / clickは使わない) ---------- */
+function onTap(id, fn) {
+  $(id).addEventListener("pointerup", (e) => { e.preventDefault(); fn(); });
+}
+onTap("startBtn", startGame);
+onTap("retryBtn", startGame);
+onTap("retryGameBtn", startGame);
+onTap("homeBtn", () => {
+  phase = "title";
+  $("overOv").classList.add("hidden");
+  $("titleBest").textContent = best;
+  $("titleOv").classList.remove("hidden");
+});
+onTap("shareBtn", shareX);
+onTap("btnUp", () => guess("up"));
+onTap("btnDown", () => guess("down"));
+onTap("mute", () => {
+  muted = !muted;
+  $("mute").textContent = muted ? "🔇" : "🔊";
+  try { localStorage.setItem("pediabattle_muted", muted ? "1" : "0"); } catch (e) {}
+  if (!muted) sBtn();
+});
+$("mute").textContent = muted ? "🔇" : "🔊";
+
+document.addEventListener("keydown", (e) => {
+  if (e.repeat) return;
+  if (phase === "guess") {
+    if (e.key === "ArrowUp") { e.preventDefault(); guess("up"); }
+    if (e.key === "ArrowDown") { e.preventDefault(); guess("down"); }
+  } else if (phase === "title" || phase === "over") {
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); startGame(); }
+  }
+});
+
+/* ---------- ダブルタップズーム抑止(iOS Safari対策3点セット) ---------- */
+document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
+document.addEventListener("gesturestart", e => e.preventDefault(), { passive: false });
+let lastTouchEnd = 0;
+document.addEventListener("touchend", (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 350) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+
+/* ---------- 初期化 ---------- */
+$("titleBest").textContent = best;
+updateHud();
+// タイトル表示中に裏でランキングをプリフェッチして開始を速くする
+fetchTopList().then(d => { topData = d; updateHud(); }).catch(() => {});
+
+// テスト用フック(E2Eから状態を覗くためだけに使用)
+window.PB = {
+  get phase() { return phase; },
+  get streak() { return streak; },
+  get shields() { return shields; },
+  get champion() { return champion; },
+  get challenger() { return challenger; },
+  get best() { return best; },
+};
+</script>
+</body>
+</html>
