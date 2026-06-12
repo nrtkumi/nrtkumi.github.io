@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>ホリスギ！爆熱ドリル | 赤熱するほど儲かる長押しチキンレース採掘</title>
+<meta name="description" content="押すと掘れる。押しすぎると爆発。赤熱するほど速く掘れて儲かるが、深部では地熱で冷却が追いつかない。爆発する前に帰還できるか?長押しだけで遊べるチキンレース採掘ゲーム。">
+<meta property="og:title" content="ホリスギ！爆熱ドリル">
+<meta property="og:description" content="押すと掘れる。押しすぎると爆発。赤熱ギリギリを攻めて地球のコアを目指せ。長押しチキンレース採掘。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/horisugi/">
+<meta property="og:image" content="https://nrtkumi.github.io/games/horisugi/assets/ogp.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛏️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --hot:#ff5a2c; --amber:#ffb347; --gold:#ffd95c; --cyan:#5ce8ff; --ink:#16100c;
+  --sat:env(safe-area-inset-top);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+html,body{height:100%;background:#0a0705;overflow:hidden;overscroll-behavior:none}
+body{font-family:'Zen Kaku Gothic New',sans-serif;color:#f2e9df}
+#wrap{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:min(520px,64vh);background:var(--ink);box-shadow:0 0 60px rgba(0,0,0,.85);overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;padding-top:calc(24px + env(safe-area-inset-top));padding-bottom:calc(24px + env(safe-area-inset-bottom));z-index:10;text-align:center}
+.screen.show{display:flex}
+.panel{background:rgba(24,16,10,.9);border:1px solid rgba(255,180,80,.22);border-radius:18px;padding:20px 18px;width:100%;max-width:370px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.logo-jp{font-size:54px;font-weight:900;letter-spacing:.04em;line-height:1.1;background:linear-gradient(180deg,#fff 12%,var(--gold) 45%,var(--hot) 85%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px rgba(255,110,40,.5))}
+.logo-sub{font-size:22px;font-weight:900;letter-spacing:.3em;color:var(--hot);text-shadow:0 0 14px rgba(255,90,44,.7)}
+.logo-en{font-family:'Bungee';font-size:13px;color:var(--amber);letter-spacing:.3em}
+.tagline{font-size:13px;color:#cbb;letter-spacing:.12em;line-height:1.8}
+.btn{display:block;width:100%;max-width:300px;padding:15px 18px;border:none;border-radius:14px;font-family:'Zen Kaku Gothic New';font-weight:900;font-size:18px;letter-spacing:.12em;color:#2a1000;background:linear-gradient(180deg,#ffe49a,var(--amber) 55%,#f07f2c);box-shadow:0 4px 0 #8a4214,0 0 24px rgba(255,160,60,.35);cursor:pointer;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8a4214}
+.btn.sub{background:rgba(255,255,255,.08);color:#edd;box-shadow:0 4px 0 rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.18);font-size:15px;padding:12px 16px}
+.btn.sub:active{box-shadow:0 1px 0 rgba(0,0,0,.4)}
+.stats-row{display:flex;gap:14px;justify-content:center;font-family:'Space Mono';font-size:12px;color:#a99}
+.stats-row b{color:var(--gold);font-size:16px;display:block;font-family:'Bungee'}
+.howto{font-size:12.5px;color:#dcb;line-height:2;text-align:left}
+.howto em{color:var(--hot);font-style:normal;font-weight:700}
+.howto b{color:var(--gold)}
+#returnBtn{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:6;display:none;padding:14px 38px;border:none;border-radius:40px;font-family:'Zen Kaku Gothic New';font-weight:900;font-size:19px;letter-spacing:.2em;color:#04222a;background:linear-gradient(180deg,#b9f6ff,var(--cyan) 60%,#2ab6d8);box-shadow:0 4px 0 #117a96,0 0 26px rgba(92,232,255,.5);cursor:pointer}
+#returnBtn:active{transform:translateX(-50%) translateY(3px);box-shadow:0 1px 0 #117a96}
+#returnBtn.urgent{animation:urgPulse .5s ease-in-out infinite alternate}
+#muteBtn{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom));left:12px;z-index:5;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(20,14,8,.55);color:#cba;font-size:16px;cursor:pointer;opacity:.75}
+@keyframes urgPulse{from{box-shadow:0 4px 0 #117a96,0 0 18px rgba(92,232,255,.4)}to{box-shadow:0 4px 0 #117a96,0 0 40px rgba(255,120,60,.9)}}
+.shop-row{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+.shop-row .ico{flex:none;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,.06)}
+.shop-row .nm{font-weight:700;font-size:13.5px}
+.shop-row .ds{font-size:11px;color:#b9a}
+.shop-row .pips{font-family:'Space Mono';font-size:11px;color:var(--gold);letter-spacing:.15em}
+.shop-row.branch{border:1px solid rgba(255,90,44,.4);border-radius:12px;margin:6px 0;padding:10px 8px;background:rgba(255,90,44,.06)}
+.shop-row.branch.cold{border-color:rgba(92,232,255,.4);background:rgba(92,232,255,.06)}
+.shop-row.owned{opacity:.92}
+.shop-row.owned .buy{background:rgba(255,255,255,.1);color:#9c8}
+.buy{flex:none;border:none;border-radius:10px;padding:9px 12px;font-family:'Space Mono';font-weight:700;font-size:12px;background:var(--gold);color:#3a2400;cursor:pointer;min-width:78px}
+.buy:disabled{background:rgba(255,255,255,.1);color:#667}
+.buy:active:not(:disabled){transform:scale(.94)}
+.rslt-title{font-size:32px;font-weight:900;letter-spacing:.12em}
+.rslt-title.bank{color:var(--gold);text-shadow:0 0 24px rgba(255,217,92,.6)}
+.rslt-title.boom{color:var(--hot);text-shadow:0 0 24px rgba(255,90,44,.6)}
+.rslt-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+.rslt-grid .cell{background:rgba(255,255,255,.05);border-radius:12px;padding:10px}
+.rslt-grid .cell small{display:block;font-size:10.5px;color:#a98;letter-spacing:.1em}
+.rslt-grid .cell b{font-family:'Bungee';font-size:19px;color:#fff}
+#toast{position:absolute;top:calc(86px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:rgba(30,20,12,.95);border:1px solid rgba(255,180,80,.4);color:#fed;padding:9px 18px;border-radius:24px;font-size:13px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:50;white-space:nowrap}
+.coin-disp{font-family:'Space Mono';font-weight:700;color:var(--gold);font-size:15px}
+.kbd-hint{font-size:10.5px;color:#776;letter-spacing:.05em}
+.discover{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;font-size:11px;color:#cba}
+.discover span{background:rgba(255,255,255,.06);border-radius:8px;padding:4px 8px}
+.discover span.unknown{color:#554;}
+@media (hover:hover){.btn:hover{filter:brightness(1.1)}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <button id="returnBtn">帰 還</button>
+  <button id="muteBtn">🔊</button>
+
+  <div id="titleScr" class="screen">
+    <div style="flex:1"></div>
+    <div class="logo-jp">ホリスギ！</div>
+    <div class="logo-sub">爆 熱 ド リ ル</div>
+    <div class="logo-en">OVERHEAT DRILL</div>
+    <div style="height:2px"></div>
+    <div class="tagline">押すと掘れる。押しすぎると<b style="color:var(--hot)">爆発</b>。<br>赤熱ギリギリを攻めて、地球のコアへ。</div>
+    <div style="height:4px"></div>
+    <div class="stats-row">
+      <div><b id="tBest" style="font-family:'Space Mono'">0m</b>最深記録</div>
+      <div><b id="tBank">0</b>所持ジオ</div>
+      <div><b id="tCore" style="color:var(--hot)">--</b>コア到達</div>
+    </div>
+    <div style="height:4px"></div>
+    <button class="btn" id="startBtn">発 進</button>
+    <button class="btn sub" id="shopBtn">🔧 強化ガレージ <span class="coin-disp" id="coinDisp1">0</span></button>
+    <button class="btn sub" id="howtoBtn">遊び方</button>
+    <div style="flex:1"></div>
+    <div class="kbd-hint">PC: Space長押しで掘削 / Enterで帰還</div>
+  </div>
+
+  <div id="howtoScr" class="screen">
+    <div class="panel howto">
+      <div style="text-align:center;font-weight:900;font-size:17px;margin-bottom:10px;letter-spacing:.2em">遊び方</div>
+      <em>● 画面を長押し</em> — ドリルが地球を掘り進む。<br>
+      <em>● 熱いほど速い</em> — 熱ゲージが<b>赤熱ゾーン</b>に入ると掘削速度もお宝も跳ね上がり、<b>連続キープでコンボ倍率</b>が育つ。<br>
+      <em>● 100%で爆発</em> — 積んだ鉱石をほぼ全て失う。指を離せば冷えるが…<br>
+      <em>● 深部は地熱で勝手に熱くなる</em> — 冷却が追いつかなくなる前に<b style="color:var(--cyan)">帰還</b>して換金しろ。<br>
+      <em>● 地層には個性がある</em> — 化石は熱いと砕ける。氷晶は冷えた刃でしか採れない。マグマ層は熱くないとほぼ掘れない。<br>
+      <em>● ジオで強化</em> — 刃・冷却・耐熱・発進深度…そして二択の改造で自分のビルドを作れ。
+    </div>
+    <button class="btn sub" id="howtoBack">もどる</button>
+  </div>
+
+  <div id="shopScr" class="screen">
+    <div class="panel" style="max-width:390px;max-height:78vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+      <div style="font-weight:900;font-size:17px;letter-spacing:.2em">🔧 強化ガレージ</div>
+      <div class="coin-disp" style="font-size:18px;margin:6px 0">◈ <span id="coinDisp2">0</span> ジオ</div>
+      <div id="shopList"></div>
+      <div style="font-size:11px;color:#a98;margin-top:10px;letter-spacing:.1em">発見した鉱物</div>
+      <div class="discover" id="discoverList" style="margin-top:6px"></div>
+    </div>
+    <button class="btn" id="shopDive">このまま発進</button>
+    <button class="btn sub" id="shopBack">タイトルへ</button>
+  </div>
+
+  <div id="resultScr" class="screen">
+    <div class="rslt-title" id="rTitle">帰還成功</div>
+    <div class="panel" style="max-width:330px">
+      <div class="rslt-grid">
+        <div class="cell"><small>到達深度</small><b id="rDepth" style="font-family:'Space Mono';font-weight:700">0m</b></div>
+        <div class="cell"><small>獲得ジオ</small><b id="rGain" style="color:var(--gold)">+0</b></div>
+        <div class="cell"><small>最大コンボ</small><b id="rCombo">x1.0</b></div>
+        <div class="cell"><small>所持ジオ</small><b id="rTotal">0</b></div>
+      </div>
+      <div id="rNote" style="margin-top:10px;font-size:12px;color:var(--cyan);min-height:18px"></div>
+    </div>
+    <button class="btn" id="againBtn">もう一掘り</button>
+    <button class="btn sub" id="rShopBtn">🔧 強化ガレージ</button>
+    <button class="btn sub" id="rHomeBtn">タイトルへ</button>
+  </div>
+
+  <div id="endScr" class="screen">
+    <div class="rslt-title bank" style="font-size:26px">地球のコアに到達</div>
+    <div style="font-size:44px">🌍⛏️🔥</div>
+    <div class="panel" style="max-width:330px">
+      <div class="tagline" id="endText">深度8,000m。ドリルの刃が、惑星の心臓に触れた。<br>あなたは限界の向こう側を見た採掘者だ。<br><br>……コアの先は、まだ熱い。</div>
+    </div>
+    <button class="btn" id="endContinue">さらに深く掘る</button>
+    <button class="btn sub" id="endHome">タイトルへ</button>
+  </div>
+
+  <div id="toast"></div>
+</div>
+<script>
+'use strict';
+/* roundRect polyfill (older iOS Safari / WebView) */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    if(typeof r==='number')r=[r,r,r,r];else if(r.length===1)r=[r[0],r[0],r[0],r[0]];
+    this.moveTo(x+r[0],y);this.lineTo(x+w-r[1],y);this.arcTo(x+w,y,x+w,y+r[1],r[1]);
+    this.lineTo(x+w,y+h-r[2]);this.arcTo(x+w,y+h,x+w-r[2],y+h,r[2]);
+    this.lineTo(x+r[3],y+h);this.arcTo(x,y+h,x,y+h-r[3],r[3]);
+    this.lineTo(x,y+r[0]);this.arcTo(x,y,x+r[0],y,r[0]);this.closePath();return this;
+  };
+}
+/* ============ utils ============ */
+const TAU=Math.PI*2;
+const rand=(a,b)=>a+Math.random()*(b-a);
+const randi=(a,b)=>Math.floor(rand(a,b+1));
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
+const fmtG=n=>{n=Math.floor(n);return n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e4?(n/1e3).toFixed(1)+'k':String(n)};
+const fmtM=n=>Math.floor(n).toLocaleString('en-US')+'m';
+// deterministic hash noise for terrain deco
+function hash(x,y){let h=(x*374761393+y*668265263)|0;h=(h^(h>>13))|0;h=(h*1274126177)|0;return ((h^(h>>16))>>>0)/4294967295;}
+
+/* ============ save ============ */
+const SAVE_KEY='horisugi_save_v1';
+let save={geo:0,bestDepth:0,coreCount:0,mute:false,
+  up:{blade:0,fan:0,tank:0,magnet:0,pad:0,capsule:0},
+  branchA:'',branchB:'', // '' | 'bakunetsu'|'kyuurei' , ''|'gamble'|'kenjitsu'
+  found:{},dives:0,tut:0};
+try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s&&typeof s==='object'){save={...save,...s,up:{...save.up,...(s.up||{})},found:{...(s.found||{})}}}}catch(e){}
+function persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(save))}catch(e){}}
+
+/* ============ audio (iOS-safe) ============ */
+let AC=null,master=null,audioReady=false,silentEl=null;
+function makeSilentWav(){
+  const rate=8000,n=rate,buf=new ArrayBuffer(44+n*2),v=new DataView(buf);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  ws(0,'RIFF');v.setUint32(4,36+n*2,true);ws(8,'WAVE');ws(12,'fmt ');
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);
+  ws(36,'data');v.setUint32(40,n*2,true);
+  return URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+}
+function unlockAudio(){
+  if(!silentEl){
+    silentEl=document.createElement('audio');
+    silentEl.src=makeSilentWav();silentEl.loop=true;silentEl.setAttribute('playsinline','');
+    silentEl.play().catch(()=>{});
+  }else if(silentEl.paused){silentEl.play().catch(()=>{});}
+  if(!AC){
+    AC=new (window.AudioContext||window.webkitAudioContext)();
+    master=AC.createGain();master.gain.value=save.mute?0:0.5;master.connect(AC.destination);
+    AC.onstatechange=()=>{if(AC.state==='interrupted'||AC.state==='suspended')AC.resume().catch(()=>{})};
+  }
+  AC.resume().then(()=>{audioReady=true;initDrillLoop();});
+}
+document.addEventListener('pointerdown',unlockAudio);
+function setMute(m){save.mute=m;persist();if(master)master.gain.value=m?0:0.5;}
+function env(g,t0,a,peak,d){g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(peak,t0+a);g.gain.exponentialRampToValueAtTime(0.0001,t0+a+d);}
+function tone(freq,type,peak,dur,when=0,slide=0){
+  if(!audioReady||save.mute)return;
+  const t0=AC.currentTime+when,o=AC.createOscillator(),g=AC.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,t0);
+  if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(20,freq+slide),t0+dur);
+  env(g,t0,0.005,peak,dur);o.connect(g);g.connect(master);o.start(t0);o.stop(t0+dur+0.05);
+}
+let noiseBuf=null;
+function noiseHit(peak,dur,when=0,hp=600,lp=0){
+  if(!audioReady||save.mute)return;
+  if(!noiseBuf){noiseBuf=AC.createBuffer(1,AC.sampleRate*0.5,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}
+  const t0=AC.currentTime+when,s=AC.createBufferSource(),g=AC.createGain(),f=AC.createBiquadFilter();
+  s.buffer=noiseBuf;s.loop=true;
+  if(lp){f.type='lowpass';f.frequency.value=lp;}else{f.type='highpass';f.frequency.value=hp;}
+  env(g,t0,0.003,peak,dur);s.connect(f);f.connect(g);g.connect(master);s.start(t0);s.stop(t0+dur+0.1);
+}
+/* continuous drill rumble: noise->bandpass + sub osc, gain/freq follow heat */
+let drillNodes=null;
+function initDrillLoop(){
+  if(drillNodes||!AC)return;
+  if(!noiseBuf){noiseBuf=AC.createBuffer(1,AC.sampleRate*0.5,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}
+  const src=AC.createBufferSource();src.buffer=noiseBuf;src.loop=true;
+  const bp=AC.createBiquadFilter();bp.type='bandpass';bp.frequency.value=120;bp.Q.value=1.2;
+  const g=AC.createGain();g.gain.value=0;
+  const sub=AC.createOscillator();sub.type='sawtooth';sub.frequency.value=38;
+  const sg=AC.createGain();sg.gain.value=0;
+  src.connect(bp);bp.connect(g);g.connect(master);
+  sub.connect(sg);sg.connect(g);
+  src.start();sub.start();
+  drillNodes={bp,g,sub,sg};
+}
+function updateDrillSound(active,heat){
+  if(!drillNodes||!audioReady)return;
+  const t=AC.currentTime;
+  const target=active?0.10+heat/100*0.10:0;
+  drillNodes.g.gain.setTargetAtTime(save.mute?0:target,t,0.06);
+  drillNodes.bp.frequency.setTargetAtTime(100+heat*7,t,0.1);
+  drillNodes.sub.frequency.setTargetAtTime(30+heat*0.5,t,0.1);
+  drillNodes.sg.gain.setTargetAtTime(active?0.5:0,t,0.08);
+}
+const PENTA=[0,3,5,7,10];
+const nfreq=(base,st)=>base*Math.pow(2,st/12);
+const sfx={
+  collect(tier){tone(nfreq(740,PENTA[tier%5]+12*Math.floor(tier/5)),'triangle',0.09,0.1);},
+  fragile(){tone(300,'square',0.07,0.12,0,-150);noiseHit(0.05,0.08,0,2000);},
+  warn(){tone(1380,'square',0.05,0.05);},
+  boom(){noiseHit(0.3,0.7,0,0,400);tone(55,'sawtooth',0.3,0.9,0,-25);tone(110,'square',0.12,0.5,0.05,-60);},
+  bank(){[0,4,7,12,16].forEach((st,i)=>tone(nfreq(523,st),'triangle',0.1,0.22,i*0.06));},
+  coinTick(){tone(rand(1500,1900),'triangle',0.05,0.05);},
+  strata(){[0,5,12].forEach((st,i)=>tone(nfreq(392,st),'triangle',0.09,0.3,i*0.08));},
+  spring(){tone(880,'sine',0.08,0.4,0,520);noiseHit(0.05,0.3,0,3000);},
+  pocket(){tone(70,'sawtooth',0.16,0.5,0,25);noiseHit(0.08,0.3,0,0,300);},
+  cavity(){tone(520,'sine',0.07,0.5,0,-300);},
+  launch(){tone(120,'sawtooth',0.12,0.6,0,700);noiseHit(0.08,0.5,0,800);},
+  button(){tone(880,'sine',0.05,0.06);},
+  buy(){tone(660,'triangle',0.08,0.08);tone(990,'triangle',0.08,0.12,0.07);},
+  denied(){tone(180,'square',0.06,0.12);},
+  combo(n){tone(nfreq(880,Math.min(n,12)),'sine',0.06,0.15);},
+  ending(){[0,4,7,12,16,19,24,28].forEach((st,i)=>tone(nfreq(262,st),'sine',0.1,0.9,i*0.12));},
+};
+
+/* ============ canvas ============ */
+const wrap=document.getElementById('wrap');
+const cv=document.getElementById('cv');
+const ctx=cv.getContext('2d');
+let W=390,H=700,dpr=1,safeTop=18;
+function resize(){
+  const r=wrap.getBoundingClientRect();
+  W=r.width;H=r.height;dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+  try{
+    const v=getComputedStyle(document.documentElement).getPropertyValue('--sat');
+    safeTop=18+(parseFloat(v)||0);
+  }catch(e){safeTop=18;}
+}
+window.addEventListener('resize',resize);resize();
+
+/* ============ game data ============ */
+const CORE_DEPTH=8000;
+const STRATA=[
+  {name:'表土',from:0,to:250,c1:'#6b4a2b',c2:'#54381e',deco:'#8a6a45',amb:0},
+  {name:'岩盤',from:250,to:800,c1:'#4d4a4e',c2:'#37343b',deco:'#6e6a72',amb:0},
+  {name:'化石層',from:800,to:2000,c1:'#6e5c40',c2:'#52432c',deco:'#cfc0a0',amb:2},
+  {name:'氷晶洞',from:2000,to:4000,c1:'#27414f',c2:'#182d3a',deco:'#9adfff',amb:4},
+  {name:'マグマ層',from:4000,to:7000,c1:'#4a1812',c2:'#330d0a',deco:'#ff7a3c',amb:9},
+  {name:'地核',from:7000,to:Infinity,c1:'#3a2410',c2:'#241405',deco:'#ffd95c',amb:14},
+];
+function strataAt(d){for(let i=STRATA.length-1;i>=0;i--)if(d>=STRATA[i].from)return STRATA[i];return STRATA[0];}
+// ores: tier→collect sfx pitch / icon / value / spawn rules
+const ORES={
+  ishi:   {n:'石ころ', i:'🪨',v:1,  t:0},
+  douko:  {n:'銅鉱',   i:'🟠',v:4,  t:1},
+  tekko:  {n:'鉄鉱',   i:'⚙️',v:9,  t:2},
+  ginko:  {n:'銀鉱',   i:'🥈',v:18, t:3},
+  kaseki: {n:'完全化石',i:'🦴',v:60, t:4, fragile:true},
+  kakera: {n:'砕けた化石',i:'💀',v:10,t:1},
+  kinko:  {n:'金鉱',   i:'🟡',v:90, t:5},
+  hyosho: {n:'氷晶',   i:'❄️',v:150,t:6, cold:true},
+  shiho:  {n:'紫宝玉', i:'💜',v:230,t:7},
+  hikin:  {n:'緋金属', i:'🔥',v:380,t:8},
+  kakuhen:{n:'核片',   i:'☀️',v:1000,t:9},
+};
+// spawn table per stratum: [oreId, weight]
+const SPAWNS=[
+  [['ishi',70],['douko',30]],
+  [['ishi',25],['douko',35],['tekko',32],['ginko',8]],
+  [['tekko',20],['ginko',30],['kaseki',32],['kinko',18]],
+  [['ginko',12],['kinko',28],['hyosho',38],['shiho',22]],
+  [['kinko',12],['shiho',33],['hikin',55]],
+  [['hikin',35],['kakuhen',65]],
+];
+const UPS={
+  blade:  {n:'ドリル刃',i:'⛏️',max:8,base:90,mul:2.3,ds:l=>`掘削速度 +${l*45}%`},
+  fan:    {n:'冷却ファン',i:'🌀',max:7,base:120,mul:2.3,ds:l=>`冷却速度 +${l*28}%`},
+  tank:   {n:'耐熱合金',i:'🛡️',max:7,base:160,mul:2.3,ds:l=>`掘削の発熱 -${Math.round((1-1/(1+0.16*l))*100)}%`},
+  magnet: {n:'集鉱磁石',i:'🧲',max:5,base:220,mul:2.5,ds:l=>`鉱物の出現率 +${l*22}%`},
+  pad:    {n:'発進エレベーター',i:'🛗',max:3,base:0,mul:1,costs:[1500,15000,120000],ds:l=>l?`深度${[0,250,800,2000][l]}mから発進`:'地表から発進'},
+  capsule:{n:'保険カプセル',i:'🛟',max:2,base:0,mul:1,costs:[800,8000],ds:l=>l?`爆発時も${[0,35,60][l]}%回収`:'爆発時は全ロスト'},
+};
+const BRANCH_A={unlock:800,opts:{
+  bakunetsu:{n:'爆熱炉',i:'🔥',cost:2500,ds:'赤熱ゾーン拡大(65%〜)+コンボ成長1.5倍',hot:true},
+  kyuurei:{n:'急冷システム',i:'❄️',cost:2500,ds:'指を離した時の冷却2倍+氷晶が熱くても採れる',hot:false},
+}};
+const BRANCH_B={unlock:2500,opts:{
+  gamble:{n:'ギャンブルビット',i:'🎰',cost:20000,ds:'鉱物の価値が0〜3倍に乱高下(超アタリあり)',hot:true},
+  kenjitsu:{n:'堅実ビット',i:'💎',cost:20000,ds:'全ての鉱物の価値 +40%',hot:false},
+}};
+
+/* ============ derived stats ============ */
+function stats(){
+  const u=save.up;
+  return {
+    digSpd:5.2*(1+0.45*u.blade),
+    coolRate:24*(1+0.28*u.fan)*(save.branchA==='kyuurei'?1:1),
+    heatGain:15/(1+0.16*u.tank),
+    dropMul:1+0.22*u.magnet,
+    startDepth:[0,250,800,2000][u.pad],
+    salvage:[0,0.35,0.6][u.capsule],
+    redline:save.branchA==='bakunetsu'?65:78,
+    comboGrow:save.branchA==='bakunetsu'?0.18:0.12,
+    releaseCool:save.branchA==='kyuurei'?2:1,
+    valMul:(save.branchB==='kenjitsu'?1.4:1)*(1+0.1*(save.coreCount||0)),
+    gamble:save.branchB==='gamble',
+    coldAnytime:save.branchA==='kyuurei',
+  };
+}
+function upCost(k){const u=UPS[k];const l=save.up[k];if(l>=u.max)return null;return u.costs?u.costs[l]:Math.round(u.base*Math.pow(u.mul,l));}
+
+/* ============ state (all initialized at declaration) ============ */
+let state='title';        // title|dive|returning|boom|result|shop|howto|ending
+let drilling=false;
+let depth=0, heat=0, buffer=0, bufferItems=0;
+let comboT=0, comboMul=1, maxCombo=1;
+let diveSt=stats();
+let curStrataIdx=0;
+let events=[];            // {d, type:'spring'|'pocket'|'cavity', done}
+let warnT=0, shake=0, retT=0, boomT=0, freefall=0;
+let diveGain=0, diveDepth=0, lastT=0, gameT=0, oreAcc=0;
+let particles=[], floaters=[], drops=[];
+let pocketWarnD=-1;
+let endingSeen=false;
+let tutShown={};
+let tutTimers=[];
+function clearTutTimers(){tutTimers.forEach(clearTimeout);tutTimers.length=0;}
+const stars=[];for(let i=0;i<40;i++)stars.push({x:Math.random(),y:Math.random()*0.5,s:Math.random()*1.5+0.5});
+
+/* ============ toast ============ */
+const toastEl=document.getElementById('toast');
+let toastT=0;
+function toast(msg,ms=1800){toastEl.textContent=msg;toastEl.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>toastEl.style.opacity=0,ms);}
+
+/* ============ screens ============ */
+const scr={title:'titleScr',howto:'howtoScr',shop:'shopScr',result:'resultScr',ending:'endScr'};
+function show(name){
+  for(const k in scr)document.getElementById(scr[k]).classList.toggle('show',k===name);
+  document.getElementById('returnBtn').style.display=(name==='')&&(state==='dive')?'block':'none';
+}
+function hideAll(){show('');}
+
+/* ============ dive ============ */
+function startDive(){
+  clearTutTimers();
+  diveSt=stats();
+  depth=diveSt.startDepth; heat=0; buffer=0; bufferItems=0;
+  comboT=0; comboMul=1; maxCombo=1; diveGain=0; oreAcc=0;
+  warnT=0; shake=0; freefall=0; pocketWarnD=-1;
+  particles.length=0; floaters.length=0; drops.length=0;
+  curStrataIdx=STRATA.indexOf(strataAt(depth));
+  // roll events for this dive
+  events=[];
+  let d=Math.max(depth,200)+rand(250,600);
+  while(d<CORE_DEPTH+3000){
+    const r=Math.random();
+    let type='spring';
+    if(d>1200&&r<0.42)type='pocket';else if(r<0.62)type='cavity';
+    events.push({d,type,done:false});
+    d+=rand(420,900);
+  }
+  state='dive';drilling=false;
+  hideAll();
+  document.getElementById('returnBtn').style.display='block';
+  document.getElementById('returnBtn').classList.remove('urgent');
+  sfx.launch();
+  if(!save.tut){toast('画面を長押しで掘削!',2600);}
+}
+function oreRoll(){
+  const s=strataAt(depth);
+  const idx=STRATA.indexOf(s);
+  const tbl=SPAWNS[Math.min(idx,SPAWNS.length-1)];
+  let tot=0;for(const[,w]of tbl)tot+=w;
+  let r=Math.random()*tot;
+  for(const[id,w]of tbl){r-=w;if(r<=0)return id;}
+  return tbl[0][0];
+}
+function collect(id){
+  const o=ORES[id];
+  let v=o.v, label=o.n, icon=o.i, broke=false;
+  if(o.fragile&&heat>=70){id='kakera';const k=ORES.kakera;v=k.v;label=k.n;icon=k.i;broke=true;}
+  if(o.cold&&heat>=40&&!diveSt.coldAnytime){ // ice shatters on hot drill
+    floaters.push({x:W/2+rand(-60,60),y:H*0.55,vy:-40,t:1,txt:'❄️溶けた…',col:'#9adfff',size:12});
+    if(!tutShown.ice){tutShown.ice=true;toast('氷晶は熱ゲージ40%未満でしか採れない!',2400);}
+    sfx.fragile();return;
+  }
+  if(diveSt.gamble){const r=Math.random();v=Math.round(v*(r<0.45?rand(0,0.5):r<0.9?rand(0.8,1.6):rand(2.4,3.2)));if(v>o.v*2.2){floaters.push({x:W/2,y:H*0.4,vy:-30,t:1.4,txt:'🎰大当たり!',col:'#ffd95c',size:18});}}
+  v=Math.round(v*diveSt.valMul*comboMul);
+  buffer+=v;bufferItems++;
+  if(!save.found[id]){save.found[id]=true;persist();toast(`✨発見: ${label}`,2000);}
+  if(broke){sfx.fragile();if(!tutShown.fossil){tutShown.fossil=true;toast('熱70%以上だと化石が砕ける!冷やして採れ',2600);}}
+  else sfx.collect(ORES[id].t);
+  drops.push({x:W/2+rand(-70,70),y:H*0.62+rand(-20,20),tx:W-60,ty:54,t:0,icon,v});
+  floaters.push({x:W/2+rand(-50,50),y:H*0.58,vy:-46,t:1,txt:'+'+v,col:broke?'#998':'#ffd95c',size:13+Math.min(8,v/80)});
+}
+function ambientHeat(d){
+  // rises super-linearly: deep down, released-finger cooling stops being enough
+  return Math.pow(Math.max(0,d)/1000,1.6)*1.2;
+}
+function explode(){
+  state='boom';boomT=0;drilling=false;shake=14;
+  sfx.boom();
+  diveGain=Math.round(buffer*diveSt.salvage);
+  diveDepth=depth;
+  document.getElementById('returnBtn').style.display='none';
+}
+function returnHome(){
+  if(state!=='dive')return;
+  state='returning';retT=0;drilling=false;
+  diveGain=buffer;diveDepth=depth;
+  sfx.launch();
+  document.getElementById('returnBtn').style.display='none';
+}
+function finishDive(banked){
+  clearTutTimers();
+  save.geo+=diveGain;
+  save.dives++;
+  const newBest=Math.floor(depth)>save.bestDepth;
+  if(newBest)save.bestDepth=Math.floor(depth);
+  persist();
+  state='result';
+  document.getElementById('rTitle').textContent=banked?'帰還成功':'💥 爆発四散';
+  document.getElementById('rTitle').className='rslt-title '+(banked?'bank':'boom');
+  document.getElementById('rDepth').textContent=fmtM(depth);
+  document.getElementById('rGain').textContent='+'+fmtG(diveGain);
+  document.getElementById('rCombo').textContent='x'+maxCombo.toFixed(1);
+  document.getElementById('rTotal').textContent=fmtG(save.geo);
+  const note=document.getElementById('rNote');
+  if(!banked&&diveSt.salvage>0)note.textContent=`🛟保険カプセルが ${Math.round(diveSt.salvage*100)}% を回収した`;
+  else if(!banked)note.textContent=buffer>0?`◈${fmtG(buffer)} が地底に散った…`:'';
+  else if(newBest)note.textContent='🏆 最深記録更新!';
+  else note.textContent='';
+  // afford hint
+  for(const k in UPS){const c=upCost(k);if(c!==null&&save.geo>=c){note.textContent+=(note.textContent?' / ':'')+'🔧強化が買える!';break;}}
+  show('result');
+  if(banked)sfx.bank();
+  // core reach: count every time, show ending cinematic once per session
+  if(banked&&depth>=CORE_DEPTH){
+    if(!save.coreCount)save.coreCount=0;
+    save.coreCount++;persist();
+    if(!endingSeen){
+      endingSeen=true;
+      tutTimers.push(setTimeout(()=>{if(state==='result'){state='ending';show('ending');sfx.ending();}},900));
+    }else{
+      note.textContent=`☀️ コア${save.coreCount}回目!コアの炎で全鉱物価値+${save.coreCount*10}%`;
+    }
+  }
+}
+
+/* ============ shop ============ */
+function renderShop(){
+  document.getElementById('coinDisp2').textContent=fmtG(save.geo);
+  const list=document.getElementById('shopList');
+  list.innerHTML='';
+  for(const k in UPS){
+    const u=UPS[k],l=save.up[k],c=upCost(k);
+    const row=document.createElement('div');row.className='shop-row';
+    const pips='●'.repeat(l)+'○'.repeat(u.max-l);
+    row.innerHTML=`<div class="ico">${u.i}</div><div style="flex:1"><div class="nm">${u.n} <span class="pips">${pips}</span></div><div class="ds">${u.ds(l)}${c!==null?` <span style="color:#8c6">次: ${u.ds(l+1)}</span>`:''}</div></div>`;
+    const btn=document.createElement('button');btn.className='buy';
+    if(c===null){btn.textContent='MAX';btn.disabled=true;}
+    else{btn.textContent='◈'+fmtG(c);btn.disabled=save.geo<c;
+      btn.addEventListener('pointerdown',e=>{e.stopPropagation();
+        if(save.geo<c){sfx.denied();return;}
+        save.geo-=c;save.up[k]++;persist();sfx.buy();renderShop();
+      });}
+    row.appendChild(btn);list.appendChild(row);
+  }
+  // branches
+  const addBranch=(B,key)=>{
+    if(save.bestDepth<B.unlock){
+      const row=document.createElement('div');row.className='shop-row';
+      row.innerHTML=`<div class="ico">🔒</div><div style="flex:1"><div class="nm">改造ベイ</div><div class="ds">深度${B.unlock}m到達で解放</div></div>`;
+      list.appendChild(row);return;
+    }
+    const chosen=save[key];
+    for(const id in B.opts){
+      const o=B.opts[id];
+      const row=document.createElement('div');row.className='shop-row branch'+(o.hot?'':' cold')+(chosen===id?' owned':'');
+      row.innerHTML=`<div class="ico">${o.i}</div><div style="flex:1"><div class="nm">${o.n}${chosen===id?' ✔':''}</div><div class="ds">${o.ds}${!chosen?'(どちらか片方だけ)':''}</div></div>`;
+      if(!chosen){
+        const btn=document.createElement('button');btn.className='buy';
+        btn.textContent='◈'+fmtG(o.cost);btn.disabled=save.geo<o.cost;
+        // irreversible pick: require a second confirming tap
+        btn.addEventListener('pointerdown',e=>{e.stopPropagation();
+          if(save.geo<o.cost){sfx.denied();return;}
+          if(!btn.dataset.cf){
+            btn.dataset.cf='1';btn.textContent='本当に?';sfx.button();
+            setTimeout(()=>{if(btn.dataset.cf){delete btn.dataset.cf;btn.textContent='◈'+fmtG(o.cost);}},2500);
+            return;
+          }
+          save.geo-=o.cost;save[key]=id;persist();sfx.buy();renderShop();toast(`${o.n} を搭載した!(取り外し不可)`);
+        });
+        row.appendChild(btn);
+      }
+      list.appendChild(row);
+    }
+  };
+  addBranch(BRANCH_A,'branchA');
+  addBranch(BRANCH_B,'branchB');
+  // discovered ores
+  const dl=document.getElementById('discoverList');
+  dl.innerHTML='';
+  for(const id in ORES){
+    const sp=document.createElement('span');
+    if(save.found[id]){sp.textContent=`${ORES[id].i}${ORES[id].n} ◈${ORES[id].v}`;}
+    else{sp.textContent='???';sp.className='unknown';}
+    dl.appendChild(sp);
+  }
+}
+
+/* ============ input ============ */
+// double-tap zoom prevention (3-point set)
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{
+  const now=Date.now();
+  if(now-lastTouchEnd<350)e.preventDefault();
+  lastTouchEnd=now;
+},{passive:false});
+
+// robust press tracking: per-pointerId set + keyboard flag; cleared on blur/visibility change
+const activePtrs=new Set();
+let keyDrill=false;
+function syncDrill(){drilling=(activePtrs.size>0||keyDrill)&&state==='dive';}
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  activePtrs.add(e.pointerId);syncDrill();
+});
+window.addEventListener('pointerup',e=>{activePtrs.delete(e.pointerId);syncDrill();});
+window.addEventListener('pointercancel',e=>{activePtrs.delete(e.pointerId);syncDrill();});
+window.addEventListener('blur',()=>{activePtrs.clear();keyDrill=false;syncDrill();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){activePtrs.clear();keyDrill=false;syncDrill();}});
+window.addEventListener('keydown',e=>{
+  if(e.repeat)return;
+  if(e.code==='Space'){e.preventDefault();keyDrill=true;syncDrill();}
+  if(e.code==='Enter'||e.code==='KeyR'){if(state==='dive')returnHome();}
+});
+window.addEventListener('keyup',e=>{if(e.code==='Space'){keyDrill=false;syncDrill();}});
+
+function btn(id,fn){document.getElementById(id).addEventListener('pointerdown',e=>{e.preventDefault();sfx.button();fn();});}
+btn('startBtn',startDive);
+btn('howtoBtn',()=>{state='howto';show('howto');});
+btn('howtoBack',()=>{state='title';renderTitle();show('title');});
+btn('shopBtn',()=>{state='shop';renderShop();show('shop');});
+btn('shopBack',()=>{state='title';renderTitle();show('title');});
+btn('shopDive',startDive);
+btn('againBtn',startDive);
+btn('rShopBtn',()=>{state='shop';renderShop();show('shop');});
+btn('rHomeBtn',()=>{state='title';renderTitle();show('title');});
+btn('endContinue',startDive);
+btn('endHome',()=>{state='title';renderTitle();show('title');});
+document.getElementById('returnBtn').addEventListener('pointerdown',e=>{
+  e.preventDefault();e.stopPropagation();returnHome();
+});
+const muteBtn=document.getElementById('muteBtn');
+muteBtn.textContent=save.mute?'🔇':'🔊';
+muteBtn.addEventListener('pointerdown',e=>{
+  e.preventDefault();e.stopPropagation();
+  setMute(!save.mute);
+  muteBtn.textContent=save.mute?'🔇':'🔊';
+});
+
+function renderTitle(){
+  document.getElementById('tBest').textContent=fmtM(save.bestDepth);
+  document.getElementById('tBank').textContent=fmtG(save.geo);
+  document.getElementById('tCore').textContent=save.coreCount?save.coreCount+'回':'--';
+  document.getElementById('coinDisp1').textContent='◈'+fmtG(save.geo);
+}
+
+/* ============ update ============ */
+function update(dt){
+  gameT+=dt;
+  if(state==='dive'){
+    const s=diveSt;
+    const stra=strataAt(depth);
+    const sIdx=STRATA.indexOf(stra);
+    if(sIdx!==curStrataIdx){
+      curStrataIdx=sIdx;sfx.strata();
+      toast(`⛏ ${stra.name} に突入`,1700);
+      if(stra.name==='マグマ層'&&!tutShown.magma){tutShown.magma=true;tutTimers.push(setTimeout(()=>toast('マグマ層は熱50%未満だと刃が立たずほぼ掘れない!',2600),1800));}
+      if(stra.name==='氷晶洞'&&!tutShown.iceInfo){tutShown.iceInfo=true;tutTimers.push(setTimeout(()=>toast('氷晶は冷えた刃(40%未満)でだけ採れる',2600),1800));}
+    }
+    // heat
+    const amb=ambientHeat(depth);
+    if(drilling){
+      heat+=(s.heatGain+amb)*dt;
+    }else{
+      heat+=(amb-s.coolRate*s.releaseCool)*dt;
+    }
+    heat=Math.max(0,heat);
+    // dig
+    if(drilling&&freefall<=0){
+      let spd=s.digSpd*(0.55+Math.pow(heat/100,1.4)*1.45);
+      const red=heat>=s.redline&&heat<100;
+      if(red)spd*=1.5;
+      if(stra.name==='マグマ層'&&heat<50)spd*=0.3;
+      depth+=spd*dt;
+      // combo grows only while in redline
+      if(red){comboT+=dt;const prev=comboMul;comboMul=Math.min(2.5,1+comboT*s.comboGrow);if(Math.floor(comboMul*10)>Math.floor(prev*10))sfx.combo(Math.floor(comboMul*4));}
+      // ore spawn: rate per second grows with speed but soft-capped to keep feedback readable
+      const dps=Math.min(3.5,(0.5+spd*0.045)*s.dropMul*(red?1.8:1));
+      oreAcc+=dps*dt;
+      while(oreAcc>=1){oreAcc-=1;collect(oreRoll());}
+      // particles (dt-based: same density on 60Hz and 120Hz)
+      if(Math.random()<36*dt)particles.push({x:W/2+rand(-30,30),y:H*0.62,vx:rand(-80,80),vy:rand(-180,-40),t:rand(0.3,0.7),col:stra.deco});
+    }
+    // out of redline: combo decays fast (no farming the multiplier in the safe band)
+    if(heat<diveSt.redline&&comboT>0){
+      comboT=Math.max(0,comboT-3.2*dt);
+      if(heat<50)comboT=0;
+      comboMul=Math.min(2.5,1+comboT*diveSt.comboGrow);
+    }
+    if(comboMul>maxCombo)maxCombo=comboMul;
+    // freefall (cavity)
+    if(freefall>0){
+      const fall=Math.min(freefall,260*dt);
+      depth+=fall;freefall-=fall;
+      if(freefall<=0)toast('着地!',900);
+    }
+    // events
+    for(const ev of events){
+      if(ev.done)continue;
+      if(ev.type==='pocket'&&pocketWarnD<0&&depth>ev.d-140&&depth<ev.d){pocketWarnD=ev.d;sfx.pocket();toast('⚠️ 地震計が震えている…',1400);}
+      if(depth>=ev.d){
+        ev.done=true;
+        if(ev.type==='spring'){heat=Math.max(0,heat-42);sfx.spring();floaters.push({x:W/2,y:H*0.5,vy:-40,t:1.3,txt:'♨️温泉! 熱-42',col:'#9adfff',size:16});}
+        else if(ev.type==='pocket'){heat+=24;pocketWarnD=-1;shake=8;sfx.pocket();floaters.push({x:W/2,y:H*0.5,vy:-40,t:1.3,txt:'🌋マグマ袋! 熱+24',col:'#ff7a3c',size:16});}
+        else if(ev.type==='cavity'){freefall=rand(60,150);sfx.cavity();floaters.push({x:W/2,y:H*0.5,vy:-40,t:1.3,txt:'🕳️空洞! 自由落下',col:'#cbb',size:16});}
+      }
+    }
+    // warnings
+    if(heat>=90){warnT+=dt;if(warnT>0.35){warnT=0;sfx.warn();}}
+    const net=ambientHeat(depth)-s.coolRate*s.releaseCool;
+    document.getElementById('returnBtn').classList.toggle('urgent',heat>82||net>-4);
+    if(net>-4&&!tutShown.deep){tutShown.deep=true;toast('⚠️ 地熱で冷却が追いつかない!帰還を考えろ',3000);}
+    // tutorial beats (mark as seen only when actually shown)
+    if(!save.tut&&buffer>0&&!tutShown.ret){tutShown.ret=true;tutTimers.push(setTimeout(()=>{if(state==='dive'){toast('「帰還」で換金。爆発したら失う!',2800);save.tut=1;persist();}},1200));}
+    // explosion
+    if(heat>=100)explode();
+  }
+  else if(state==='returning'){
+    retT+=dt;
+    depth=Math.max(0,depth-2600*dt*Math.min(1,retT*2));
+    if(Math.random()<30*dt)particles.push({x:W/2+rand(-26,26),y:H*0.62+rand(0,30),vx:rand(-40,40),vy:rand(120,260),t:rand(0.3,0.6),col:'#9adfff'});
+    if(depth<=0.01&&retT>0.8){depth=diveDepth;finishDive(true);}
+  }
+  else if(state==='boom'){
+    boomT+=dt;
+    if(boomT<0.5&&Math.random()<54*dt)particles.push({x:W/2+rand(-50,50),y:H*0.6+rand(-40,40),vx:rand(-260,260),vy:rand(-320,80),t:rand(0.4,1),col:pick(['#ff5a2c','#ffb347','#ffd95c','#888'])});
+    if(boomT>1.5)finishDive(false);
+  }
+  // particles & floaters & drops
+  for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.t-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;if(p.t<=0)particles.splice(i,1);}
+  for(let i=floaters.length-1;i>=0;i--){const f=floaters[i];f.t-=dt;f.y+=f.vy*dt;if(f.t<=0)floaters.splice(i,1);}
+  for(let i=drops.length-1;i>=0;i--){const d=drops[i];d.t+=dt*2.4;if(d.t>=1){drops.splice(i,1);sfx.coinTick();}}
+  shake=Math.max(0,shake-dt*22);
+}
+
+/* ============ render ============ */
+function render(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const inDive=state==='dive'||state==='returning'||state==='boom';
+  const camY=depth*6; // 1m = 6px
+  const sx=shake>0?rand(-shake,shake):0, sy=shake>0?rand(-shake,shake):0;
+  ctx.save();ctx.translate(sx,sy);
+  // sky (visible near surface)
+  const horizonScreenY=H*0.3-camY;
+  if(horizonScreenY>-50){
+    const g=ctx.createLinearGradient(0,horizonScreenY-H*0.5,0,horizonScreenY);
+    g.addColorStop(0,'#0a1530');g.addColorStop(1,'#27405e');
+    ctx.fillStyle=g;ctx.fillRect(0,Math.min(0,horizonScreenY-H),W,Math.max(0,horizonScreenY)-Math.min(0,horizonScreenY-H)+1);
+    ctx.fillStyle='#fff';
+    for(const st of stars){ctx.globalAlpha=0.5+0.5*Math.sin(gameT*2+st.x*20);ctx.fillRect(st.x*W,(st.y*H*0.3)+horizonScreenY-H*0.3,st.s,st.s);}
+    ctx.globalAlpha=1;
+  }
+  // ground strata bands
+  for(const s of STRATA){
+    const top=H*0.3+s.from*6-camY;
+    const bot=s.to===Infinity?H+200:H*0.3+s.to*6-camY;
+    if(bot<-60||top>H+60)continue;
+    const g=ctx.createLinearGradient(0,top,0,Math.min(bot,top+2000));
+    g.addColorStop(0,s.c1);g.addColorStop(1,s.c2);
+    ctx.fillStyle=g;
+    ctx.fillRect(0,Math.max(-60,top),W,Math.min(H+60,bot)-Math.max(-60,top));
+    // boundary line
+    if(top>-60&&top<H+60){ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(0,top,W,3);}
+  }
+  // deco specks (deterministic per 40px cell)
+  const rowH=40;
+  const r0=Math.floor((camY-H*0.3)/rowH)-1, r1=r0+Math.ceil(H/rowH)+2;
+  for(let r=r0;r<=r1;r++){
+    const wy=r*rowH; // world px below surface start
+    const sy2=H*0.3+wy-camY;
+    if(wy<0)continue;
+    const dM=wy/6;
+    const stra=strataAt(dM);
+    for(let c=0;c<6;c++){
+      const h1=hash(r,c);
+      if(h1<0.55)continue;
+      const x=hash(r,c+17)*W, y=sy2+hash(r,c+31)*rowH;
+      const sz=2+hash(r,c+7)*5;
+      ctx.globalAlpha=0.25+hash(r,c+3)*0.4;
+      ctx.fillStyle=stra.deco;
+      if(stra.name==='化石層'&&h1>0.92){ctx.font='12px sans-serif';ctx.fillText('🦴',x,y);}
+      else if(stra.name==='氷晶洞'&&h1>0.9){ctx.font='11px sans-serif';ctx.fillText('❄',x,y);}
+      else ctx.fillRect(x,y,sz,sz);
+    }
+  }
+  ctx.globalAlpha=1;
+  // magma glow at depth (deep ambience)
+  if(depth>3500&&inDive){
+    const a=clamp((depth-3500)/4500,0,1)*0.25;
+    const g=ctx.createLinearGradient(0,H*0.6,0,H);
+    g.addColorStop(0,'rgba(255,90,30,0)');g.addColorStop(1,`rgba(255,90,30,${a})`);
+    ctx.fillStyle=g;ctx.fillRect(0,H*0.6,W,H*0.4);
+  }
+  // dug shaft (column above drill)
+  if(inDive){
+    const shaftW=46;
+    const shaftTop=Math.max(H*0.3-camY,-60);
+    ctx.fillStyle='rgba(8,5,3,.82)';
+    ctx.fillRect(W/2-shaftW/2,shaftTop,shaftW,H*0.62-shaftTop);
+    // upcoming pocket telegraph
+    for(const ev of events){
+      if(ev.done||ev.type!=='pocket')continue;
+      const eY=H*0.3+ev.d*6-camY;
+      if(eY>H*0.62&&eY<H+40){
+        ctx.fillStyle=`rgba(255,80,30,${0.35+0.25*Math.sin(gameT*8)})`;
+        ctx.beginPath();ctx.ellipse(W/2,eY,26,14,0,0,TAU);ctx.fill();
+      }
+      if(ev.type==='pocket')break;
+    }
+    // spring/cavity telegraph (subtle)
+    for(const ev of events){
+      if(ev.done)continue;
+      const eY=H*0.3+ev.d*6-camY;
+      if(eY>H*0.62&&eY<H+40){
+        if(ev.type==='spring'){ctx.fillStyle='rgba(120,220,255,.3)';ctx.beginPath();ctx.ellipse(W/2,eY,20,10,0,0,TAU);ctx.fill();}
+        else if(ev.type==='cavity'){ctx.fillStyle='rgba(0,0,0,.5)';ctx.beginPath();ctx.ellipse(W/2,eY,22,12,0,0,TAU);ctx.fill();}
+      }
+    }
+    // cooling-impossible depth marker (forewarn the endgame wall)
+    const dCrit=1000*Math.pow(diveSt.coolRate*diveSt.releaseCool/1.2,1/1.6);
+    const cy=H*0.3+dCrit*6-camY;
+    if(cy>-20&&cy<H+20){
+      ctx.strokeStyle='rgba(255,90,44,.7)';ctx.setLineDash([8,6]);ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(W,cy);ctx.stroke();ctx.setLineDash([]);
+      ctx.font="700 11px 'Zen Kaku Gothic New'";ctx.fillStyle='#ff8a5c';ctx.textAlign='center';
+      ctx.fillText('⚠ 冷却限界 '+fmtM(dCrit)+' — この先は離しても熱が上がる',W/2,cy-7);
+      ctx.textAlign='left';
+    }
+    // drill machine
+    const dy=H*0.62;
+    const spin=gameT*(drilling?28:4);
+    ctx.save();ctx.translate(W/2,dy);
+    // body
+    ctx.fillStyle='#c9b89a';ctx.beginPath();ctx.roundRect(-17,-46,34,38,8);ctx.fill();
+    ctx.fillStyle='#8d7a55';ctx.fillRect(-17,-22,34,6);
+    // heat core window
+    const hcol=heat>=diveSt.redline?`hsl(${lerp(38,4,clamp((heat-diveSt.redline)/(100-diveSt.redline),0,1))},100%,${55+5*Math.sin(gameT*12)}%)`:`hsl(${lerp(200,38,heat/diveSt.redline)},90%,55%)`;
+    ctx.fillStyle=hcol;ctx.beginPath();ctx.arc(0,-30,7,0,TAU);ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.4)';ctx.lineWidth=2;ctx.stroke();
+    // drill bit (rotating cone)
+    ctx.fillStyle=heat>=diveSt.redline?'#ffb347':'#aeb6c2';
+    ctx.beginPath();ctx.moveTo(-15,-8);ctx.lineTo(15,-8);ctx.lineTo(0,26);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.3)';ctx.lineWidth=1.5;
+    for(let i=0;i<3;i++){
+      const ph=(spin+i*2.1)%6.3;
+      const yy=-6+ (ph/6.3)*28;
+      const ww=15*(1-(ph/6.3));
+      ctx.beginPath();ctx.moveTo(-ww,yy);ctx.lineTo(ww,yy+3);ctx.stroke();
+    }
+    // redline aura
+    if(heat>=diveSt.redline&&heat<100){
+      ctx.globalAlpha=0.5+0.3*Math.sin(gameT*14);
+      ctx.strokeStyle='#ff5a2c';ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(0,-10,34+4*Math.sin(gameT*10),0,TAU);ctx.stroke();
+      ctx.globalAlpha=1;
+    }
+    ctx.restore();
+    // boom flash
+    if(state==='boom'&&boomT<0.4){ctx.fillStyle=`rgba(255,200,120,${(0.4-boomT)*2})`;ctx.fillRect(-20,-20,W+40,H+40);}
+  }
+  // particles
+  for(const p of particles){ctx.globalAlpha=clamp(p.t*2,0,1);ctx.fillStyle=p.col;ctx.fillRect(p.x-2,p.y-2,4,4);}
+  ctx.globalAlpha=1;
+  // drops flying to HUD
+  for(const d of drops){
+    const t=clamp(d.t,0,1),e=1-Math.pow(1-t,2);
+    const x=lerp(d.x,d.tx,e),y=lerp(d.y,d.ty,e)-Math.sin(t*Math.PI)*40;
+    ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText(d.icon,x,y);
+  }
+  // floaters
+  for(const f of floaters){
+    ctx.globalAlpha=clamp(f.t,0,1);
+    ctx.font=`900 ${f.size}px 'Zen Kaku Gothic New',sans-serif`;
+    ctx.textAlign='center';ctx.fillStyle=f.col;
+    ctx.fillText(f.txt,f.x,f.y);
+  }
+  ctx.globalAlpha=1;ctx.textAlign='left';
+  ctx.restore();
+  // ===== HUD =====
+  if(inDive){
+    // depth
+    ctx.font="700 30px 'Space Mono',monospace";
+    ctx.fillStyle='#fff';ctx.textAlign='center';
+    ctx.shadowColor='rgba(0,0,0,.7)';ctx.shadowBlur=6;
+    ctx.fillText(fmtM(depth),W/2,safeTop+46);
+    ctx.shadowBlur=0;
+    ctx.font="700 11px 'Zen Kaku Gothic New'";
+    ctx.fillStyle='#cba';
+    ctx.fillText(strataAt(depth).name+'   コアまで '+fmtM(Math.max(0,CORE_DEPTH-depth)),W/2,safeTop+64);
+    // buffer (top right)
+    ctx.textAlign='right';
+    ctx.font="700 16px 'Space Mono',monospace";
+    ctx.fillStyle='#ffd95c';
+    ctx.fillText('◈'+fmtG(buffer),W-14,safeTop+34);
+    ctx.font="400 10px 'Space Mono'";
+    ctx.fillStyle='#a98';
+    ctx.fillText(bufferItems+'個',W-14,safeTop+48);
+    // combo (left)
+    if(comboMul>1.01){
+      ctx.textAlign='left';
+      ctx.font="900 18px 'Bungee'";
+      ctx.fillStyle=`hsl(${lerp(38,8,(comboMul-1)/1.5)},100%,60%)`;
+      ctx.fillText('🔥x'+comboMul.toFixed(1),12,safeTop+36);
+    }
+    // heat gauge (right vertical)
+    const gx=W-26,gy=H*0.24,gh=H*0.34,gw=12;
+    ctx.fillStyle='rgba(0,0,0,.5)';
+    ctx.beginPath();ctx.roundRect(gx-2,gy-2,gw+4,gh+4,7);ctx.fill();
+    // redline zone mark
+    const rlY=gy+gh*(1-1)+gh*(1-diveSt.redline/100);
+    ctx.fillStyle='rgba(255,90,44,.35)';
+    ctx.fillRect(gx,gy,gw,gh*(1-diveSt.redline/100));
+    // fill
+    const hh=gh*clamp(heat/100,0,1);
+    const hg=ctx.createLinearGradient(0,gy+gh-hh,0,gy+gh);
+    hg.addColorStop(0,heat>=diveSt.redline?'#ff5a2c':'#ffb347');hg.addColorStop(1,'#5ce8ff');
+    ctx.fillStyle=hg;
+    ctx.fillRect(gx,gy+gh-hh,gw,hh);
+    // pulse at redline
+    if(heat>=diveSt.redline){ctx.globalAlpha=0.4+0.3*Math.sin(gameT*14);ctx.strokeStyle='#ff5a2c';ctx.lineWidth=2.5;ctx.strokeRect(gx-3,gy-3,gw+6,gh+6);ctx.globalAlpha=1;}
+    ctx.font="700 10px 'Space Mono'";ctx.textAlign='center';
+    ctx.fillStyle=heat>=90?'#ff5a2c':'#cba';
+    ctx.fillText(Math.floor(heat)+'%',gx+gw/2,gy+gh+16);
+    ctx.fillText('熱',gx+gw/2,gy-8);
+    // heat vignette
+    if(heat>55){
+      const a=clamp((heat-55)/45,0,1)*0.45;
+      const vg=ctx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.72);
+      vg.addColorStop(0,'rgba(255,40,10,0)');vg.addColorStop(1,`rgba(255,40,10,${a})`);
+      ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+    }
+    ctx.textAlign='left';
+  } else {
+    // title background: slow auto-pan of strata + idle drill silhouette handled by depth=0 cam; nothing extra
+  }
+}
+
+/* ============ main loop (runs from load) ============ */
+let lastStaticT=-9;
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000)||0.016;
+  lastT=t;
+  try{
+    update(dt);
+    // throttle rendering to 2fps while a DOM screen covers the canvas (battery)
+    const active=state==='dive'||state==='returning'||state==='boom';
+    if(active||gameT-lastStaticT>0.5){render();lastStaticT=gameT;}
+    updateDrillSound(state==='dive'&&drilling,heat);
+  }catch(err){console.error(err);}
+  requestAnimationFrame(frame);
+}
+renderTitle();
+show('title');
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
