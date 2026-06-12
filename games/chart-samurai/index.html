@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0f0a07">
+<title>チャート侍 — 実在チャートを斬れ</title>
+<meta name="description" content="正体を伏せた実在の過去為替チャートがリプレイ再生。タップで買い、もう一度タップで売り。元手100万円をどこまで増やせる?">
+<meta property="og:title" content="チャート侍 — 実在チャートを斬れ">
+<meta property="og:description" content="正体を伏せた実在の過去為替チャートがリプレイ再生。タップで買い、もう一度タップで売り。元手100万円をどこまで増やせる?">
+<meta property="og:image" content="https://nrtkumi.github.io/games/chart-samurai/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/chart-samurai/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --gold: #e9b94d;
+    --red: #e2504a;
+    --green: #69f0ae;
+    --paper: #efe5cd;
+    --dim: #b9a98a;
+  }
+  * { box-sizing: border-box; touch-action: manipulation; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #070503;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    color: var(--paper);
+  }
+  body {
+    background-image:
+      radial-gradient(ellipse 70% 45% at 50% -5%, rgba(233, 185, 77, 0.07), transparent),
+      radial-gradient(ellipse 55% 35% at 85% 105%, rgba(226, 80, 74, 0.06), transparent);
+  }
+  /* PCワイド画面対策: 縦長カラムに制限して中央寄せ */
+  #stage {
+    position: fixed; top: 0; bottom: 0;
+    left: 50%; transform: translateX(-50%);
+    width: min(100vw, 520px, 64vh);
+    background: linear-gradient(180deg, #16100a 0%, #0f0a07 55%, #0c0705 100%);
+    box-shadow: 0 0 60px rgba(0,0,0,0.85);
+    display: flex; flex-direction: column;
+    padding: calc(var(--sat) + 8px) 10px calc(var(--sab) + 10px);
+  }
+  #mute {
+    position: absolute;
+    top: calc(var(--sat) + 8px); right: 10px;
+    z-index: 30;
+    width: 40px; height: 40px;
+    border: 2px solid rgba(233,185,77,0.3);
+    border-radius: 12px;
+    background: rgba(26,18,10,0.8);
+    color: #fff; font-size: 18px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  /* ---------- HUD ---------- */
+  #hud {
+    display: flex; gap: 6px; align-items: stretch;
+    margin: 0 46px 6px 0;
+    min-height: 42px;
+  }
+  .hudbox {
+    background: rgba(233,185,77,0.06);
+    border: 1px solid rgba(233,185,77,0.18);
+    border-radius: 10px;
+    padding: 3px 8px;
+    text-align: center;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .hudbox.wide { flex: 1.6; }
+  .hudbox.sm { flex: 1; }
+  .hudbox .lbl { font-size: 9px; color: var(--dim); letter-spacing: 0.14em; }
+  .hudbox .val { font-family: "Space Mono", monospace; font-size: 16px; font-weight: 700; line-height: 1.15; color: var(--paper); }
+  #fundsV.up { color: var(--green); }
+  #fundsV.down { color: var(--red); }
+  #bestV, #roundV { font-size: 14px; }
+  #bestV { color: var(--gold); }
+  /* ---------- 銘柄バー ---------- */
+  #infobar {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 2px 4px 6px;
+    font-size: 12px;
+  }
+  #pairV { font-family: "Space Mono", monospace; font-weight: 700; font-size: 15px; color: var(--gold); letter-spacing: 0.04em; }
+  #periodV { color: var(--dim); font-size: 11px; }
+  #plV { margin-left: auto; font-family: "Space Mono", monospace; font-size: 13px; font-weight: 700; color: var(--dim); }
+  #plV.up { color: var(--green); }
+  #plV.down { color: var(--red); }
+  /* ---------- チャート ---------- */
+  #chartwrap {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    border: 1px solid rgba(233,185,77,0.2);
+    border-radius: 14px;
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, rgba(233,185,77,0.04), rgba(0,0,0,0) 30%),
+      #0a0705;
+  }
+  #cvs { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+  /* ---------- 操作 ---------- */
+  #ctrl { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+  #speeds { display: flex; gap: 6px; justify-content: center; }
+  .spd {
+    font-family: "Space Mono", monospace;
+    font-weight: 700; font-size: 13px;
+    color: var(--dim);
+    background: rgba(233,185,77,0.06);
+    border: 1px solid rgba(233,185,77,0.2);
+    border-radius: 999px;
+    padding: 5px 18px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .spd.on { color: #1a1208; background: var(--gold); border-color: var(--gold); }
+  #actBtn {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700; font-size: 24px;
+    color: #1a1208;
+    background: linear-gradient(135deg, #f0c763, #c98f2b);
+    border: none; border-radius: 18px;
+    padding: 16px 10px 13px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(233,185,77,0.3);
+    touch-action: none;
+    transition: filter 0.15s;
+    line-height: 1.1;
+  }
+  #actBtn:active { filter: brightness(1.15); }
+  #actBtn[disabled] { opacity: 0.4; filter: grayscale(0.7); }
+  #actBtn.sell {
+    color: #fff;
+    background: linear-gradient(135deg, #e2504a, #9e1f24);
+    box-shadow: 0 6px 20px rgba(226,80,74,0.35);
+  }
+  #actBtn .kbd { display: block; font-size: 10px; font-weight: 400; opacity: 0.65; margin-top: 2px; font-family: "Space Mono", monospace; }
+  /* ---------- オーバーレイ ---------- */
+  .ov {
+    position: absolute; inset: 0;
+    z-index: 20;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 13px;
+    background: rgba(10,6,3,0.95);
+    padding: calc(var(--sat) + 16px) 20px calc(var(--sab) + 16px);
+    text-align: center;
+  }
+  .hidden { display: none !important; }
+  .title {
+    font-family: "Bungee", cursive;
+    font-size: clamp(34px, 11vw, 54px);
+    line-height: 1.05;
+    margin: 0;
+    background: linear-gradient(135deg, #f5d57a 0%, #e9b94d 45%, #e2504a 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 4px 14px rgba(233,185,77,0.3));
+    position: relative;
+  }
+  .seal {
+    width: 52px; height: 52px;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #d8453f, #9e1f24);
+    color: #f7ead0;
+    font-weight: 700; font-size: 30px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(226,80,74,0.4);
+    transform: rotate(-6deg);
+  }
+  .jtitle { font-size: 22px; font-weight: 700; margin: -4px 0 0; letter-spacing: 0.3em; color: var(--paper); }
+  .sub {
+    font-family: "Space Mono", monospace;
+    letter-spacing: 0.28em;
+    font-size: 11px; color: var(--dim);
+    margin: 0;
+  }
+  .desc { font-size: 13.5px; color: #e3d6b8; line-height: 1.95; margin: 2px 0; max-width: 420px; }
+  .desc b { color: var(--gold); }
+  .stat { font-family: "Space Mono", monospace; font-size: 13px; color: var(--dim); margin: 0; }
+  .stat b { color: var(--gold); font-size: 16px; }
+  .kbd-hint { font-size: 11px; color: #7d6f54; margin: 0; }
+  .btn {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700; font-size: 18px;
+    color: #1a1208;
+    background: linear-gradient(135deg, #f0c763, #c98f2b);
+    border: none; border-radius: 16px;
+    padding: 14px 48px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(233,185,77,0.3);
+    touch-action: none;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn.ghost {
+    background: transparent;
+    color: var(--paper);
+    border: 2px solid rgba(233,185,77,0.35);
+    box-shadow: none;
+    font-size: 14px;
+    padding: 10px 28px;
+  }
+  .credit { font-size: 10px; color: #7d6f54; line-height: 1.7; margin: 0; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 4px solid rgba(233,185,77,0.2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loadMsg { font-size: 14px; color: #e3d6b8; line-height: 2; margin: 0; white-space: pre-line; }
+  /* ラウンド清算 */
+  .rv-head {
+    font-family: "Bungee", cursive;
+    font-size: 24px; margin: 0;
+    color: var(--gold);
+    filter: drop-shadow(0 3px 10px rgba(233,185,77,0.3));
+  }
+  #rvAnswer {
+    font-size: 13px; color: #e3d6b8; line-height: 1.9; margin: 0;
+    background: rgba(233,185,77,0.06);
+    border: 1px solid rgba(233,185,77,0.2);
+    border-radius: 12px;
+    padding: 10px 18px;
+    max-width: 420px;
+  }
+  #rvAnswer b { color: var(--gold); font-family: "Space Mono", monospace; }
+  #rvFunds, #resFunds {
+    font-family: "Space Mono", monospace;
+    font-weight: 700;
+    font-size: clamp(28px, 9vw, 40px);
+    color: var(--paper);
+    line-height: 1;
+  }
+  #rvDelta { font-family: "Space Mono", monospace; font-size: 17px; font-weight: 700; margin: 0; }
+  #rvDelta.up, #resDelta.up { color: var(--green); }
+  #rvDelta.down, #resDelta.down { color: var(--red); }
+  #rvTrades { font-size: 12px; color: var(--dim); margin: 0; }
+  #resTitle {
+    font-family: "Bungee", cursive;
+    font-size: clamp(26px, 8vw, 38px);
+    margin: 0;
+    color: var(--red);
+    filter: drop-shadow(0 3px 12px rgba(226,80,74,0.35));
+  }
+  #resRank { font-size: 15px; margin: 0; color: var(--paper); }
+  #resRank b { color: var(--gold); font-size: 22px; }
+  #resDelta { font-family: "Space Mono", monospace; font-size: 15px; font-weight: 700; margin: 0; }
+  #resRounds {
+    font-size: 12px; color: #e3d6b8; line-height: 2;
+    background: rgba(233,185,77,0.06);
+    border: 1px solid rgba(233,185,77,0.2);
+    border-radius: 12px;
+    padding: 8px 18px;
+    max-width: 420px;
+    font-family: "Space Mono", monospace;
+  }
+  #newRecord {
+    font-weight: 700; color: var(--green); font-size: 15px; margin: 0;
+    animation: pulse 1s infinite alternate;
+  }
+  @keyframes pulse { from { opacity: 0.7; transform: scale(1); } to { opacity: 1; transform: scale(1.06); } }
+</style>
+</head>
+<body>
+<div id="stage">
+  <button id="mute" aria-label="mute">🔊</button>
+  <div id="hud">
+    <div class="hudbox wide"><span class="lbl">資金(円)</span><span class="val" id="fundsV">1,000,000</span></div>
+    <div class="hudbox sm"><span class="lbl">ラウンド</span><span class="val" id="roundV">-</span></div>
+    <div class="hudbox sm"><span class="lbl">ベスト</span><span class="val" id="bestV">-</span></div>
+  </div>
+  <div id="infobar">
+    <span id="pairV">??? / ???</span>
+    <span id="periodV">????年</span>
+    <span id="plV"></span>
+  </div>
+  <div id="chartwrap"><canvas id="cvs"></canvas></div>
+  <div id="ctrl">
+    <div id="speeds">
+      <button class="spd on" id="spd1">×1</button>
+      <button class="spd" id="spd2">×2</button>
+      <button class="spd" id="spd4">×4</button>
+    </div>
+    <button id="actBtn" disabled><span id="actLbl">買う</span><span class="kbd">[SPACE]</span></button>
+  </div>
+
+  <div class="ov" id="titleOv">
+    <div class="seal">侍</div>
+    <h1 class="title">CHART<br>SAMURAI</h1>
+    <p class="jtitle">チャート侍</p>
+    <p class="sub">REAL FX CHART REPLAY</p>
+    <p class="desc">
+      正体を伏せた<b>実在の過去為替チャート</b>がリプレイ再生される。<br>
+      タップで<b>買い</b>、もう一度タップで<b>売り</b>。<br>
+      元手<b>100万円</b>・全3ラウンド、どこまで増やせる?
+    </p>
+    <p class="stat">ベスト資金: <b id="titleBest">-</b></p>
+    <button class="btn" id="startBtn">出陣</button>
+    <p class="kbd-hint">PC: Space=売買 / 1・2・3=速度</p>
+    <p class="credit">
+      為替データ: Frankfurter API(欧州中央銀行の参考レート / 2000年〜昨年からランダム出題)<br>
+      ※実在の過去レートを使ったゲームです。投資助言ではありません
+    </p>
+  </div>
+
+  <div class="ov hidden" id="loadOv">
+    <div class="spinner" id="loadSpin"></div>
+    <p id="loadMsg">市場データを取得中…</p>
+    <button class="btn hidden" id="retryBtn">再試行</button>
+  </div>
+
+  <div class="ov hidden" id="revealOv">
+    <p class="rv-head">ROUND <span id="rvRound">1</span> 清算</p>
+    <p id="rvAnswer"></p>
+    <div id="rvFunds">0円</div>
+    <p id="rvDelta"></p>
+    <p id="rvTrades"></p>
+    <button class="btn" id="nextBtn">次のラウンドへ</button>
+  </div>
+
+  <div class="ov hidden" id="resultOv">
+    <h2 id="resTitle">勝負あり</h2>
+    <p id="resRank">あなたの称号: <b>侍</b></p>
+    <div id="resFunds">0円</div>
+    <p id="resDelta"></p>
+    <p id="newRecord" class="hidden">🏆 NEW RECORD!</p>
+    <p class="stat">ベスト資金: <b id="resBest">-</b></p>
+    <div id="resRounds"></div>
+    <button class="btn" id="retryGameBtn">もう一度出陣</button>
+    <div style="display:flex; gap:10px;">
+      <button class="btn ghost" id="shareBtn">𝕏 でシェア</button>
+      <button class="btn ghost" id="homeBtn">タイトルへ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================
+   チャート侍 — 実在為替チャートのリプレイ売買ゲーム
+   データ: Frankfurter API v1(ECB日次レート、キー不要・CORS対応)
+   ===================================================== */
+
+const $ = (id) => document.getElementById(id);
+
+/* ---------- オーディオ(iOS消音スイッチ対策込み) ---------- */
+let AC = null;
+let muted = false;
+try { muted = localStorage.getItem("chartsamurai_muted") === "1"; } catch (e) {}
+
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+    } catch (e) {}
+  }
+  if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  str(36, "data"); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    try {
+      silentEl = document.createElement("audio");
+      silentEl.setAttribute("playsinline", "");
+      silentEl.loop = true;
+      silentEl.volume = 0.01;
+      silentEl.src = silentWavUrl();
+    } catch (e) {}
+  }
+  if (silentEl) {
+    const p = silentEl.play();
+    if (p && p.catch) p.catch(() => {});
+  }
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === "running") {
+      ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+    }
+  };
+  try { AC.resume().then(done); } catch (e) { done(); }
+}
+["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+function tone(f, d, type, vol, slideTo, at) {
+  if (muted || !audio()) return;
+  try {
+    const t0 = AC.currentTime + (at || 0);
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "sine"; o.frequency.setValueAtTime(f, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + d);
+    g.gain.setValueAtTime(vol || 0.06, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t0); o.stop(t0 + d);
+  } catch (e) {}
+}
+function noise(d, vol, at) {
+  if (muted || !audio()) return;
+  try {
+    const n = Math.floor(AC.sampleRate * d);
+    const buf = AC.createBuffer(1, n, AC.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = AC.createBufferSource(); src.buffer = buf;
+    const g = AC.createGain(); g.gain.value = vol || 0.08;
+    src.connect(g); g.connect(AC.destination); src.start(AC.currentTime + (at || 0));
+  } catch (e) {}
+}
+const sBtn = () => tone(440, 0.07, "square", 0.03);
+const sStart = () => { tone(330, 0.12, "square", 0.04); tone(494, 0.12, "square", 0.04, null, 0.1); tone(659, 0.22, "square", 0.045, null, 0.2); };
+const sSlash = () => { noise(0.14, 0.1); tone(2800, 0.16, "sawtooth", 0.05, 220); };
+const sProfit = () => { [659, 831, 988, 1319].forEach((f, i) => tone(f, 0.14, "triangle", 0.05, null, i * 0.06)); };
+const sLoss = () => { tone(196, 0.4, "sawtooth", 0.07, 65); noise(0.15, 0.05); };
+const sCoin = () => tone(1400 + Math.random() * 500, 0.03, "square", 0.02);
+const sRound = () => { tone(523, 0.16, "triangle", 0.05); tone(784, 0.2, "triangle", 0.05, null, 0.12); tone(1047, 0.3, "triangle", 0.045, null, 0.24); };
+const sRecord = () => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.2, "triangle", 0.05, null, i * 0.09)); };
+
+/* ---------- 為替データ取得(Frankfurter API) ---------- */
+const PAIRS = [
+  ["USD", "JPY"], ["EUR", "USD"], ["GBP", "USD"], ["EUR", "JPY"],
+  ["GBP", "JPY"], ["AUD", "JPY"], ["USD", "CHF"], ["EUR", "GBP"],
+];
+const WINDOW_DAYS = 270;      // 暦日約9ヶ月 ≒ 営業日約185日
+const MAX_POINTS = 180;
+const API_BASE = "https://api.frankfurter.dev/v1";
+
+const fmtDate = (d) => d.toISOString().slice(0, 10);
+const jpYM = (s) => { const p = s.split("-"); return `${p[0]}年${parseInt(p[1], 10)}月`; };
+
+function pickWindow() {
+  const pair = PAIRS[Math.floor(Math.random() * PAIRS.length)];
+  const lastYear = new Date().getFullYear() - 1;
+  const minMs = Date.UTC(2000, 0, 1);
+  const maxMs = Date.UTC(lastYear, 11, 31) - WINDOW_DAYS * 86400000;
+  const startMs = minMs + Math.random() * (maxMs - minMs);
+  return {
+    base: pair[0], sym: pair[1],
+    start: fmtDate(new Date(startMs)),
+    end: fmtDate(new Date(startMs + WINDOW_DAYS * 86400000)),
+  };
+}
+
+async function fetchWindow(w) {
+  const url = `${API_BASE}/${w.start}..${w.end}?base=${w.base}&symbols=${w.sym}`;
+  const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), 15000) : null;
+  let res;
+  try {
+    res = await fetch(url, ctl ? { signal: ctl.signal } : {});
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const j = await res.json();
+  const dates = Object.keys(j.rates || {}).sort();
+  const pts = [];
+  for (const d of dates) {
+    const p = j.rates[d][w.sym];
+    if (typeof p === "number" && p > 0) pts.push({ d, p });
+  }
+  return pts;
+}
+
+async function loadRound() {
+  let lastErr = null;
+  for (let i = 0; i < 3; i++) {
+    const w = pickWindow();
+    try {
+      const pts = await fetchWindow(w);
+      if (pts.length < 100) { lastErr = new Error("データ不足"); continue; }
+      const sliced = pts.slice(0, MAX_POINTS);
+      return {
+        pts: sliced,
+        meta: {
+          pairLabel: `${w.base}/${w.sym}`,
+          periodLabel: `${jpYM(sliced[0].d)}〜${jpYM(sliced[sliced.length - 1].d)}`,
+        },
+      };
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("取得失敗");
+}
+
+/* ---------- 状態(ループが触るものは全て宣言時に初期化) ---------- */
+const START_FUNDS = 1000000;
+const DAYS_PER_SEC = 3.5;   // ×1で180日 ≒ 51秒
+
+let phase = "title";        // title | loading | error | play | reveal | result
+let funds = START_FUNDS;
+let round = 1;
+let speed = 1;
+let prices = [];            // [{d, p}]
+let meta = null;            // {pairLabel, periodLabel}
+let t = 0;                  // 進行位置(0 .. N-1 の実数)
+let pos = null;             // {t0, p0} 保有ポジション
+let closed = [];            // 決済済み区間 [{t0,p0,t1,p1}]
+let trades = 0;             // このラウンドの決済回数
+let roundStartFunds = START_FUNDS;
+let roundResults = [];      // [{pair, period, delta}]
+let best = 0;
+try { best = parseInt(localStorage.getItem("chartsamurai_best") || "0", 10) || 0; } catch (e) {}
+
+let vMin = null, vMax = null;  // 表示中のYスケール(スムージング)
+let slashes = [];              // 斬撃エフェクト [{t0, x, y, ang}]
+let floats = [];               // 浮かぶ損益テキスト [{t0, x, y, txt, color}]
+let flash = 0;                 // 画面フラッシュ
+let cuRaf = 0;                 // カウントアップ用rAF
+let lastNow = 0;
+
+/* ---------- canvas ---------- */
+const wrap = $("chartwrap");
+const cvs = $("cvs");
+const ctx = cvs.getContext("2d");
+let cw = 360, ch = 420, dpr = 1;
+
+function resize() {
+  dpr = Math.min(2, (window.devicePixelRatio || 1));
+  let r = { width: 360, height: 420 };
+  try { r = wrap.getBoundingClientRect(); } catch (e) {}
+  cw = Math.max(60, r.width || 360);
+  ch = Math.max(60, r.height || 420);
+  cvs.width = Math.round(cw * dpr);
+  cvs.height = Math.round(ch * dpr);
+  cvs.style.width = cw + "px";
+  cvs.style.height = ch + "px";
+}
+window.addEventListener("resize", resize);
+resize();
+
+/* ---------- 表示ヘルパー ---------- */
+const fmt = (n) => Math.round(n).toLocaleString("ja-JP");
+const signed = (n) => (n >= 0 ? "+" : "−") + fmt(Math.abs(n));
+const pct = (n) => (n >= 0 ? "+" : "−") + Math.abs(n).toFixed(1) + "%";
+
+function priceAt(tt) {
+  const N = prices.length;
+  if (N === 0) return 1;
+  if (tt >= N - 1) return prices[N - 1].p;
+  const i = Math.floor(tt), f = tt - i;
+  return prices[i].p + (prices[i + 1].p - prices[i].p) * f;
+}
+
+function updateHud() {
+  $("fundsV").textContent = fmt(funds);
+  $("fundsV").className = "val";
+  $("roundV").textContent = phase === "title" ? "-" : `${round}/3`;
+  $("bestV").textContent = best > 0 ? fmt(best) : "-";
+}
+
+function setSpeed(n) {
+  speed = n;
+  ["spd1", "spd2", "spd4"].forEach(id => $(id).classList.remove("on"));
+  $("spd" + n).classList.add("on");
+}
+
+function setActState() {
+  const btn = $("actBtn");
+  btn.disabled = phase !== "play";
+  if (pos) {
+    btn.classList.add("sell");
+    $("actLbl").textContent = "売る";
+  } else {
+    btn.classList.remove("sell");
+    $("actLbl").textContent = "買う";
+  }
+}
+
+function hideOverlays() {
+  ["titleOv", "loadOv", "revealOv", "resultOv"].forEach(id => $(id).classList.add("hidden"));
+}
+
+/* ---------- 売買 ---------- */
+function trade() {
+  if (phase !== "play") return;
+  if (!pos) buy(); else sell(false);
+}
+
+function buy() {
+  const p = priceAt(t);
+  pos = { t0: t, p0: p };
+  sSlash();
+  addSlash();
+  flash = 0.25;
+  setActState();
+}
+
+function sell(auto) {
+  if (!pos) return;
+  const p = priceAt(t);
+  const nf = funds * (p / pos.p0);
+  const delta = Math.round(nf) - funds;
+  funds = Math.max(0, Math.round(nf));
+  closed.push({ t0: pos.t0, p0: pos.p0, t1: Math.min(t, prices.length - 1), p1: p });
+  pos = null;
+  trades++;
+  if (!auto) { sSlash(); addSlash(); flash = 0.25; }
+  if (delta >= 0) sProfit(); else sLoss();
+  addFloat(signed(delta) + "円", delta >= 0 ? "#69f0ae" : "#ff7a73");
+  updateHud();
+  setActState();
+}
+
+function addSlash() {
+  const N = prices.length;
+  const padL = 10, padR = 16;
+  const x = N > 1 ? padL + (Math.min(t, N - 1) / (N - 1)) * (cw - padL - padR) : cw / 2;
+  slashes.push({ t0: performance.now(), x, y: ch / 2, ang: (Math.random() * 0.6 - 0.3) + (Math.random() < 0.5 ? 0.8 : -0.8) });
+}
+function addFloat(txt, color) {
+  const N = prices.length;
+  const padL = 10, padR = 16;
+  const x = N > 1 ? padL + (Math.min(t, N - 1) / (N - 1)) * (cw - padL - padR) : cw / 2;
+  floats.push({ t0: performance.now(), x: Math.min(Math.max(x, 60), cw - 60), y: ch * 0.35, txt, color });
+}
+
+/* ---------- ゲーム進行 ---------- */
+function startGame() {
+  sStart();
+  funds = START_FUNDS;
+  round = 1;
+  roundResults = [];
+  setSpeed(1);
+  beginRound();
+}
+
+async function beginRound() {
+  phase = "loading";
+  hideOverlays();
+  setActState();
+  $("loadOv").classList.remove("hidden");
+  $("loadSpin").classList.remove("hidden");
+  $("retryBtn").classList.add("hidden");
+  $("loadMsg").textContent = `市場データを取得中…(ラウンド ${round}/3)`;
+  $("pairV").textContent = "??? / ???";
+  $("periodV").textContent = "????年";
+  $("plV").textContent = "";
+  let r;
+  try {
+    r = await loadRound();
+  } catch (e) {
+    phase = "error";
+    $("loadSpin").classList.add("hidden");
+    $("loadMsg").textContent = "為替データの取得に失敗しました。\n通信環境を確認して再試行してください。";
+    $("retryBtn").classList.remove("hidden");
+    return;
+  }
+  prices = r.pts;
+  meta = r.meta;
+  t = 0;
+  pos = null;
+  closed = [];
+  trades = 0;
+  roundStartFunds = funds;
+  vMin = null; vMax = null;
+  slashes = []; floats = [];
+  hideOverlays();
+  updateHud();
+  phase = "play";
+  setActState();
+  sBtn();
+}
+
+function settleRound() {
+  if (pos) sell(true);  // 未決済なら自動決済
+  phase = "reveal";
+  setActState();
+  const delta = funds - roundStartFunds;
+  roundResults.push({ pair: meta.pairLabel, period: meta.periodLabel, delta });
+  $("pairV").textContent = meta.pairLabel;
+  $("periodV").textContent = meta.periodLabel;
+  $("plV").textContent = "";
+  $("plV").className = "";
+  $("rvRound").textContent = round;
+  $("rvAnswer").innerHTML = `これは <b>${meta.periodLabel}</b> の <b>${meta.pairLabel}</b> でした`;
+  $("rvDelta").textContent = `${signed(delta)}円(${pct(delta / roundStartFunds * 100)})`;
+  $("rvDelta").className = delta >= 0 ? "up" : "down";
+  $("rvTrades").textContent = `売買 ${trades}回`;
+  $("nextBtn").textContent = round >= 3 ? "最終結果へ" : "次のラウンドへ";
+  $("revealOv").classList.remove("hidden");
+  sRound();
+  countUp($("rvFunds"), roundStartFunds, funds, 1100);
+}
+
+function nextRound() {
+  if (phase !== "reveal") return;
+  sBtn();
+  if (round >= 3) { showResult(); return; }
+  round++;
+  beginRound();
+}
+
+function showResult() {
+  phase = "result";
+  hideOverlays();
+  const isRecord = funds > best;
+  if (isRecord) {
+    best = funds;
+    try { localStorage.setItem("chartsamurai_best", String(best)); } catch (e) {}
+    sRecord();
+  } else {
+    sRound();
+  }
+  const delta = funds - START_FUNDS;
+  $("resRank").innerHTML = `あなたの称号: <b>${rankOf(funds)}</b>`;
+  $("resDelta").textContent = `元手100万円から ${signed(delta)}円(${pct(delta / START_FUNDS * 100)})`;
+  $("resDelta").className = delta >= 0 ? "up" : "down";
+  $("newRecord").classList.toggle("hidden", !isRecord);
+  $("resBest").textContent = fmt(best);
+  $("resRounds").innerHTML = roundResults
+    .map((r, i) => `R${i + 1} ${r.pair} ${signed(r.delta)}円`)
+    .join("<br>");
+  $("resultOv").classList.remove("hidden");
+  updateHud();
+  countUp($("resFunds"), START_FUNDS, funds, 1500);
+}
+
+function rankOf(f) {
+  if (f >= 3000000) return "相場の神";
+  if (f >= 2000000) return "天下人";
+  if (f >= 1500000) return "大名";
+  if (f >= 1200000) return "剣豪";
+  if (f >= 1000000) return "侍";
+  if (f >= 700000) return "足軽";
+  return "浪人";
+}
+
+function goTitle() {
+  phase = "title";
+  hideOverlays();
+  setActState();
+  $("titleBest").textContent = best > 0 ? fmt(best) : "-";
+  $("titleOv").classList.remove("hidden");
+  updateHud();
+}
+
+function shareX() {
+  const text = `⚔️チャート侍 — 正体不明の実在為替チャート3本を斬った結果、元手100万円 → ${fmt(funds)}円!【称号: ${rankOf(funds)}】`;
+  const url = "https://nrtkumi.github.io/games/chart-samurai/";
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank", "noopener");
+}
+
+/* ---------- カウントアップ演出(rAFタイムスタンプ駆動) ---------- */
+function countUp(el, from, to, dur, done) {
+  cancelAnimationFrame(cuRaf);
+  let start = null, lastTick = 0;
+  const step = (now) => {
+    if (start === null) start = now;
+    const p = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(from + (to - from) * eased) + "円";
+    if (now - lastTick > 60 && p < 1) { sCoin(); lastTick = now; }
+    if (p < 1) cuRaf = requestAnimationFrame(step);
+    else if (done) done();
+  };
+  cuRaf = requestAnimationFrame(step);
+}
+
+/* ---------- メインループ(タイトル時点から回す) ---------- */
+function advance(dt) {
+  const N = prices.length;
+  if (N < 2) return;
+  t += dt * DAYS_PER_SEC * speed;
+  if (t >= N - 1) {
+    t = N - 1;
+    settleRound();
+  }
+}
+
+function loop(now) {
+  const dt = Math.min(0.1, Math.max(0, (now - lastNow) / 1000));
+  lastNow = now;
+  if (phase === "play") advance(dt);
+  draw(now);
+  requestAnimationFrame(loop);
+}
+
+function draw(now) {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cw, ch);
+  drawGrid();
+  if (prices.length > 1) drawChart(now);
+  drawEffects(now);
+  if (flash > 0) {
+    ctx.fillStyle = "rgba(255,240,200," + flash.toFixed(3) + ")";
+    ctx.fillRect(0, 0, cw, ch);
+    flash = Math.max(0, flash - 0.03);
+  }
+  updateLiveDom();
+}
+
+function drawGrid() {
+  ctx.strokeStyle = "rgba(233,185,77,0.07)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 5; i++) {
+    const y = (ch / 5) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke();
+  }
+}
+
+function drawChart(now) {
+  const N = prices.length;
+  const padL = 10, padR = 16, padT = 18, padB = 24;
+  const ti = Math.min(t, N - 1);
+  const upTo = Math.min(N - 1, Math.ceil(ti));
+  const base = prices[0].p;
+
+  // Yスケール(見えている範囲+スムージング)
+  let mn = Infinity, mx = -Infinity;
+  for (let i = 0; i <= upTo; i++) {
+    if (prices[i].p < mn) mn = prices[i].p;
+    if (prices[i].p > mx) mx = prices[i].p;
+  }
+  const padV = (mx - mn) * 0.1 || mx * 0.01 || 0.01;
+  const tMin = mn - padV, tMax = mx + padV;
+  if (vMin === null || vMax === null) { vMin = tMin; vMax = tMax; }
+  else { vMin += (tMin - vMin) * 0.12; vMax += (tMax - vMax) * 0.12; }
+  const span = Math.max(1e-9, vMax - vMin);
+
+  const X = (i) => padL + (i / (N - 1)) * (cw - padL - padR);
+  const Y = (p) => padT + (1 - (p - vMin) / span) * (ch - padT - padB);
+  const curP = priceAt(ti);
+  const curX = X(ti), curY = Y(curP);
+  const fi = Math.floor(ti);
+
+  // Y軸目盛(指数表示: 開始日=100)
+  ctx.fillStyle = "rgba(185,169,138,0.55)";
+  ctx.font = "10px 'Space Mono', monospace";
+  ctx.textAlign = "left";
+  for (let g = 1; g < 4; g++) {
+    const p = vMin + span * (g / 4);
+    const y = Y(p);
+    ctx.fillText((p / base * 100).toFixed(1), 4, y - 3);
+    ctx.strokeStyle = "rgba(233,185,77,0.06)";
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke();
+  }
+
+  // ポジション区間の塗り(決済済み+保有中)
+  const fillInterval = (a, pa, b, pb, up) => {
+    ctx.beginPath();
+    ctx.moveTo(X(a), Y(pa));
+    for (let i = Math.ceil(a); i <= Math.floor(b); i++) ctx.lineTo(X(i), Y(prices[i].p));
+    ctx.lineTo(X(b), Y(pb));
+    ctx.lineTo(X(b), ch - padB);
+    ctx.lineTo(X(a), ch - padB);
+    ctx.closePath();
+    ctx.fillStyle = up ? "rgba(105,240,174,0.13)" : "rgba(226,80,74,0.13)";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(X(a), Y(pa));
+    for (let i = Math.ceil(a); i <= Math.floor(b); i++) ctx.lineTo(X(i), Y(prices[i].p));
+    ctx.lineTo(X(b), Y(pb));
+    ctx.strokeStyle = up ? "rgba(105,240,174,0.9)" : "rgba(255,122,115,0.9)";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  };
+  for (const c of closed) fillInterval(c.t0, c.p0, c.t1, c.p1, c.p1 >= c.p0);
+  if (pos) fillInterval(pos.t0, pos.p0, ti, curP, curP >= pos.p0);
+
+  // メインライン
+  ctx.beginPath();
+  ctx.moveTo(X(0), Y(prices[0].p));
+  for (let i = 1; i <= fi; i++) ctx.lineTo(X(i), Y(prices[i].p));
+  if (ti > fi) ctx.lineTo(curX, curY);
+  ctx.strokeStyle = "rgba(233,185,77,0.28)";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.strokeStyle = "#e9b94d";
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+
+  // 建値の点線(保有中)
+  if (pos) {
+    const ey = Y(pos.p0);
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "rgba(239,229,205,0.5)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(padL, ey); ctx.lineTo(cw - padR, ey); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(239,229,205,0.6)";
+    ctx.font = "9px 'Space Mono', monospace";
+    ctx.textAlign = "left";
+    ctx.fillText("建値 " + (pos.p0 / base * 100).toFixed(1), padL + 2, ey - 4);
+  }
+
+  // 現在点
+  const pulse = 1 + 0.25 * Math.sin(now / 180);
+  ctx.beginPath();
+  ctx.arc(curX, curY, 6 * pulse, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(233,185,77,0.25)";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(curX, curY, 3, 0, Math.PI * 2);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+
+  // 現在指数ラベル
+  ctx.font = "700 13px 'Space Mono', monospace";
+  ctx.textAlign = curX > cw - 70 ? "right" : "left";
+  const lx = curX > cw - 70 ? curX - 9 : curX + 9;
+  ctx.fillStyle = "#0a0705";
+  ctx.fillText((curP / base * 100).toFixed(1), lx + 1, curY - 9 + 1);
+  ctx.fillStyle = pos ? (curP >= pos.p0 ? "#69f0ae" : "#ff7a73") : "#efe5cd";
+  ctx.fillText((curP / base * 100).toFixed(1), lx, curY - 9);
+
+  // 進行バー
+  ctx.fillStyle = "rgba(233,185,77,0.14)";
+  ctx.fillRect(padL, ch - 10, cw - padL - padR, 3);
+  ctx.fillStyle = "#e9b94d";
+  ctx.fillRect(padL, ch - 10, (cw - padL - padR) * (ti / (N - 1)), 3);
+}
+
+function drawEffects(now) {
+  // 斬撃
+  slashes = slashes.filter(s => now - s.t0 < 380);
+  for (const s of slashes) {
+    const p = (now - s.t0) / 380;
+    const ease = 1 - Math.pow(1 - p, 3);
+    const len = (cw + ch) * 0.75 * ease;
+    const dx = Math.cos(s.ang) * len / 2, dy = Math.sin(s.ang) * len / 2;
+    ctx.globalAlpha = 1 - p;
+    ctx.strokeStyle = "#fff8e0";
+    ctx.lineWidth = 3.5 * (1 - p) + 0.5;
+    ctx.beginPath(); ctx.moveTo(s.x - dx, s.y - dy); ctx.lineTo(s.x + dx, s.y + dy); ctx.stroke();
+    ctx.strokeStyle = "rgba(233,185,77,0.7)";
+    ctx.lineWidth = 9 * (1 - p) + 1;
+    ctx.beginPath(); ctx.moveTo(s.x - dx, s.y - dy); ctx.lineTo(s.x + dx, s.y + dy); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  // 損益ポップ
+  floats = floats.filter(f => now - f.t0 < 1000);
+  for (const f of floats) {
+    const p = (now - f.t0) / 1000;
+    ctx.globalAlpha = 1 - p * p;
+    ctx.font = "700 17px 'Space Mono', monospace";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#0a0705";
+    ctx.fillText(f.txt, f.x + 1.5, f.y - p * 42 + 1.5);
+    ctx.fillStyle = f.color;
+    ctx.fillText(f.txt, f.x, f.y - p * 42);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function updateLiveDom() {
+  if (phase !== "play") return;
+  const N = prices.length;
+  if (N < 2) return;
+  const ti = Math.min(t, N - 1);
+  $("periodV").textContent = `${Math.floor(ti) + 1}/${N}日`;
+  const fundsEl = $("fundsV");
+  const plEl = $("plV");
+  if (pos) {
+    const cur = priceAt(ti);
+    const equity = funds * (cur / pos.p0);
+    const d = Math.round(equity) - funds;
+    fundsEl.textContent = fmt(equity);
+    fundsEl.className = "val " + (d >= 0 ? "up" : "down");
+    plEl.textContent = `含み ${signed(d)}円`;
+    plEl.className = d >= 0 ? "up" : "down";
+  } else {
+    fundsEl.textContent = fmt(funds);
+    fundsEl.className = "val";
+    plEl.textContent = "ノーポジ";
+    plEl.className = "";
+  }
+}
+
+requestAnimationFrame(loop);
+
+/* ---------- 入力(Pointer Events / clickは使わない) ---------- */
+function onTap(id, fn) {
+  $(id).addEventListener("pointerup", (e) => { e.preventDefault(); fn(); });
+}
+onTap("startBtn", startGame);
+onTap("retryBtn", beginRound);
+onTap("nextBtn", nextRound);
+onTap("actBtn", trade);
+onTap("retryGameBtn", startGame);
+onTap("homeBtn", goTitle);
+onTap("shareBtn", shareX);
+onTap("spd1", () => { setSpeed(1); sBtn(); });
+onTap("spd2", () => { setSpeed(2); sBtn(); });
+onTap("spd4", () => { setSpeed(4); sBtn(); });
+onTap("mute", () => {
+  muted = !muted;
+  $("mute").textContent = muted ? "🔇" : "🔊";
+  try { localStorage.setItem("chartsamurai_muted", muted ? "1" : "0"); } catch (e) {}
+  if (!muted) sBtn();
+});
+$("mute").textContent = muted ? "🔇" : "🔊";
+
+document.addEventListener("keydown", (e) => {
+  if (e.repeat) return;
+  if (e.key === "1") setSpeed(1);
+  if (e.key === "2") setSpeed(2);
+  if (e.key === "3") setSpeed(4);
+  if (e.key === " " || e.key === "Enter") {
+    e.preventDefault();
+    if (phase === "play") trade();
+    else if (phase === "title") startGame();
+    else if (phase === "reveal") nextRound();
+    else if (phase === "result") startGame();
+  }
+});
+
+/* ---------- ダブルタップズーム抑止(iOS Safari対策3点セット) ---------- */
+document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
+document.addEventListener("gesturestart", e => e.preventDefault(), { passive: false });
+let lastTouchEnd = 0;
+document.addEventListener("touchend", (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 350) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+
+/* ---------- 初期化 ---------- */
+$("titleBest").textContent = best > 0 ? fmt(best) : "-";
+updateHud();
+
+/* ---------- テスト用フック(読み取り専用) ---------- */
+window.CS = {
+  get phase() { return phase; },
+  get funds() { return funds; },
+  get round() { return round; },
+  get holding() { return !!pos; },
+  get speed() { return speed; },
+  get day() { return Math.floor(Math.min(t, Math.max(0, prices.length - 1))); },
+  get totalDays() { return prices.length; },
+  get trades() { return trades; },
+  get best() { return best; },
+  get roundMeta() { return meta ? { pair: meta.pairLabel, period: meta.periodLabel } : null; },
+  get roundResults() { return roundResults.map(r => ({ pair: r.pair, period: r.period, delta: r.delta })); },
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0d0a07">
+<title>いつの絵? — シカゴ美術館 名画の年代当て</title>
+<meta name="description" content="シカゴ美術館の実在の名画を見て「何年の作品か」をスライダーで推理。近いほど高得点、8作品で満点8000点。GeoGuessr式の美術鑑定ゲーム。">
+<meta property="og:title" content="いつの絵? — 名画の年代当て">
+<meta property="og:description" content="シカゴ美術館の実在の名画、何年の作品か当てられる?近いほど高得点のGeoGuessr式・美術鑑定ゲーム。満点8000点。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/itsunoe/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/itsunoe/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖼️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --gold: #e3c272;
+    --gold-dim: #9a7f45;
+    --paper: #f3e9d4;
+    --ink: #d8cdb6;
+    --red: #e07a6a;
+    --green: #9fd98f;
+  }
+  * { box-sizing: border-box; touch-action: manipulation; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #070503;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    color: var(--paper);
+  }
+  /* PCワイド画面対策: 縦長カラムに制限して中央寄せ */
+  #stage {
+    position: fixed; top: 0; bottom: 0;
+    left: 50%; transform: translateX(-50%);
+    width: min(100vw, 520px, 64vh);
+    background:
+      radial-gradient(ellipse 90% 40% at 50% -8%, rgba(227, 194, 114, 0.10), transparent),
+      linear-gradient(180deg, #181210 0%, #0f0b08 55%, #0b0805 100%);
+    box-shadow: 0 0 60px rgba(0,0,0,0.85);
+    display: flex; flex-direction: column;
+    padding: calc(var(--sat) + 8px) 12px calc(var(--sab) + 10px);
+  }
+  #mute {
+    position: absolute;
+    top: calc(var(--sat) + 8px); right: 10px;
+    z-index: 30;
+    width: 40px; height: 40px;
+    border: 1px solid rgba(227,194,114,0.35);
+    border-radius: 10px;
+    background: rgba(20,14,8,0.8);
+    color: var(--paper); font-size: 17px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  /* ---------- HUD ---------- */
+  #hud {
+    display: flex; gap: 6px;
+    margin: 0 46px 8px 0;
+    min-height: 40px;
+  }
+  .hudbox {
+    flex: 1;
+    background: rgba(227,194,114,0.06);
+    border: 1px solid rgba(227,194,114,0.22);
+    border-radius: 8px;
+    padding: 3px 6px;
+    text-align: center;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .hudbox .lbl { font-size: 9px; color: var(--gold-dim); letter-spacing: 0.18em; }
+  .hudbox .val { font-family: "Space Mono", monospace; font-size: 16px; font-weight: 700; line-height: 1.1; color: var(--paper); }
+  #scoreV { color: var(--gold); }
+  /* ---------- 作品エリア ---------- */
+  #artzone {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    display: flex;
+    align-items: center; justify-content: center;
+  }
+  #frame {
+    position: relative;
+    max-width: 100%; max-height: 100%;
+    padding: 9px;
+    border-radius: 4px;
+    background:
+      linear-gradient(135deg, #7a5f2c 0%, #c9a85c 22%, #6d5526 47%, #b89a52 72%, #5d471f 100%);
+    box-shadow:
+      0 10px 34px rgba(0,0,0,0.75),
+      inset 0 0 0 1px rgba(255,235,180,0.4);
+    display: flex;
+  }
+  #frameMat {
+    background: #161009;
+    padding: 5px;
+    box-shadow: inset 0 0 14px rgba(0,0,0,0.9);
+    display: flex; align-items: center; justify-content: center;
+    min-width: 120px; min-height: 120px;
+  }
+  #artImg {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  #artSpot {
+    position: absolute; inset: -28px;
+    pointer-events: none;
+    background: radial-gradient(ellipse 60% 55% at 50% 38%, rgba(255,232,170,0.07), transparent 70%);
+  }
+  #artLoad {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; gap: 10px;
+    align-items: center; justify-content: center;
+    background: rgba(13,9,5,0.82);
+    z-index: 6;
+    font-size: 12px; color: var(--gold-dim);
+    letter-spacing: 0.2em;
+  }
+  /* リビール情報パネル */
+  #revealInfo {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    z-index: 5;
+    background: linear-gradient(180deg, rgba(10,7,4,0.2), rgba(10,7,4,0.92) 34%);
+    padding: 26px 14px 8px;
+    text-align: center;
+    animation: rise 0.45s ease-out;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  #revTitle {
+    font-weight: 700;
+    font-size: clamp(14px, 4.4vw, 19px);
+    line-height: 1.35;
+    color: var(--paper);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  #revArtist { font-size: 11.5px; color: var(--ink); margin-top: 1px; }
+  #revDate { font-size: 12px; color: var(--gold); margin-top: 2px; font-weight: 500; }
+  #revJudge { font-size: 12.5px; margin-top: 5px; color: var(--ink); }
+  #revJudge b { color: var(--gold); }
+  #revPts {
+    font-family: "Space Mono", monospace;
+    font-size: clamp(26px, 8.4vw, 36px);
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1.15;
+    text-shadow: 0 0 22px rgba(227,194,114,0.35);
+  }
+  #revPts small { font-size: 13px; color: var(--gold-dim); }
+  #revPts.perfect { color: #fff0c8; animation: glowp 0.9s ease-in-out infinite alternate; }
+  @keyframes glowp { from { text-shadow: 0 0 16px rgba(255,224,150,0.4); } to { text-shadow: 0 0 34px rgba(255,224,150,0.85); } }
+  /* ---------- 推理ゾーン ---------- */
+  #guessZone {
+    margin-top: 8px;
+    padding: 10px 10px 8px;
+    border: 1px solid rgba(227,194,114,0.22);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(32,24,14,0.55), rgba(18,13,8,0.65));
+  }
+  #yearRow {
+    display: flex; align-items: center; justify-content: center;
+    gap: 14px;
+    margin-bottom: 4px;
+  }
+  .nudge {
+    width: 44px; height: 40px;
+    font-family: "Space Mono", monospace;
+    font-size: 15px; font-weight: 700;
+    color: var(--gold);
+    background: rgba(227,194,114,0.08);
+    border: 1px solid rgba(227,194,114,0.3);
+    border-radius: 10px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .nudge:active { background: rgba(227,194,114,0.22); }
+  #yearV {
+    font-family: "Space Mono", monospace;
+    font-size: clamp(34px, 11vw, 46px);
+    font-weight: 700;
+    color: var(--paper);
+    min-width: 4.2ch;
+    text-align: center;
+    line-height: 1.05;
+    text-shadow: 0 0 18px rgba(227,194,114,0.25);
+  }
+  #yearV small { font-size: 14px; color: var(--gold-dim); }
+  /* スライダー */
+  #sliderWrap { padding: 14px 10px 2px; }
+  #track {
+    position: relative;
+    height: 34px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  #trackBar {
+    position: absolute; left: 0; right: 0; top: 14px;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #3a2d18, #4d3b1e);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.8), 0 1px 0 rgba(227,194,114,0.12);
+  }
+  .tick {
+    position: absolute; top: 22px;
+    width: 1px; height: 5px;
+    background: rgba(227,194,114,0.35);
+    transform: translateX(-0.5px);
+    pointer-events: none;
+  }
+  #truthBand {
+    position: absolute; top: 12px;
+    height: 10px;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #ffe9ad, var(--gold));
+    box-shadow: 0 0 14px rgba(227,194,114,0.8);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+  #truthBand.show { opacity: 1; }
+  #connLine {
+    position: absolute; top: 16px;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, var(--red) 0 5px, transparent 5px 9px);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+  #connLine.show { opacity: 1; }
+  #handle {
+    position: absolute; top: 3px;
+    width: 16px; height: 28px;
+    transform: translateX(-50%);
+    border-radius: 8px;
+    background: linear-gradient(180deg, var(--paper), #cdbd9c);
+    border: 1px solid rgba(0,0,0,0.5);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.7), 0 0 12px rgba(227,194,114,0.25);
+    pointer-events: none;
+  }
+  #handle::after {
+    content: "";
+    position: absolute; left: 50%; top: 6px; bottom: 6px;
+    width: 2px; transform: translateX(-50%);
+    background: rgba(90,70,30,0.6);
+    border-radius: 1px;
+  }
+  #axisLabels {
+    position: relative;
+    height: 14px;
+    margin-top: 2px;
+    font-family: "Space Mono", monospace;
+    font-size: 10px;
+    color: var(--gold-dim);
+  }
+  #axisLabels span { position: absolute; transform: translateX(-50%); }
+  /* ボタン */
+  #btnRow { display: flex; margin-top: 8px; }
+  .mainbtn {
+    flex: 1;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700; font-size: 17px;
+    color: #241806;
+    background: linear-gradient(180deg, #f4dc9c, var(--gold) 55%, #c9a458);
+    border: none; border-radius: 13px;
+    padding: 13px 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(227,194,114,0.3), inset 0 1px 0 rgba(255,255,255,0.55);
+    touch-action: none;
+  }
+  .mainbtn:active { transform: scale(0.97); }
+  .mainbtn[disabled] { opacity: 0.45; filter: grayscale(0.5); }
+  .mainbtn .kbd { display: block; font-size: 9px; color: rgba(36,24,6,0.6); font-weight: 500; margin-top: 0; }
+  /* ---------- オーバーレイ ---------- */
+  .ov {
+    position: absolute; inset: 0;
+    z-index: 20;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px;
+    background:
+      radial-gradient(ellipse 80% 45% at 50% 0%, rgba(227,194,114,0.07), transparent),
+      rgba(9,6,3,0.96);
+    padding: calc(var(--sat) + 16px) 22px calc(var(--sab) + 16px);
+    text-align: center;
+  }
+  .hidden { display: none !important; }
+  .title {
+    font-size: clamp(40px, 13vw, 62px);
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0;
+    letter-spacing: 0.04em;
+    background: linear-gradient(170deg, #fff3d0 8%, var(--gold) 55%, #a07f3c 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 4px 18px rgba(227,194,114,0.3));
+  }
+  .etitle {
+    font-family: "Bungee", cursive;
+    font-size: 14px;
+    letter-spacing: 0.34em;
+    color: var(--gold-dim);
+    margin: -4px 0 0;
+  }
+  .sub {
+    font-family: "Space Mono", monospace;
+    letter-spacing: 0.22em;
+    font-size: 10px; color: #8a734a;
+    margin: 0;
+  }
+  .ornament { color: var(--gold-dim); font-size: 12px; letter-spacing: 0.5em; margin: 0; }
+  .desc { font-size: 13.5px; color: var(--ink); line-height: 1.95; margin: 2px 0; max-width: 420px; }
+  .desc b { color: var(--gold); }
+  .stat { font-family: "Space Mono", monospace; font-size: 13px; color: #8a734a; }
+  .stat b { color: var(--paper); font-size: 17px; }
+  .kbd-hint { font-size: 11px; color: #6b5836; }
+  .btn {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700; font-size: 17px;
+    color: #241806;
+    background: linear-gradient(180deg, #f4dc9c, var(--gold) 55%, #c9a458);
+    border: none; border-radius: 15px;
+    padding: 14px 46px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(227,194,114,0.3);
+    touch-action: none;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn.ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid rgba(227,194,114,0.4);
+    box-shadow: none;
+    font-size: 14px;
+    padding: 10px 26px;
+  }
+  .credit { font-size: 10px; color: #6b5836; line-height: 1.8; }
+  .credit a { color: #a08550; }
+  .spinner {
+    width: 34px; height: 34px;
+    border: 3px solid rgba(227,194,114,0.18);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loadMsg { font-size: 13px; color: var(--ink); line-height: 2; }
+  /* リザルト */
+  #resRank {
+    font-size: clamp(26px, 8.4vw, 38px);
+    font-weight: 700;
+    margin: 0;
+    color: var(--gold);
+    filter: drop-shadow(0 3px 14px rgba(227,194,114,0.35));
+  }
+  #resScore { font-size: 42px; font-family: "Space Mono", monospace; font-weight: 700; color: var(--paper); line-height: 1; }
+  #resScore small { font-size: 14px; color: #8a734a; }
+  #newRecord {
+    font-weight: 700; color: var(--green); font-size: 14px;
+    margin: 0;
+    animation: pulse 1s infinite alternate;
+  }
+  @keyframes pulse { from { opacity: 0.7; transform: scale(1); } to { opacity: 1; transform: scale(1.05); } }
+  #resRounds {
+    font-family: "Space Mono", monospace;
+    font-size: 11px; color: var(--ink);
+    line-height: 1.9;
+    background: rgba(227,194,114,0.05);
+    border: 1px solid rgba(227,194,114,0.2);
+    border-radius: 12px;
+    padding: 9px 16px;
+    max-width: 420px;
+    text-align: left;
+  }
+  #resRounds b { color: var(--gold); }
+  #resRounds .pf { color: #fff0c8; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <button id="mute" aria-label="mute">🔊</button>
+  <div id="hud">
+    <div class="hudbox"><span class="lbl">作品</span><span class="val" id="roundV">-/8</span></div>
+    <div class="hudbox"><span class="lbl">スコア</span><span class="val" id="scoreV">0</span></div>
+    <div class="hudbox"><span class="lbl">ベスト</span><span class="val" id="bestV">0</span></div>
+  </div>
+
+  <div id="artzone">
+    <div id="artSpot"></div>
+    <div id="frame">
+      <div id="frameMat"><img id="artImg" alt="artwork" draggable="false"></div>
+    </div>
+    <div id="artLoad" class="hidden"><div class="spinner"></div><span>作品搬入中…</span></div>
+    <div id="revealInfo" class="hidden">
+      <div id="revTitle"></div>
+      <div id="revArtist"></div>
+      <div id="revDate"></div>
+      <div id="revJudge"></div>
+      <div id="revPts"></div>
+    </div>
+  </div>
+
+  <div id="guessZone">
+    <div id="yearRow">
+      <button class="nudge" id="minusBtn" aria-label="-1年">−1</button>
+      <div id="yearV">1625<small>年</small></div>
+      <button class="nudge" id="plusBtn" aria-label="+1年">+1</button>
+    </div>
+    <div id="sliderWrap">
+      <div id="track">
+        <div id="trackBar"></div>
+        <div id="truthBand"></div>
+        <div id="connLine"></div>
+        <div id="handle"></div>
+      </div>
+      <div id="axisLabels"></div>
+    </div>
+    <div id="btnRow">
+      <button class="mainbtn" id="confirmBtn">これだ!<span class="kbd">[Enter] / ←→で微調整</span></button>
+      <button class="mainbtn hidden" id="nextBtn">次の作品へ<span class="kbd">[Enter]</span></button>
+    </div>
+  </div>
+
+  <div class="ov" id="titleOv">
+    <h1 class="title">いつの絵?</h1>
+    <p class="etitle">ITSU NO E?</p>
+    <p class="sub">GUESS THE YEAR — ART INSTITUTE OF CHICAGO</p>
+    <p class="ornament">❦ ❦ ❦</p>
+    <p class="desc">
+      シカゴ美術館に実在する名画を鑑定せよ。<br>
+      <b>「何年の作品か」</b>を年代スライダーで推理。<br>
+      制作年に近いほど高得点 — ぴったりなら<b>1000点</b>。<br>
+      全8作品、満点は<b>8000点</b>。
+    </p>
+    <p class="stat">ベスト: <b id="titleBest">0</b> 点</p>
+    <button class="btn" id="startBtn">鑑定をはじめる</button>
+    <p class="kbd-hint">PC: ←→キーで微調整(Shiftで±10年)/ Enterで確定</p>
+    <p class="credit">
+      作品データ・画像: <a href="https://www.artic.edu/open-access/public-api" target="_blank" rel="noopener">Art Institute of Chicago</a> (CC0 / Public Domain)
+    </p>
+  </div>
+
+  <div class="ov hidden" id="loadOv">
+    <div class="spinner"></div>
+    <p id="loadMsg">収蔵庫から作品を取り寄せ中…</p>
+    <button class="btn hidden" id="retryBtn">再試行</button>
+  </div>
+
+  <div class="ov hidden" id="resultOv">
+    <p class="sub">APPRAISAL COMPLETE</p>
+    <h2 id="resRank">学芸員</h2>
+    <div id="resScore">0<small> / 8000</small></div>
+    <p id="newRecord" class="hidden">🏆 自己ベスト更新!</p>
+    <p class="stat">ベスト: <b id="resBest">0</b> 点</p>
+    <div id="resRounds"></div>
+    <button class="btn" id="retryGameBtn">もう一度鑑定する</button>
+    <div style="display:flex; gap:10px;">
+      <button class="btn ghost" id="shareBtn">𝕏 でシェア</button>
+      <button class="btn ghost" id="homeBtn">タイトルへ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================
+   いつの絵? (ITSU NO E?) — 名画の年代当て
+   データ・画像: Art Institute of Chicago API (CC0)
+   ===================================================== */
+
+const $ = (id) => document.getElementById(id);
+
+/* ---------- 定数 ---------- */
+const MIN_YEAR = 1300;
+const MAX_YEAR = 1950;
+const ROUNDS = 8;
+const DECAY = 25;              // 1年ズレるごとの減衰スケール
+const MAX_SPAN = 60;           // 制作期間がこれより長い作品は出題しない
+const PAGE_COUNT = 10;         // searchエンドポイントで届く範囲(100件×10ページ)
+const IMG_W = 600;
+
+const API_URL = (page) =>
+  "https://api.artic.edu/api/v1/artworks/search" +
+  "?query%5Bbool%5D%5Bmust%5D%5B%5D%5Bterm%5D%5Bis_public_domain%5D=true" +
+  "&query%5Bbool%5D%5Bmust%5D%5B%5D%5Bterm%5D%5Bartwork_type_id%5D=1" +
+  "&fields=id,title,artist_title,date_start,date_end,date_display,image_id" +
+  "&limit=100&page=" + page;
+const IMG_URL = (imageId, w) =>
+  "https://www.artic.edu/iiif/2/" + imageId + "/full/" + (w || IMG_W) + ",/0/default.jpg";
+
+/* ---------- オーディオ(iOS消音スイッチ対策込み) ---------- */
+let AC = null;
+let muted = false;
+try { muted = localStorage.getItem("itsunoe_muted") === "1"; } catch (e) {}
+
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+    } catch (e) {}
+  }
+  if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  str(36, "data"); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline", "");
+    silentEl.loop = true;
+    silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play();
+  if (p && p.catch) p.catch(() => {});
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === "running") {
+      ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+    }
+  };
+  try { AC.resume().then(done); } catch (e) { done(); }
+}
+["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+function tone(f, d, type, vol, slideTo, at) {
+  if (muted || !audio()) return;
+  try {
+    const t0 = AC.currentTime + (at || 0);
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "sine"; o.frequency.setValueAtTime(f, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + d);
+    g.gain.setValueAtTime(vol || 0.05, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t0); o.stop(t0 + d);
+  } catch (e) {}
+}
+/* 上品な音: 弦楽ピチカート風の柔らかいトーンで統一 */
+let lastTickAt = 0;
+function sTick() {
+  const now = Date.now();
+  if (now - lastTickAt < 45) return;
+  lastTickAt = now;
+  tone(880 + Math.random() * 60, 0.03, "sine", 0.012);
+}
+const sBtn = () => { tone(587, 0.09, "triangle", 0.04); tone(880, 0.14, "sine", 0.03, null, 0.05); };
+const sStart = () => { [523, 659, 784].forEach((f, i) => tone(f, 0.22, "triangle", 0.04, null, i * 0.1)); };
+function sReveal(pts) {
+  if (pts >= 1000) {        // 的中: きらびやかなアルペジオ
+    [659, 831, 988, 1319, 1661].forEach((f, i) => tone(f, 0.3, "triangle", 0.045, null, i * 0.08));
+    tone(2637, 0.5, "sine", 0.02, null, 0.42);
+  } else if (pts >= 600) {  // 惜しい
+    [587, 740, 880].forEach((f, i) => tone(f, 0.24, "triangle", 0.04, null, i * 0.09));
+  } else if (pts >= 200) {  // まずまず
+    tone(523, 0.2, "triangle", 0.04); tone(659, 0.26, "triangle", 0.035, null, 0.11);
+  } else {                  // 残念: 低く沈む
+    tone(330, 0.4, "triangle", 0.04, 247); tone(165, 0.5, "sine", 0.03, null, 0.12);
+  }
+}
+const sResult = () => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.32, "triangle", 0.045, null, i * 0.1)); };
+const sRecord = () => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.24, "triangle", 0.05, null, i * 0.09)); };
+
+/* ---------- 採点(GeoGuessr式) ---------- */
+function calcScore(guess, ds, de) {
+  if (guess >= ds && guess <= de) return 1000;
+  const diff = guess < ds ? ds - guess : guess - de;
+  return Math.round(1000 * Math.exp(-diff / DECAY));
+}
+function yearDiff(guess, ds, de) {
+  if (guess >= ds && guess <= de) return 0;
+  return guess < ds ? ds - guess : guess - de;
+}
+function rankFor(total) {
+  if (total >= 7200) return "👑 伝説の大鑑定士";
+  if (total >= 6200) return "🏛️ 大鑑定士";
+  if (total >= 5000) return "🧐 鑑定士";
+  if (total >= 3500) return "🖼️ 学芸員";
+  if (total >= 2000) return "🎨 学芸員見習い";
+  return "🌱 美術館めぐり初心者";
+}
+
+/* ---------- 出題プール ---------- */
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function usableArt(a) {
+  return !!(a && a.image_id &&
+    typeof a.date_start === "number" && typeof a.date_end === "number" &&
+    a.date_start >= MIN_YEAR && a.date_end <= MAX_YEAR &&
+    a.date_end >= a.date_start && (a.date_end - a.date_start) <= MAX_SPAN);
+}
+
+let pool = [];        // 出題候補(シャッフル済み)
+let pageQueue = [];   // 未取得ページ番号
+function resetPages() { pageQueue = shuffle(Array.from({ length: PAGE_COUNT }, (_, i) => i + 1)); }
+resetPages();
+
+async function ensurePool() {
+  while (pool.length === 0) {
+    if (pageQueue.length === 0) throw new Error("no-more-pages");
+    const page = pageQueue.shift();
+    let json = null;
+    try {
+      const res = await fetch(API_URL(page));
+      if (!res.ok) continue;
+      json = await res.json();
+    } catch (e) { continue; }
+    if (json && Array.isArray(json.data)) pool = shuffle(json.data.filter(usableArt));
+  }
+}
+
+function preloadImg(url, ms) {
+  return new Promise((resolve) => {
+    let done = false;
+    const fin = (ok) => { if (!done) { done = true; resolve(ok); } };
+    const im = new Image();
+    im.onload = () => fin(true);
+    im.onerror = () => fin(false);
+    setTimeout(() => fin(false), ms || 12000);
+    im.src = url;
+  });
+}
+
+/* 次の作品を1点選び、画像ロード成功まで粘る(失敗作品はスキップ) */
+async function nextArtwork() {
+  for (let guard = 0; guard < 80; guard++) {
+    await ensurePool();
+    const a = pool.pop();
+    if (!a) continue;
+    const url = IMG_URL(a.image_id);
+    if (await preloadImg(url)) return Object.assign({}, a, { url });
+  }
+  throw new Error("image-fail");
+}
+
+/* ---------- 状態(UIが触るものは全てここで初期化) ---------- */
+let phase = "title";   // title | loading | guess | reveal | result
+let round = 0;         // 1..8
+let score = 0;
+let best = 0;
+try { best = parseInt(localStorage.getItem("itsunoe_best") || "0", 10) || 0; } catch (e) {}
+let current = null;    // 出題中の作品 {id,title,artist_title,date_start,date_end,date_display,url}
+let guessYear = Math.round((MIN_YEAR + MAX_YEAR) / 2);
+let lastPoints = 0;
+let roundLog = [];     // {title, ds, de, guess, pts}
+let nextPromise = null;
+let dragging = false;
+
+/* ---------- スライダー ---------- */
+const pct = (y) => ((y - MIN_YEAR) / (MAX_YEAR - MIN_YEAR)) * 100;
+
+function setYear(y, silent) {
+  const c = Math.max(MIN_YEAR, Math.min(MAX_YEAR, Math.round(y)));
+  if (c === guessYear) return;
+  guessYear = c;
+  if (!silent) sTick();
+  renderSlider();
+}
+function renderSlider() {
+  $("yearV").innerHTML = guessYear + "<small>年</small>";
+  $("handle").style.left = pct(guessYear) + "%";
+}
+function buildAxis() {
+  const track = $("track"), axis = $("axisLabels");
+  for (let y = MIN_YEAR; y <= MAX_YEAR; y += 50) {
+    const t = document.createElement("div");
+    t.className = "tick";
+    t.style.left = pct(y) + "%";
+    if (y % 100 === 0) t.style.height = "8px";
+    track.appendChild(t);
+  }
+  [1300, 1500, 1700, MAX_YEAR].forEach((y) => {
+    const s = document.createElement("span");
+    s.textContent = y;
+    s.style.left = pct(y) + "%";
+    axis.appendChild(s);
+  });
+}
+
+function trackYearFromEvent(e) {
+  const rect = $("track").getBoundingClientRect();
+  const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+  return MIN_YEAR + p * (MAX_YEAR - MIN_YEAR);
+}
+
+/* ---------- リビール描画 ---------- */
+function showReveal(art, guess, pts) {
+  const ds = art.date_start, de = art.date_end;
+  const band = $("truthBand"), line = $("connLine");
+  const left = pct(ds), right = pct(de);
+  band.style.left = "calc(" + left + "% - 2px)";
+  band.style.width = "calc(" + (right - left) + "% + 4px)";
+  band.classList.add("show");
+  const g = pct(guess);
+  let lineL, lineW;
+  if (g < left) { lineL = g; lineW = left - g; }
+  else if (g > right) { lineL = right; lineW = g - right; }
+  else { lineL = g; lineW = 0; }
+  line.style.left = lineL + "%";
+  line.style.width = lineW + "%";
+  line.classList.toggle("show", lineW > 0);
+
+  $("revTitle").textContent = art.title || "(無題)";
+  $("revArtist").textContent = art.artist_title || "作者不詳";
+  $("revDate").textContent = "正解: " + (art.date_display || (ds === de ? ds + "年" : ds + "–" + de + "年"));
+  const diff = yearDiff(guess, ds, de);
+  $("revJudge").innerHTML = diff === 0
+    ? "<b>ぴったり的中!</b>(あなたの予想: " + guess + "年)"
+    : "あなたの予想: " + guess + "年(<b>" + diff + "年</b>のズレ)";
+  const ptsEl = $("revPts");
+  ptsEl.classList.toggle("perfect", pts >= 1000);
+  $("revealInfo").classList.remove("hidden");
+  /* 得点カウントアップ */
+  const t0 = (typeof performance !== "undefined" ? performance.now() : Date.now());
+  const dur = 700;
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    ptsEl.innerHTML = "+" + Math.round(pts * eased) + "<small> 点</small>";
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function hideReveal() {
+  $("revealInfo").classList.add("hidden");
+  $("truthBand").classList.remove("show");
+  $("connLine").classList.remove("show");
+}
+
+/* ---------- HUD ---------- */
+function updateHud() {
+  $("roundV").textContent = (phase === "title" ? "-" : Math.min(round, ROUNDS)) + "/" + ROUNDS;
+  $("scoreV").textContent = score;
+  $("bestV").textContent = best;
+}
+
+/* ---------- ゲーム進行 ---------- */
+async function startGame() {
+  if (phase === "loading") return;
+  sStart();
+  phase = "loading";
+  $("titleOv").classList.add("hidden");
+  $("resultOv").classList.add("hidden");
+  $("loadOv").classList.remove("hidden");
+  $("retryBtn").classList.add("hidden");
+  $("loadMsg").textContent = "収蔵庫から作品を取り寄せ中…";
+  score = 0;
+  round = 0;
+  roundLog = [];
+  hideReveal();
+  if (pageQueue.length === 0 && pool.length < ROUNDS + 4) resetPages();
+  let art = null;
+  try {
+    art = await nextArtwork();
+  } catch (e) {
+    phase = "title";
+    $("loadMsg").textContent = "作品の取得に失敗しました。\n通信環境を確認してください。";
+    $("retryBtn").classList.remove("hidden");
+    return;
+  }
+  $("loadOv").classList.add("hidden");
+  beginRound(art);
+}
+
+function beginRound(art) {
+  current = art;
+  round++;
+  guessYear = Math.round((MIN_YEAR + MAX_YEAR) / 2);
+  renderSlider();
+  hideReveal();
+  $("artImg").src = art.url;
+  $("artLoad").classList.add("hidden");
+  $("confirmBtn").classList.remove("hidden");
+  $("confirmBtn").disabled = false;
+  $("nextBtn").classList.add("hidden");
+  phase = "guess";
+  updateHud();
+}
+
+function confirmGuess() {
+  if (phase !== "guess" || !current) return;
+  phase = "reveal";
+  sBtn();
+  $("confirmBtn").disabled = true;
+  const pts = calcScore(guessYear, current.date_start, current.date_end);
+  lastPoints = pts;
+  score += pts;
+  roundLog.push({ title: current.title, ds: current.date_start, de: current.date_end, guess: guessYear, pts });
+  updateHud();
+  showReveal(current, guessYear, pts);
+  setTimeout(() => sReveal(pts), 250);
+  $("confirmBtn").classList.add("hidden");
+  const nb = $("nextBtn");
+  nb.innerHTML = (round >= ROUNDS ? "鑑定結果を見る" : "次の作品へ") + '<span class="kbd">[Enter]</span>';
+  nb.classList.remove("hidden");
+  /* 次の作品をリビール中に裏でプリフェッチ */
+  if (round < ROUNDS) nextPromise = nextArtwork().catch(() => null);
+}
+
+async function nextRound() {
+  if (phase !== "reveal") return;
+  sBtn();
+  if (round >= ROUNDS) { showResult(); return; }
+  let art = null;
+  try {
+    art = nextPromise ? await Promise.race([nextPromise, new Promise(r => setTimeout(() => r("pending"), 50))]) : null;
+  } catch (e) { art = null; }
+  if (art === "pending" || !art) {
+    /* プリフェッチ未完: スピナーを出して待つ */
+    $("artLoad").classList.remove("hidden");
+    $("nextBtn").disabled = true;
+    try {
+      art = (nextPromise ? await nextPromise : null) || await nextArtwork();
+    } catch (e) {
+      $("nextBtn").disabled = false;
+      $("artLoad").classList.add("hidden");
+      phase = "title";
+      $("loadOv").classList.remove("hidden");
+      $("loadMsg").textContent = "作品の取得に失敗しました。\n通信環境を確認してください。";
+      $("retryBtn").classList.remove("hidden");
+      return;
+    }
+    $("nextBtn").disabled = false;
+  }
+  nextPromise = null;
+  beginRound(art);
+}
+
+function showResult() {
+  phase = "result";
+  const isRecord = score > best;
+  if (isRecord) {
+    best = score;
+    try { localStorage.setItem("itsunoe_best", String(best)); } catch (e) {}
+  }
+  updateHud();
+  $("resRank").textContent = rankFor(score);
+  $("resScore").innerHTML = score + "<small> / " + ROUNDS * 1000 + "</small>";
+  $("resBest").textContent = best;
+  $("newRecord").classList.toggle("hidden", !isRecord);
+  $("resRounds").innerHTML = roundLog.map((r, i) => {
+    const diff = yearDiff(r.guess, r.ds, r.de);
+    const mark = diff === 0 ? '<span class="pf">★ぴったり</span>' : "±" + diff + "年";
+    return (i + 1) + ". " + mark + " <b>+" + r.pts + "</b>";
+  }).join("<br>");
+  $("resultOv").classList.remove("hidden");
+  if (isRecord) { sRecord(); } else { sResult(); }
+}
+
+function shareX() {
+  const text = "🖼️いつの絵? — シカゴ美術館の名画の年代当てで " + score + "/8000点(" + rankFor(score).replace(/^\S+\s/, "") + ")\nきみは何年か見抜ける?";
+  const url = "https://nrtkumi.github.io/games/itsunoe/";
+  window.open("https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(url), "_blank", "noopener");
+}
+
+function goHome() {
+  phase = "title";
+  $("resultOv").classList.add("hidden");
+  $("titleBest").textContent = best;
+  $("titleOv").classList.remove("hidden");
+  updateHud();
+}
+
+/* ---------- 入力(Pointer Events / clickは使わない) ---------- */
+function onTap(id, fn) {
+  $(id).addEventListener("pointerup", (e) => { e.preventDefault(); fn(); });
+}
+onTap("startBtn", startGame);
+onTap("retryBtn", startGame);
+onTap("retryGameBtn", startGame);
+onTap("homeBtn", goHome);
+onTap("shareBtn", shareX);
+onTap("confirmBtn", confirmGuess);
+onTap("nextBtn", nextRound);
+onTap("mute", () => {
+  muted = !muted;
+  $("mute").textContent = muted ? "🔇" : "🔊";
+  try { localStorage.setItem("itsunoe_muted", muted ? "1" : "0"); } catch (e) {}
+  if (!muted) sBtn();
+});
+$("mute").textContent = muted ? "🔇" : "🔊";
+
+/* 長押しで連続微調整できる −1/+1 ボタン */
+function bindNudge(id, dir) {
+  let timer = 0, repeat = 0;
+  const el = $(id);
+  const stop = () => { clearTimeout(timer); clearInterval(repeat); timer = 0; repeat = 0; };
+  el.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    if (phase !== "guess") return;
+    setYear(guessYear + dir);
+    timer = setTimeout(() => { repeat = setInterval(() => setYear(guessYear + dir), 55); }, 420);
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(ev => el.addEventListener(ev, stop));
+}
+bindNudge("minusBtn", -1);
+bindNudge("plusBtn", +1);
+
+/* スライダードラッグ(Pointer Events) */
+(() => {
+  const track = $("track");
+  track.addEventListener("pointerdown", (e) => {
+    if (phase !== "guess") return;
+    e.preventDefault();
+    dragging = true;
+    try { track.setPointerCapture(e.pointerId); } catch (err) {}
+    setYear(trackYearFromEvent(e));
+  });
+  track.addEventListener("pointermove", (e) => {
+    if (!dragging || phase !== "guess") return;
+    e.preventDefault();
+    setYear(trackYearFromEvent(e));
+  });
+  ["pointerup", "pointercancel"].forEach(ev =>
+    track.addEventListener(ev, () => { dragging = false; }));
+})();
+
+/* キーボード */
+document.addEventListener("keydown", (e) => {
+  if (phase === "guess") {
+    const step = e.shiftKey ? 10 : 1;
+    if (e.key === "ArrowLeft") { e.preventDefault(); setYear(guessYear - step); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); setYear(guessYear + step); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); confirmGuess(); }
+  } else if (phase === "reveal") {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nextRound(); }
+  } else if (phase === "title" || phase === "result") {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startGame(); }
+  }
+});
+
+/* ---------- ダブルタップズーム抑止(iOS Safari対策3点セット) ---------- */
+document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
+document.addEventListener("gesturestart", e => e.preventDefault(), { passive: false });
+let lastTouchEnd = 0;
+document.addEventListener("touchend", (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 350) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+
+/* ---------- 初期化 ---------- */
+buildAxis();
+renderSlider();
+$("titleBest").textContent = best;
+updateHud();
+
+/* テスト用フック(E2Eから状態を覗くためだけに使用) */
+window.IE = {
+  get phase() { return phase; },
+  get round() { return round; },
+  get score() { return score; },
+  get best() { return best; },
+  get guessYear() { return guessYear; },
+  get lastPoints() { return lastPoints; },
+  get current() { return current; },
+  get poolSize() { return pool.length; },
+};
+</script>
+</body>
+</html>
