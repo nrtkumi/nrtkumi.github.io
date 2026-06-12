@@ -27,6 +27,8 @@ body{font-family:'Zen Kaku Gothic New',sans-serif;color:#f2e9df}
 canvas{display:block;width:100%;height:100%;touch-action:none}
 .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;padding-top:calc(24px + env(safe-area-inset-top));padding-bottom:calc(24px + env(safe-area-inset-bottom));z-index:10;text-align:center}
 .screen.show{display:flex}
+#titleScr{background:linear-gradient(180deg,rgba(10,7,5,.42) 0%,rgba(10,7,5,.18) 22%,rgba(13,8,5,.62) 55%,rgba(13,8,5,.86) 82%,#0d0805 100%),url('assets/title-bg.jpg') center/cover no-repeat}
+.ore-ico{width:15px;height:15px;vertical-align:-3px;margin-right:3px}
 .panel{background:rgba(24,16,10,.9);border:1px solid rgba(255,180,80,.22);border-radius:18px;padding:20px 18px;width:100%;max-width:370px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .logo-jp{font-size:54px;font-weight:900;letter-spacing:.04em;line-height:1.1;background:linear-gradient(180deg,#fff 12%,var(--gold) 45%,var(--hot) 85%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px rgba(255,110,40,.5))}
 .logo-sub{font-size:22px;font-weight:900;letter-spacing:.3em;color:var(--hot);text-shadow:0 0 14px rgba(255,90,44,.7)}
@@ -144,7 +146,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 
   <div id="endScr" class="screen">
     <div class="rslt-title bank" style="font-size:26px">地球のコアに到達</div>
-    <div style="font-size:44px">🌍⛏️🔥</div>
+    <img src="assets/drill.png" alt="" style="height:84px;filter:drop-shadow(0 0 18px rgba(255,120,40,.65))" onload="document.getElementById('endEmoji').style.display='none'" onerror="this.style.display='none'">
+    <div id="endEmoji" style="font-size:44px">🌍⛏️🔥</div>
     <div class="panel" style="max-width:330px">
       <div class="tagline" id="endText">深度8,000m。ドリルの刃が、惑星の心臓に触れた。<br>あなたは限界の向こう側を見た採掘者だ。<br><br>……コアの先は、まだ熱い。</div>
     </div>
@@ -177,6 +180,13 @@ const fmtG=n=>{n=Math.floor(n);return n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e4?(n/1e
 const fmtM=n=>Math.floor(n).toLocaleString('en-US')+'m';
 // deterministic hash noise for terrain deco
 function hash(x,y){let h=(x*374761393+y*668265263)|0;h=(h^(h>>13))|0;h=(h*1274126177)|0;return ((h^(h>>16))>>>0)/4294967295;}
+
+/* ============ image assets (graceful fallback to vector/emoji when missing) ============ */
+const IMGS={};
+function loadImg(key,src){const im=new Image();im.onload=()=>{IMGS[key]=im};im.src=src;}
+loadImg('drill','assets/drill.png');
+const ORE_IDS=['ishi','douko','tekko','ginko','kaseki','kakera','kinko','hyosho','shiho','hikin','kakuhen'];
+for(const id of ORE_IDS)loadImg('ore_'+id,'assets/ore-'+id+'.png');
 
 /* ============ save ============ */
 const SAVE_KEY='horisugi_save_v1';
@@ -443,7 +453,7 @@ function collect(id){
   if(!save.found[id]){save.found[id]=true;persist();toast(`✨発見: ${label}`,2000);}
   if(broke){sfx.fragile();if(!tutShown.fossil){tutShown.fossil=true;toast('熱70%以上だと化石が砕ける!冷やして採れ',2600);}}
   else sfx.collect(ORES[id].t);
-  drops.push({x:W/2+rand(-70,70),y:H*0.62+rand(-20,20),tx:W-60,ty:54,t:0,icon,v});
+  drops.push({x:W/2+rand(-70,70),y:H*0.62+rand(-20,20),tx:W-60,ty:54,t:0,icon,id,v});
   floaters.push({x:W/2+rand(-50,50),y:H*0.58,vy:-46,t:1,txt:'+'+v,col:broke?'#998':'#ffd95c',size:13+Math.min(8,v/80)});
 }
 function ambientHeat(d){
@@ -556,7 +566,12 @@ function renderShop(){
   dl.innerHTML='';
   for(const id in ORES){
     const sp=document.createElement('span');
-    if(save.found[id]){sp.textContent=`${ORES[id].i}${ORES[id].n} ◈${ORES[id].v}`;}
+    if(save.found[id]){
+      if(IMGS['ore_'+id]){
+        const im=document.createElement('img');im.className='ore-ico';im.src=`assets/ore-${id}.png`;im.alt='';
+        sp.appendChild(im);sp.appendChild(document.createTextNode(`${ORES[id].n} ◈${ORES[id].v}`));
+      }else sp.textContent=`${ORES[id].i}${ORES[id].n} ◈${ORES[id].v}`;
+    }
     else{sp.textContent='???';sp.className='unknown';}
     dl.appendChild(sp);
   }
@@ -809,11 +824,21 @@ function render(){
     const dy=H*0.62;
     const spin=gameT*(drilling?28:4);
     ctx.save();ctx.translate(W/2,dy);
+    if(drilling)ctx.translate(rand(-1,1),Math.sin(gameT*43)*1.4);
+    const hcol=heat>=diveSt.redline?`hsl(${lerp(38,4,clamp((heat-diveSt.redline)/(100-diveSt.redline),0,1))},100%,${55+5*Math.sin(gameT*12)}%)`:`hsl(${lerp(200,38,heat/diveSt.redline)},90%,55%)`;
+    if(IMGS.drill){
+      // sprite: heat glow via shadow (hot only — mid-range hues look sickly as a halo), heat color over the core window
+      if(heat>=55){ctx.shadowColor=hcol;ctx.shadowBlur=(heat-55)*0.45;}
+      ctx.drawImage(IMGS.drill,-28,-46,56,72);
+      ctx.shadowBlur=0;
+      ctx.fillStyle=hcol;ctx.globalAlpha=0.85;
+      ctx.beginPath();ctx.arc(0,-25.5,6.5,0,TAU);ctx.fill();ctx.globalAlpha=1;
+      ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.arc(-2,-27.5,2,0,TAU);ctx.fill();
+    }else{
     // body
     ctx.fillStyle='#c9b89a';ctx.beginPath();ctx.roundRect(-17,-46,34,38,8);ctx.fill();
     ctx.fillStyle='#8d7a55';ctx.fillRect(-17,-22,34,6);
     // heat core window
-    const hcol=heat>=diveSt.redline?`hsl(${lerp(38,4,clamp((heat-diveSt.redline)/(100-diveSt.redline),0,1))},100%,${55+5*Math.sin(gameT*12)}%)`:`hsl(${lerp(200,38,heat/diveSt.redline)},90%,55%)`;
     ctx.fillStyle=hcol;ctx.beginPath();ctx.arc(0,-30,7,0,TAU);ctx.fill();
     ctx.strokeStyle='rgba(0,0,0,.4)';ctx.lineWidth=2;ctx.stroke();
     // drill bit (rotating cone)
@@ -825,6 +850,7 @@ function render(){
       const yy=-6+ (ph/6.3)*28;
       const ww=15*(1-(ph/6.3));
       ctx.beginPath();ctx.moveTo(-ww,yy);ctx.lineTo(ww,yy+3);ctx.stroke();
+    }
     }
     // redline aura
     if(heat>=diveSt.redline&&heat<100){
@@ -844,7 +870,9 @@ function render(){
   for(const d of drops){
     const t=clamp(d.t,0,1),e=1-Math.pow(1-t,2);
     const x=lerp(d.x,d.tx,e),y=lerp(d.y,d.ty,e)-Math.sin(t*Math.PI)*40;
-    ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText(d.icon,x,y);
+    const im=IMGS['ore_'+d.id];
+    if(im){const s=24;ctx.drawImage(im,x-s/2,y-s*0.7,s,s);}
+    else{ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText(d.icon,x,y);}
   }
   // floaters
   for(const f of floaters){
