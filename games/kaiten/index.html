@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>カイテン — 回転寿司×役×倍率爆発ローグライト</title>
+<meta name="description" content="流れてくる寿司皿をタップで取って役を作り、チップ×倍率を爆発させて売上ノルマを食べ切る回転寿司ローグライト。薬味を集めてビルドを完成させろ。">
+<meta property="og:title" content="カイテン — 回転寿司×役×倍率爆発">
+<meta property="og:description" content="流れる寿司をタップで取って役を作り、倍率を爆発させてノルマを食べ切れ。薬味ビルドで「あと一巡」が止まらない回転寿司ローグライト。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/kaiten/">
+<meta property="og:image" content="https://nrtkumi.github.io/games/kaiten/assets/ogp.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍣</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Yuji+Syuku&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+  html, body { width:100%; height:100%; overflow:hidden; overscroll-behavior:none; background:#10151c; }
+  #col {
+    position:fixed; top:0; bottom:0; left:50%; transform:translateX(-50%);
+    width:100%; max-width:min(520px, 64vh); height:100%;
+    background:#f4efe4; box-shadow:0 0 48px rgba(0,0,0,.55);
+  }
+  #cv { position:absolute; inset:0; width:100%; height:100%; touch-action:none; display:block; }
+  #safeprobe { position:absolute; left:0; bottom:0; width:0; height:0; padding-bottom:env(safe-area-inset-bottom); visibility:hidden; }
+</style>
+</head>
+<body>
+<div id="col"><canvas id="cv"></canvas><div id="safeprobe"></div></div>
+<script>
+'use strict';
+/* ============================================================
+   カイテン — 回転寿司×役×倍率爆発ローグライト
+   ============================================================ */
+
+// ---------- 定数 ----------
+const W = 390;                       // 論理幅
+const TIERS = [
+  { key:'cu', name:'銅皿', chips:5,  rim:'#a8693a', rim2:'#8a5026' },
+  { key:'ag', name:'銀皿', chips:10, rim:'#97a3ac', rim2:'#76838d' },
+  { key:'au', name:'金皿', chips:20, rim:'#c9a227', rim2:'#a07f17' },
+  { key:'bk', name:'黒皿', chips:40, rim:'#33302d', rim2:'#191715' },
+];
+const NETAS = [
+  { id:'tamago', name:'たまご',  tier:0, w:18, fb:'玉', fc:'#e8b93c' },
+  { id:'kappa',  name:'かっぱ',  tier:0, w:18, fb:'河', fc:'#5d9e4f' },
+  { id:'salmon', name:'サーモン', tier:1, w:13, fb:'鮭', fc:'#f08a4b' },
+  { id:'maguro', name:'まぐろ',  tier:1, w:13, fb:'鮪', fc:'#c43d3d' },
+  { id:'ebi',    name:'えび',    tier:1, w:13, fb:'海', fc:'#e2705a' },
+  { id:'uni',    name:'うに',    tier:2, w:6,  fb:'雲', fc:'#c98a2e' },
+  { id:'ikura',  name:'いくら',  tier:2, w:6,  fb:'宝', fc:'#d8502e' },
+  { id:'otoro',  name:'大トロ',  tier:3, w:4,  fb:'ト', fc:'#d98a93' },
+];
+const YAKU = {
+  none:    { name:'役なし',     mult:1,  set:false },
+  pair:    { name:'ペア',       mult:2,  set:true  },
+  sankan:  { name:'三貫',       mult:4,  set:true  },
+  yonkan:  { name:'四貫',       mult:7,  set:true  },
+  gokan:   { name:'五貫',       mult:12, set:true  },
+  teishoku:{ name:'定食(3+2)',  mult:8,  set:true  },
+  flush:   { name:'同色フラッシュ', mult:5, set:false },
+  shochikubai:{ name:'松竹梅',  mult:3,  set:false },
+};
+const YAKUMI_DEFS = [
+  { id:'wasabi',    name:'わさび',   icon:'山', price:5, desc:'同ネタ役の倍率+3' },
+  { id:'gari',      name:'ガリ',     icon:'ガ', price:4, desc:'1巡1回 ベルトの皿を総入替(タップ)' },
+  { id:'shoyu',     name:'醤油',     icon:'醤', price:5, desc:'食べる皿1枚ごとにチップ+4' },
+  { id:'agari',     name:'あがり',   icon:'茶', price:6, desc:'食べる回数+1' },
+  { id:'tsukedare', name:'漬けダレ', icon:'漬', price:5, desc:'まぐろ・大トロのチップ2倍' },
+  { id:'kinpaku',   name:'金箔',     icon:'金', price:6, desc:'金皿・黒皿が2倍流れる' },
+  { id:'nori',      name:'海苔',     icon:'海', price:5, desc:'フラッシュ・松竹梅の倍率+3' },
+  { id:'obi',       name:'大食いの帯', icon:'帯', price:7, desc:'手札の上限6枚' },
+  { id:'yunomi',    name:'湯呑',     icon:'呑', price:4, desc:'捨てる回数+2' },
+  { id:'demae',     name:'出前持ち', icon:'出', price:4, desc:'各巡の開始時 皿1枚が手札に届く' },
+  { id:'manekineko',name:'招き猫',   icon:'招', price:5, desc:'巡クリアごとに小判+2' },
+  { id:'tamashoku', name:'玉子職人', icon:'職', price:5, desc:'たまご・かっぱのチップ3倍' },
+];
+const QUOTA0 = 350, QUOTA_GROW = 1.33;
+const EATS0 = 4, DISCARDS0 = 3, PLATES0 = 40, HAND0 = 5;
+const BELT_SPEED = 64;        // px/s(論理)
+const PLATE_GAP = 112;        // ベルト上の皿間隔
+const PLATE_R = 37;           // 皿の描画半径
+const WIN_ROUND = 8;
+
+// ---------- 色(デザイン: 寿司湯呑 = 白磁×呉須藍×朱) ----------
+const C = {
+  paper:'#f4efe4', porcelain:'#faf7ee', gosu:'#1d4e89', gosuDeep:'#173a66',
+  shu:'#b53a26', shuDeep:'#8e2c1c', gold:'#c9a227', goldHi:'#e8c84a',
+  wood:'#9c7848', woodDark:'#7c5c34', ink:'#2b2b30', sub:'#6c6a60',
+};
+
+// ---------- ユーティリティ ----------
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp = (a,b,t)=>a+(b-a)*t;
+const easeOut = t=>1-Math.pow(1-t,3);
+let rng = Math.random; // テスト時に差し替え可能
+
+function pickNeta(weightMod){
+  let total = 0; const ws = [];
+  for(const n of NETAS){
+    let w = n.w;
+    if(weightMod) w = weightMod(n, w);
+    ws.push(w); total += w;
+  }
+  let r = rng()*total;
+  for(let i=0;i<NETAS.length;i++){ r -= ws[i]; if(r<0) return i; }
+  return NETAS.length-1;
+}
+
+// ---------- 役判定(純関数: テスト対象) ----------
+function evalHand(hand, yakumiSet){
+  // hand: [{neta:idx}], yakumiSet: Set of yakumi ids
+  if(!hand.length) return { chips:0, mult:0, yaku:null, name:'—', total:0 };
+  const ys = yakumiSet || new Set();
+  // チップ
+  let chips = 0;
+  for(const p of hand){
+    const n = NETAS[p.neta];
+    let c = TIERS[n.tier].chips;
+    if(ys.has('tsukedare') && (n.id==='maguro'||n.id==='otoro')) c *= 2;
+    if(ys.has('tamashoku') && (n.id==='tamago'||n.id==='kappa')) c *= 3;
+    if(ys.has('shoyu')) c += 4;
+    chips += c;
+  }
+  // 役
+  const cnt = {};
+  for(const p of hand) cnt[p.neta] = (cnt[p.neta]||0)+1;
+  const counts = Object.values(cnt).sort((a,b)=>b-a);
+  const tiers = new Set(hand.map(p=>NETAS[p.neta].tier));
+  let best = 'none';
+  const consider = k=>{ if(YAKU[k].mult > YAKU[best].mult) best = k; };
+  if(counts[0]>=5) consider('gokan');
+  else if(counts[0]===4) consider('yonkan');
+  else if(counts[0]===3 && counts[1]>=2) consider('teishoku');
+  else if(counts[0]===3) consider('sankan');
+  else if(counts[0]===2) consider('pair');
+  if(hand.length>=5 && tiers.size===1) consider('flush');
+  if(hand.length>=5 && counts.length===hand.length) consider('shochikubai');
+  let mult = YAKU[best].mult;
+  if(best!=='none'){
+    if(ys.has('wasabi') && YAKU[best].set) mult += 3;
+    if(ys.has('nori') && (best==='flush'||best==='shochikubai')) mult += 3;
+  }
+  return { chips, mult, yaku:best, name:YAKU[best].name, total:chips*mult };
+}
+
+function quotaFor(round){
+  return Math.round(QUOTA0 * Math.pow(QUOTA_GROW, round-1) / 10) * 10;
+}
+function bossType(round){
+  if(round % 3 !== 0) return null;
+  return (round % 2 === 0) ? 'cheap' : 'fast'; // R3:fast R6:cheap R9:fast...
+}
+
+// ---------- 状態(ループが触るものは全て宣言時に初期化) ----------
+const S = {
+  mode:'title',           // title|play|eat|clear|shop|over
+  round:1, quota:QUOTA0, sales:0, coins:0,
+  eatsLeft:EATS0, discardsLeft:DISCARDS0, platesLeft:PLATES0,
+  belt:[],                // {neta, x, y, grabT}
+  hand:[],                // {neta, sel, born}
+  handMax:HAND0,
+  yakumi:[],              // ids in order
+  gariUsed:false,
+  boss:null,
+  best:{score:0, round:0, runs:0, wins:0},
+  totalScore:0,           // ラン累計売上(ベスト記録用)
+  endless:false,
+  // 演出
+  eatAnim:null, msg:null, shake:0, particles:[], floats:[],
+  shopItems:[], shopMsg:'',
+  overInfo:null,
+  clearInfo:null,
+  introT:0,
+};
+let lastT = 0;
+
+// ---------- 永続化 ----------
+function loadBest(){
+  try{
+    const d = JSON.parse(localStorage.getItem('kaiten_save')||'{}');
+    if(d && typeof d==='object'){
+      const num = v => Number.isFinite(+v) && +v>=0 ? Math.min(Math.floor(+v), 1e12) : 0;
+      S.best.score=num(d.score); S.best.round=num(d.round); S.best.runs=num(d.runs); S.best.wins=num(d.wins);
+    }
+  }catch(e){}
+}
+function saveBest(){
+  try{ localStorage.setItem('kaiten_save', JSON.stringify(S.best)); }catch(e){}
+}
+loadBest();
+
+// ---------- キャンバス ----------
+const col = document.getElementById('col');
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let dpr = 1, scale = 1, H = 700, safeB = 0; // Hは論理高さ、safeBは論理セーフエリア
+function resize(){
+  dpr = Math.min(window.devicePixelRatio||1, 3);
+  const r = col.getBoundingClientRect();
+  scale = r.width / W;
+  H = Math.max(620, r.height / scale);
+  cv.width = Math.round(r.width * dpr);
+  cv.height = Math.round(r.height * dpr);
+  try{
+    const probe = document.getElementById('safeprobe');
+    safeB = probe ? probe.getBoundingClientRect().height / scale : 0;
+  }catch(e){ safeB = 0; }
+}
+window.addEventListener('resize', resize);
+if(window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+resize();
+
+// ---------- レイアウト(論理座標) ----------
+const L = {};
+function layout(){
+  L.header = 8;
+  L.btnY = H - 158 - safeB;                  // ボタン列(下基準、ホームバー回避)
+  L.handY = L.btnY - 86;                     // 手札中心
+  L.previewY = L.handY - 76;                 // 役プレビュー
+  L.yakumiY = 92;                            // 薬味列(ヘッダ直下に固定)
+  L.beltY = clamp((L.yakumiY+58 + L.previewY-26)/2, 200, 330); // ベルト中心(中間)
+}
+layout();
+
+// ---------- 画像 ----------
+const IMG = {};
+for(const n of NETAS){
+  const img = new Image();
+  img.onload = ()=>{ IMG[n.id] = img; };
+  img.onerror = ()=>{}; // フォールバックは描画側(漢字スタンプ)
+  img.src = 'assets/' + n.id + '.jpg';
+}
+
+// ---------- 音(Web Audio合成 + iOS消音スイッチ対策) ----------
+let AC = null, master = null, unlocked = false, silentEl = null;
+function makeSilentWav(){
+  const sr=8000, len=sr; // 1秒無音
+  const buf = new ArrayBuffer(44+len*2), v = new DataView(buf);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,'RIFF'); v.setUint32(4,36+len*2,true); ws(8,'WAVE'); ws(12,'fmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true);
+  v.setUint16(34,16,true); ws(36,'data'); v.setUint32(40,len*2,true);
+  return URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+}
+function unlockAudio(){
+  if(unlocked) return;
+  try{
+    if(!AC){
+      AC = new (window.AudioContext||window.webkitAudioContext)();
+      master = AC.createGain(); master.gain.value = 0.5; master.connect(AC.destination);
+      AC.onstatechange = ()=>{ if(AC.state==='interrupted'||AC.state==='suspended'){ AC.resume().catch(()=>{}); } };
+    }
+    if(!silentEl){
+      silentEl = document.createElement('audio');
+      silentEl.src = makeSilentWav(); silentEl.loop = true;
+      silentEl.setAttribute('playsinline',''); silentEl.volume = 0.01;
+      silentEl.play().catch(()=>{});
+    }
+    AC.resume().then(()=>{ unlocked = true; }).catch(()=>{});
+  }catch(e){}
+}
+function tone(freq, dur, type, vol, when, slide){
+  if(!AC || !unlocked) return;
+  try{
+    const t0 = AC.currentTime + (when||0);
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type||'triangle'; o.frequency.setValueAtTime(freq, t0);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,slide), t0+dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol||0.2, t0+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    o.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0+dur+0.05);
+  }catch(e){}
+}
+function noiseHit(dur, vol, when){
+  if(!AC || !unlocked) return;
+  try{
+    const t0 = AC.currentTime + (when||0);
+    const n = Math.floor(AC.sampleRate*dur);
+    const b = AC.createBuffer(1, n, AC.sampleRate);
+    const d = b.getChannelData(0);
+    for(let i=0;i<n;i++) d[i] = (rng()*2-1)*Math.pow(1-i/n,2);
+    const src = AC.createBufferSource(); src.buffer = b;
+    const g = AC.createGain(); g.gain.value = vol||0.15;
+    const f = AC.createBiquadFilter(); f.type='bandpass'; f.frequency.value=2400;
+    src.connect(f); f.connect(g); g.connect(master); src.start(t0);
+  }catch(e){}
+}
+const PENTA = [523.25, 587.33, 698.46, 783.99, 880.0, 1046.5, 1174.7, 1396.9]; // 呂音階拡張
+const SFX = {
+  grab(){ tone(660,0.09,'triangle',0.22); tone(990,0.05,'sine',0.10,0.02); },
+  full(){ tone(220,0.12,'square',0.10); },
+  sel(){ tone(840,0.05,'sine',0.12); },
+  desel(){ tone(620,0.05,'sine',0.10); },
+  discard(){ noiseHit(0.16,0.18); tone(330,0.1,'triangle',0.1,0,180); },
+  tick(i){ const f = PENTA[Math.min(i,PENTA.length-1)]; tone(f,0.09,'triangle',0.2); },
+  multSlam(big){ tone(98,0.34,'square',big?0.30:0.2,0,55); noiseHit(0.2,big?0.26:0.16); if(big){ tone(523,0.5,'sine',0.16,0.05); tone(659,0.5,'sine',0.13,0.09); tone(784,0.6,'sine',0.13,0.13);} },
+  countup(){ tone(1320,0.03,'square',0.05); },
+  clear(){ [0,1,2,4].forEach((s,i)=>tone(PENTA[s],0.22,'triangle',0.18,i*0.09)); tone(1568,0.5,'sine',0.1,0.42); },
+  fail(){ tone(294,0.3,'triangle',0.2); tone(208,0.42,'triangle',0.2,0.18); tone(147,0.7,'triangle',0.22,0.4); },
+  buy(){ tone(1318,0.07,'square',0.14); tone(1760,0.12,'square',0.12,0.06); },
+  no(){ tone(180,0.14,'square',0.12); },
+  gari(){ noiseHit(0.3,0.2); tone(740,0.2,'sine',0.1,0.05,1200); },
+  boss(){ tone(110,0.5,'sawtooth',0.18,0,80); tone(110,0.5,'sawtooth',0.18,0.5,80); },
+  pass(){ tone(392,0.05,'sine',0.04); },
+};
+
+// ---------- ゲーム進行 ----------
+function startRun(){
+  S.round = 1; S.coins = 0; S.totalScore = 0;
+  S.yakumi = []; S.handMax = HAND0; S.endless = false;
+  invalidateY();
+  startRound();
+}
+function hasY(id){ return S.yakumi.includes(id); }
+let ySetCache = null;
+function ySet(){ return ySetCache || (ySetCache = new Set(S.yakumi)); }
+function invalidateY(){ ySetCache = null; }
+
+function startRound(){
+  S.quota = quotaFor(S.round);
+  S.sales = 0;
+  S.eatsLeft = EATS0 + (hasY('agari')?1:0);
+  S.discardsLeft = DISCARDS0 + (hasY('yunomi')?2:0);
+  S.platesLeft = PLATES0;
+  S.belt = []; S.hand = [];
+  S.gariUsed = false;
+  S.boss = bossType(S.round);
+  S.eatAnim = null; S.particles.length = 0; S.floats.length = 0;
+  S.introT = 1.6;
+  if(hasY('demae')){
+    S.hand.push({ neta: spawnNetaIdx(), sel:false, born: performance.now() });
+  }
+  S.mode = 'play';
+  if(S.boss) SFX.boss();
+}
+function beltSpeed(){
+  let v = BELT_SPEED;
+  if(S.boss==='fast') v *= 1.5;
+  if(hasY('gari')) v *= 1.0;
+  return v;
+}
+function spawnNetaIdx(){
+  return pickNeta((n,w)=>{
+    if(S.boss==='cheap' && n.tier===0) w *= 3;
+    if(hasY('kinpaku') && n.tier>=2) w *= 2;
+    return w;
+  });
+}
+function updateBelt(dt){
+  const v = beltSpeed();
+  for(const p of S.belt) p.x -= v*dt;
+  // 流れ切った皿
+  for(let i=S.belt.length-1;i>=0;i--){
+    if(S.belt[i].x < -PLATE_R-6){ S.belt.splice(i,1); SFX.pass(); }
+  }
+  // スポーン(間隔ベース)
+  if(S.platesLeft > 0){
+    let rightmost = -1e9;
+    for(const p of S.belt) if(p.x > rightmost) rightmost = p.x;
+    if(rightmost < W + PLATE_R - PLATE_GAP){
+      S.belt.push({ neta: spawnNetaIdx(), x: W + PLATE_R + 4, grabT:0 });
+      S.platesLeft--;
+    }
+  }
+  // ソフトロック防止: 得点手段が完全に尽きたら即閉店
+  if(S.sales < S.quota && S.platesLeft<=0 && S.belt.length===0 && S.hand.length===0 && S.introT<=0){
+    runOver(false);
+  }
+}
+function grabPlate(idx){
+  if(S.mode!=='play') return;
+  const p = S.belt[idx];
+  if(!p) return;
+  if(S.hand.length >= S.handMax){ SFX.full(); flashMsg('手札がいっぱい!'); return; }
+  S.belt.splice(idx,1);
+  S.hand.push({ neta:p.neta, sel:false, born: performance.now() });
+  SFX.grab();
+}
+function doDiscard(){
+  if(S.mode!=='play'){ return; }
+  const sel = S.hand.filter(p=>p.sel);
+  if(!sel.length || S.discardsLeft<=0){ SFX.no(); return; }
+  S.hand = S.hand.filter(p=>!p.sel);
+  S.discardsLeft--;
+  SFX.discard();
+}
+function doGari(){
+  if(!hasY('gari') || S.gariUsed || S.mode!=='play'){ SFX.no(); return; }
+  S.gariUsed = true;
+  for(const p of S.belt) p.neta = spawnNetaIdx();
+  SFX.gari();
+  flashMsg('ガリで口直し! 総入替!');
+}
+function doEat(){
+  if(S.mode!=='play' || !S.hand.length || S.eatsLeft<=0){ SFX.no(); return; }
+  const res = evalHand(S.hand, ySet());
+  S.eatsLeft--;
+  S.mode = 'eat';
+  S.eatAnim = { t:0, res, plates:S.hand.slice(), step:-1, shownChips:0, shownTotal:0, done:false, skipped:false };
+  S.hand = [];
+}
+function finishEat(){
+  const res = S.eatAnim.res;
+  S.sales += res.total;
+  S.totalScore += res.total;
+  S.eatAnim = null;
+  if(S.sales >= S.quota){ roundClear(); return; }
+  // 敗北判定: もう得点手段がない
+  const noPlates = S.platesLeft<=0 && S.belt.length===0 && S.hand.length===0;
+  if(S.eatsLeft<=0 || noPlates){ runOver(false); return; }
+  S.mode = 'play';
+}
+function roundClear(){
+  const bonus = S.eatsLeft + (hasY('manekineko')?2:0);
+  const earn = 4 + bonus;
+  S.coins += earn;
+  S.clearInfo = { earn, bonus, t:0 };
+  S.mode = 'clear';
+  if(S.round===WIN_ROUND && !S.endless){
+    S.best.wins++;
+    saveBest();
+  }
+  SFX.clear();
+}
+function openShop(){
+  S.shopItems = rollShop();
+  S.shopMsg = '';
+  S.mode = 'shop';
+}
+function rollShop(){
+  const pool = YAKUMI_DEFS.filter(d=>!hasY(d.id));
+  const out = [];
+  while(out.length<3 && pool.length){
+    const i = Math.floor(rng()*pool.length);
+    out.push(pool.splice(i,1)[0]);
+  }
+  return out;
+}
+function buyItem(i){
+  const it = S.shopItems[i];
+  if(!it) return;
+  if(S.yakumi.length>=5){ S.shopMsg='薬味は5つまで(タップで売却)'; SFX.no(); return; }
+  if(S.coins < it.price){ S.shopMsg='小判が足りない…'; SFX.no(); return; }
+  S.coins -= it.price;
+  S.yakumi.push(it.id);
+  invalidateY();
+  if(it.id==='obi') S.handMax = 6;
+  S.shopItems[i] = null;
+  SFX.buy();
+}
+function sellYakumi(id){
+  const i = S.yakumi.indexOf(id);
+  if(i<0) return;
+  const def = YAKUMI_DEFS.find(d=>d.id===id);
+  S.yakumi.splice(i,1);
+  invalidateY();
+  if(id==='obi'){ S.handMax = HAND0; while(S.hand.length>S.handMax) S.hand.pop(); }
+  S.coins += Math.ceil(def.price/2);
+  SFX.discard();
+}
+function rerollShop(){
+  if(S.coins < 2){ S.shopMsg='小判が足りない…'; SFX.no(); return; }
+  S.coins -= 2; S.shopItems = rollShop(); SFX.gari();
+}
+function nextRound(){
+  S.round++;
+  startRound();
+}
+function runOver(won){
+  S.best.runs++;
+  if(S.totalScore > S.best.score) S.best.score = S.totalScore;
+  if(S.round > S.best.round) S.best.round = S.round;
+  saveBest();
+  S.overInfo = { won, round:S.round, score:S.totalScore, t:0 };
+  S.mode = 'over';
+  if(!won) SFX.fail();
+}
+
+// ---------- メッセージ/パーティクル ----------
+function flashMsg(text, color){
+  S.msg = { text, color: color||C.shu, t:0 };
+}
+function addFloat(x,y,text,color,big){
+  S.floats.push({x,y,text,color:color||C.gosu,t:0,big:!!big});
+}
+function burst(x,y,color,n){
+  for(let i=0;i<(n||14);i++){
+    const a = rng()*Math.PI*2, sp = 60+rng()*220;
+    S.particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-60,t:0,life:0.5+rng()*0.5,color,r:2+rng()*3.5});
+  }
+}
+
+// ---------- 入力 ----------
+const hits = []; // {x,y,w,h,r,fn,id} 毎フレーム再構築
+function addHit(x,y,w,h,fn,id){ hits.push({x,y,w,h,fn,id}); }
+function addHitCircle(cx,cy,r,fn,id){ hits.push({cx,cy,r,fn,id}); }
+function pointerDown(px,py){
+  unlockAudio();
+  for(let i=hits.length-1;i>=0;i--){
+    const h = hits[i];
+    if(h.r!=null){
+      const dx=px-h.cx, dy=py-h.cy;
+      if(dx*dx+dy*dy <= h.r*h.r){ h.fn(); return; }
+    }else if(px>=h.x && px<=h.x+h.w && py>=h.y && py<=h.y+h.h){ h.fn(); return; }
+  }
+  // 食事演出中: どこタップでもスキップ
+  if(S.mode==='eat' && S.eatAnim){ S.eatAnim.skipped = true; }
+}
+cv.addEventListener('pointerdown', e=>{
+  e.preventDefault();
+  const r = cv.getBoundingClientRect();
+  pointerDown((e.clientX-r.left)/scale, (e.clientY-r.top)/scale);
+}, {passive:false});
+// ダブルタップズーム対策3点セット
+document.addEventListener('dblclick', e=>e.preventDefault(), {passive:false});
+document.addEventListener('gesturestart', e=>e.preventDefault(), {passive:false});
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e=>{
+  const now = Date.now();
+  if(now - lastTouchEnd < 350) e.preventDefault();
+  lastTouchEnd = now;
+}, {passive:false});
+// キーボード
+window.addEventListener('keydown', e=>{
+  unlockAudio();
+  if(S.mode==='title' && (e.key===' '||e.key==='Enter')){ startRun(); return; }
+  if(S.mode==='over' && (e.key===' '||e.key==='Enter')){ S.mode='title'; return; }
+  if(S.mode==='clear' && (e.key===' '||e.key==='Enter')){ openShop(); return; }
+  if(S.mode==='shop' && (e.key===' '||e.key==='Enter')){ nextRound(); return; }
+  if(S.mode==='eat' && S.eatAnim){ S.eatAnim.skipped = true; return; }
+  if(S.mode!=='play') return;
+  if(e.key===' '){ e.preventDefault(); doEat(); }
+  else if(e.key==='x'||e.key==='X') doDiscard();
+  else if(e.key==='g'||e.key==='G') doGari();
+  else if(e.key>='1' && e.key<='6'){
+    const i = +e.key-1;
+    if(S.hand[i]){ S.hand[i].sel = !S.hand[i].sel; S.hand[i].sel?SFX.sel():SFX.desel(); }
+  }
+});
+
+// ---------- 描画ヘルパ ----------
+function font(size, brush, weight){
+  return (weight||(brush?400:700)) + ' ' + size + 'px ' + (brush ? '"Yuji Syuku"' : '"Shippori Mincho"') + ', serif';
+}
+function text(s, x, y, size, color, align, brush, weight){
+  ctx.font = font(size, brush, weight);
+  ctx.fillStyle = color;
+  ctx.textAlign = align||'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(s, x, y);
+}
+function rrect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function button(x,y,w,h,label,size,bg,fg,fn,disabled){
+  rrect(x,y,w,h,10);
+  ctx.fillStyle = disabled ? '#c9c4b4' : bg;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 2; ctx.stroke();
+  text(label, x+w/2, y+h/2+1, size, disabled?'#8e897b':fg, 'center', true);
+  if(!disabled) addHit(x,y,w,h,fn,label);
+}
+
+// 湯呑模様(魚偏漢字)を事前生成
+const patternCv = document.createElement('canvas');
+(function makePattern(){
+  const s = 160; patternCv.width = s; patternCv.height = s;
+  const p = patternCv.getContext('2d');
+  const kanji = ['鮨','鮪','鯛','鮭','鰻','鯖','鰤','鮃','鱧','蛸','鮑','鰯'];
+  p.fillStyle = 'rgba(29,78,137,0.055)';
+  p.font = '400 34px serif';
+  p.textAlign='center'; p.textBaseline='middle';
+  let k = 0;
+  for(let gy=0; gy<4; gy++)for(let gx=0; gx<4; gx++){
+    const ox = (gy%2)*20;
+    p.save();
+    p.translate(gx*40+20+ox-10, gy*40+20);
+    p.rotate(-0.12);
+    p.fillText(kanji[k++ % kanji.length], 0, 0);
+    p.restore();
+  }
+})();
+
+const gradCache = {};
+function drawPlate(x, y, netaIdx, r, lift){
+  const n = NETAS[netaIdx], t = TIERS[n.tier];
+  ctx.save();
+  ctx.translate(x, y - (lift||0));
+  // 影
+  ctx.beginPath(); ctx.ellipse(0, r*0.92, r*0.85, r*0.22, 0, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(40,30,10,0.18)'; ctx.fill();
+  // 皿リム(グラデーションはtier×半径でキャッシュ)
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2);
+  const gk = n.tier + '_' + Math.round(r);
+  let g = gradCache[gk];
+  if(!g){
+    g = ctx.createRadialGradient(0,-r*0.3,r*0.2, 0,0,r);
+    g.addColorStop(0, t.rim); g.addColorStop(1, t.rim2);
+    gradCache[gk] = g;
+  }
+  ctx.fillStyle = g; ctx.fill();
+  // 皿面
+  ctx.beginPath(); ctx.arc(0,0,r*0.78,0,Math.PI*2);
+  ctx.fillStyle = '#ffffff'; ctx.fill();
+  // ネタ
+  const img = IMG[n.id];
+  if(img){
+    ctx.save();
+    ctx.beginPath(); ctx.arc(0,0,r*0.74,0,Math.PI*2); ctx.clip();
+    ctx.drawImage(img, -r*0.74, -r*0.74, r*1.48, r*1.48);
+    ctx.restore();
+  }else{
+    ctx.beginPath(); ctx.arc(0,0,r*0.62,0,Math.PI*2);
+    ctx.fillStyle = n.fc; ctx.fill();
+    text(n.fb, 0, 1, r*0.62, '#fff', 'center', true);
+  }
+  // チップ札
+  rrect(-r*0.46, r*0.52, r*0.92, r*0.42, 4);
+  ctx.fillStyle = n.tier===3 ? '#1c1a18' : '#fffdf6';
+  ctx.fill();
+  ctx.strokeStyle = t.rim2; ctx.lineWidth = 1.5; ctx.stroke();
+  text(String(TIERS[n.tier].chips), 0, r*0.74, r*0.34, n.tier===3?C.goldHi:C.gosuDeep, 'center', false, 800);
+  ctx.restore();
+}
+
+// ---------- 各画面の描画 ----------
+let bgPattern = null;
+function drawBG(){
+  ctx.fillStyle = C.paper;
+  ctx.fillRect(0,0,W,H);
+  if(!bgPattern){ try{ bgPattern = ctx.createPattern(patternCv, 'repeat'); }catch(e){} }
+  if(bgPattern){ ctx.fillStyle = bgPattern; ctx.fillRect(0,0,W,H); }
+}
+function drawHeader(){
+  const y = L.header;
+  // 巡バッジ(朱の落款風)
+  rrect(10, y+4, 74, 46, 6);
+  ctx.fillStyle = S.boss ? C.ink : C.shu; ctx.fill();
+  text(S.boss ? '大皿' : (S.round+'巡目'), 47, y+21, 17, '#fff', 'center', true);
+  text(S.boss ? (S.round+'巡目') : (S.endless?'おかわり':'のれん'), 47, y+39, 11, S.boss?C.goldHi:'#ffd9cf', 'center', true);
+  // 売上 / ノルマ
+  const bx = 94, bw = W-104;
+  text('売上', bx+2, y+12, 12, C.sub, 'left');
+  const ratio = clamp(S.sales/S.quota, 0, 1);
+  rrect(bx, y+20, bw, 16, 8); ctx.fillStyle = '#e4ddcb'; ctx.fill();
+  if(ratio>0){
+    rrect(bx, y+20, Math.max(bw*ratio, 14), 16, 8);
+    ctx.fillStyle = ratio>=1 ? C.gold : C.gosu; ctx.fill();
+  }
+  ctx.font = font(13,false,800); ctx.fillStyle = C.ink; ctx.textAlign='right';
+  ctx.fillText(Math.floor(S.sales)+' / '+S.quota, bx+bw, y+13);
+  // 残数アイコン列
+  const iy = y+48;
+  ctx.textAlign='left';
+  text('食べる×'+S.eatsLeft, bx+2, iy, 13, S.eatsLeft<=1?C.shu:C.ink, 'left', false, 800);
+  text('捨てる×'+S.discardsLeft, bx+92, iy, 13, C.sub, 'left', false, 800);
+  text('皿のこり '+(S.platesLeft + S.belt.length), bx+182, iy, 13, C.sub, 'left', false, 800);
+}
+function drawYakumi(){
+  const n = S.yakumi.length;
+  const size = 38, gap = 8;
+  const x0 = 12;
+  text('薬味', x0+2, L.yakumiY-12, 11, C.sub, 'left');
+  for(let i=0;i<5;i++){
+    const x = x0 + i*(size+gap);
+    rrect(x, L.yakumiY, size, size, 7);
+    if(i<n){
+      const id = S.yakumi[i];
+      const def = YAKUMI_DEFS.find(d=>d.id===id);
+      const isGari = id==='gari';
+      ctx.fillStyle = isGari && !S.gariUsed ? C.shu : C.gosu;
+      if(isGari && S.gariUsed) ctx.fillStyle = '#b3ac99';
+      ctx.fill();
+      text(def.icon, x+size/2, L.yakumiY+size/2+1, 20, '#fff', 'center', true);
+      if(isGari && !S.gariUsed && S.mode==='play') addHit(x-4, L.yakumiY-4, size+8, size+8, doGari, 'gari');
+      else if(S.mode==='play'){
+        addHit(x-2, L.yakumiY-2, size+4, size+4, ()=>flashMsg(def.name+': '+def.desc, C.gosu), 'info'+i);
+      }
+    }else{
+      ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+  // ベスト表示(右肩)
+  ctx.textAlign='right';
+  text('のれん最高 '+S.best.score+'点', W-12, L.yakumiY+10, 11, C.sub, 'right');
+  if(S.boss==='fast') text('ボス: 早回しベルト!', W-12, L.yakumiY+26, 12, C.shu, 'right', false, 800);
+  if(S.boss==='cheap') text('ボス: 銅皿の嵐!', W-12, L.yakumiY+26, 12, C.shu, 'right', false, 800);
+}
+function drawBelt(dt){
+  const y = L.beltY;
+  // レーン(檜)
+  const bh = PLATE_R*2 + 26;
+  ctx.fillStyle = C.wood;
+  ctx.fillRect(0, y-bh/2, W, bh);
+  ctx.fillStyle = C.woodDark;
+  ctx.fillRect(0, y-bh/2, W, 5);
+  ctx.fillRect(0, y+bh/2-5, W, 5);
+  // 木目すじ(流れ表現)
+  ctx.strokeStyle = 'rgba(60,40,16,0.25)'; ctx.lineWidth=1;
+  const off = (performance.now()/1000 * beltSpeed()) % 48;
+  for(let x=-48; x<W+48; x+=48){
+    ctx.beginPath(); ctx.moveTo(x-off+40, y-bh/2+8); ctx.lineTo(x-off, y+bh/2-8); ctx.stroke();
+  }
+  // 皿
+  for(let i=0;i<S.belt.length;i++){
+    const p = S.belt[i];
+    drawPlate(p.x, y, p.neta, PLATE_R);
+    if(S.mode==='play'){
+      const idx = i;
+      addHitCircle(p.x, y, PLATE_R+14, ()=>{
+        const j = S.belt.indexOf(p);
+        if(j>=0) grabPlate(j);
+      }, 'plate');
+    }
+  }
+  // 入口の暖簾(次の皿の気配)
+  ctx.fillStyle = C.gosuDeep;
+  ctx.fillRect(W-16, y-bh/2-14, 16, bh+14);
+  text(S.platesLeft>0?'次':'終', W-8, y-bh/2-2, 11, '#fff', 'center', true);
+}
+function drawPreview(){
+  if(S.mode!=='play') return;
+  const res = evalHand(S.hand, ySet());
+  const y = L.previewY;
+  if(!S.hand.length){
+    text('ベルトの皿をタップして取ろう', W/2, y, 14, C.sub);
+    return;
+  }
+  const yakuCol = res.yaku!=='none' ? C.shu : C.sub;
+  ctx.font = font(17, true); ctx.fillStyle = yakuCol; ctx.textAlign='center';
+  const label = res.name + '  ' + res.chips + '×' + res.mult + ' = ' + res.total + '点';
+  ctx.fillText(label, W/2, y);
+}
+function drawHand(){
+  const n = Math.max(S.hand.length, S.handMax);
+  const r = S.handMax===6 ? 27 : 30;
+  const gap = 10;
+  const totalW = S.handMax*(r*2+gap)-gap;
+  const x0 = W/2 - totalW/2 + r;
+  // 枠
+  for(let i=0;i<S.handMax;i++){
+    const x = x0 + i*(r*2+gap);
+    ctx.beginPath(); ctx.arc(x, L.handY, r+3, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(29,78,137,0.25)'; ctx.lineWidth=2;
+    ctx.setLineDash([5,5]); ctx.stroke(); ctx.setLineDash([]);
+  }
+  for(let i=0;i<S.hand.length;i++){
+    const p = S.hand[i];
+    const x = x0 + i*(r*2+gap);
+    const age = (performance.now()-p.born)/220;
+    const pop = age<1 ? (1-easeOut(age))*14 : 0;
+    drawPlate(x, L.handY - pop, p.neta, r, p.sel?12:0);
+    if(p.sel){
+      ctx.beginPath(); ctx.arc(x, L.handY-12, r+3, 0, Math.PI*2);
+      ctx.strokeStyle = C.shu; ctx.lineWidth = 3; ctx.stroke();
+    }
+    if(S.mode==='play'){
+      addHitCircle(x, L.handY, r+10, ()=>{ p.sel=!p.sel; p.sel?SFX.sel():SFX.desel(); }, 'hand');
+    }
+  }
+}
+function drawButtons(){
+  if(S.mode!=='play') return;
+  const y = L.btnY;
+  const selN = S.hand.filter(p=>p.sel).length;
+  button(16, y, 120, 56, '捨てる×'+S.discardsLeft, 17, '#ddd5c0', C.ink, doDiscard, !selN || S.discardsLeft<=0);
+  button(152, y, W-168, 56, 'いただきます', 22, C.shu, '#fff', doEat, !S.hand.length || S.eatsLeft<=0);
+  text('皿タップ=取る / 手札タップ=選択 / PC: 1-6・Space・X', W/2, y+76, 10.5, C.sub);
+}
+function drawMsg(dt){
+  if(!S.msg) return;
+  S.msg.t += dt;
+  if(S.msg.t > 1.6){ S.msg = null; return; }
+  const a = S.msg.t<0.15 ? S.msg.t/0.15 : (S.msg.t>1.2 ? 1-(S.msg.t-1.2)/0.4 : 1);
+  ctx.globalAlpha = clamp(a,0,1);
+  const y = L.previewY + 26;
+  ctx.font = font(13,false,800);
+  const w = ctx.measureText(S.msg.text).width + 24;
+  rrect(W/2-w/2, y-12, w, 24, 12);
+  ctx.fillStyle = '#fffdf4'; ctx.fill();
+  ctx.strokeStyle = S.msg.color; ctx.lineWidth=1.5; ctx.stroke();
+  text(S.msg.text, W/2, y+1, 13, S.msg.color, 'center', false, 800);
+  ctx.globalAlpha = 1;
+}
+function drawParticles(dt){
+  for(let i=S.particles.length-1;i>=0;i--){
+    const p = S.particles[i];
+    p.t += dt;
+    if(p.t>p.life){ S.particles.splice(i,1); continue; }
+    p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 420*dt;
+    ctx.globalAlpha = 1-p.t/p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  for(let i=S.floats.length-1;i>=0;i--){
+    const f = S.floats[i];
+    f.t += dt;
+    if(f.t>1.1){ S.floats.splice(i,1); continue; }
+    ctx.globalAlpha = 1-easeOut(f.t/1.1);
+    text(f.text, f.x, f.y - easeOut(f.t/1.1)*46, f.big?26:16, f.color, 'center', true);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// 食事演出
+function drawEat(dt){
+  const A = S.eatAnim;
+  if(!A) return;
+  A.t += dt * (A.skipped?6:1);
+  const res = A.res, n = A.plates.length;
+  const stepDur = 0.28;
+  const multAt = n*stepDur + 0.25;
+  const totalAt = multAt + 0.55;
+  const endAt = totalAt + 0.9;
+  // 暗幕
+  ctx.fillStyle = 'rgba(20,16,10,0.55)';
+  ctx.fillRect(0,0,W,H);
+  const cy = H*0.36;
+  // 皿を並べる
+  const r = 30, gap = 12;
+  const x0 = W/2 - (n*(r*2+gap)-gap)/2 + r;
+  let chips = 0;
+  for(let i=0;i<n;i++){
+    const at = i*stepDur;
+    if(A.t < at) break;
+    const x = x0 + i*(r*2+gap);
+    const k = clamp((A.t-at)/0.2, 0, 1);
+    drawPlate(x, cy - (1-easeOut(k))*40, A.plates[i].neta, r);
+    chips++;
+    if(A.step < i){
+      A.step = i;
+      SFX.tick(i);
+      burst(x, cy, C.gosu, 6);
+    }
+  }
+  // チップ合計
+  const shownPlates = Math.min(chips, n);
+  const partial = evalHand(A.plates.slice(0, shownPlates), ySet());
+  let chipShow = partial.chips;
+  if(A.t >= multAt) chipShow = res.chips;
+  text('チップ', W/2-70, cy+72, 14, '#e8e2d2');
+  text(String(chipShow), W/2-70, cy+106, 36, '#fff', 'center', false, 800);
+  // 倍率スラム
+  if(A.t >= multAt){
+    if(!A.multDone){
+      A.multDone = true;
+      SFX.multSlam(res.mult>=7);
+      S.shake = res.mult>=7 ? 0.5 : 0.25;
+      burst(W/2+70, cy+100, res.mult>=5?C.gold:C.shu, res.mult>=7?34:16);
+    }
+    const k = clamp((A.t-multAt)/0.25, 0, 1);
+    const sc = lerp(2.2, 1, easeOut(k));
+    text('×', W/2, cy+104, 26, '#e8e2d2');
+    ctx.save();
+    ctx.translate(W/2+70, cy+104);
+    ctx.scale(sc, sc);
+    text(String(res.mult), 0, 0, 44, res.mult>=5?C.goldHi:'#ff8d72', 'center', false, 800);
+    ctx.restore();
+    text(res.name, W/2, cy+150, res.mult>=7?30:24, res.mult>=5?C.goldHi:'#fff', 'center', true);
+  }
+  // 合計カウントアップ
+  if(A.t >= totalAt){
+    const k = clamp((A.t-totalAt)/0.6, 0, 1);
+    const v = Math.floor(res.total * easeOut(k));
+    if(v !== A.shownTotal){ A.shownTotal = v; if(Math.floor(k*10)%2===0) SFX.countup(); }
+    text(String(v)+' 点', W/2, cy+212, 46, '#fff', 'center', false, 800);
+    if(res.total >= S.quota - S.sales && S.sales < S.quota){
+      text('ノルマ達成!', W/2, cy+258, 20, C.goldHi, 'center', true);
+    }
+  }
+  text('タップで早送り', W/2, H-40, 12, 'rgba(255,255,255,0.6)');
+  if(A.t >= endAt) finishEat();
+}
+
+// ラウンドクリア
+function drawClear(dt){
+  S.clearInfo.t += dt;
+  ctx.fillStyle = 'rgba(20,16,10,0.5)';
+  ctx.fillRect(0,0,W,H);
+  const cy = H*0.34;
+  text('完食!', W/2, cy-40, 44, C.goldHi, 'center', true);
+  text(S.round+'巡目クリア', W/2, cy+6, 18, '#fff');
+  text('小判 +'+S.clearInfo.earn+'(基本4 + 残り食べ'+S.clearInfo.bonus+')', W/2, cy+44, 15, '#ffe9a8');
+  text('所持小判: '+S.coins, W/2, cy+72, 15, '#fff');
+  if(S.round===WIN_ROUND && !S.endless){
+    text('のれん八巡 達成!', W/2, cy+116, 26, C.goldHi, 'center', true);
+    text('ここから先は「おかわり」 どこまで稼げるか', W/2, cy+146, 13, '#e8e2d2');
+    button(W/2-110, cy+180, 220, 56, 'おかわりへ進む', 19, C.shu, '#fff', ()=>{
+      S.endless = true;
+      openShop();
+    });
+    button(W/2-110, cy+250, 220, 46, 'のれん分けで店を出る', 15, C.gold, '#3a2c00', ()=>runOver(true));
+    return;
+  }
+  button(W/2-110, cy+180, 220, 56, '屋台で薬味を買う', 19, C.shu, '#fff', openShop);
+}
+
+// ショップ
+function drawShop(dt){
+  ctx.fillStyle = '#173a66';
+  ctx.fillRect(0,0,W,H);
+  text('夜泣き屋台', W/2, 54, 30, '#fff', 'center', true);
+  text('小判: '+S.coins, W/2, 88, 17, C.goldHi, 'center', false, 800);
+  // 商品
+  const y0 = 116, ih = 86;
+  for(let i=0;i<3;i++){
+    const it = S.shopItems[i];
+    const y = y0 + i*(ih+10);
+    rrect(16, y, W-32, ih, 10);
+    ctx.fillStyle = it ? '#fffdf4' : 'rgba(255,255,255,0.12)';
+    ctx.fill();
+    if(!it){ text('売り切れ', W/2, y+ih/2, 14, 'rgba(255,255,255,0.5)'); continue; }
+    // アイコン
+    rrect(28, y+16, 54, 54, 8); ctx.fillStyle = C.gosu; ctx.fill();
+    text(it.icon, 55, y+44, 28, '#fff', 'center', true);
+    ctx.textAlign='left';
+    text(it.name, 96, y+26, 18, C.ink, 'left', true);
+    text(it.desc, 96, y+52, 13, C.sub, 'left');
+    button(W-92, y+ih-44, 64, 34, it.price+'両', 15, C.shu, '#fff', ()=>buyItem(i), S.coins<it.price || S.yakumi.length>=5);
+  }
+  // 所持薬味(タップで売却)
+  const yy = y0 + 3*(ih+10) + 8;
+  text('持ち物(タップで半額売却)', 20, yy, 12, 'rgba(255,255,255,0.7)', 'left');
+  for(let i=0;i<S.yakumi.length;i++){
+    const def = YAKUMI_DEFS.find(d=>d.id===S.yakumi[i]);
+    const x = 20 + i*52;
+    rrect(x, yy+10, 44, 44, 7); ctx.fillStyle = '#fffdf4'; ctx.fill();
+    text(def.icon, x+22, yy+33, 22, C.gosu, 'center', true);
+    addHit(x, yy+10, 44, 44, ()=>sellYakumi(def.id), 'sell'+i);
+  }
+  if(S.shopMsg) text(S.shopMsg, W/2, yy+74, 13, '#ffd9cf');
+  button(20, H-150, 110, 48, '入替 2両', 15, '#3c6ea5', '#fff', rerollShop, S.coins<2);
+  button(146, H-150, W-166, 48, '次の一巡へ', 19, C.gold, '#3a2c00', nextRound);
+  text('次のノルマ: '+quotaFor(S.round+1)+'点' + (bossType(S.round+1)?'(大皿=ボス!)':''), W/2, H-86, 14, '#fff');
+}
+
+// タイトル
+function drawTitle(dt){
+  drawBG();
+  const cy = H*0.30;
+  // 朱の落款ロゴ
+  ctx.save();
+  ctx.translate(W/2, cy);
+  ctx.rotate(-0.04);
+  rrect(-86, -86, 172, 172, 14);
+  ctx.fillStyle = C.shu; ctx.fill();
+  ctx.strokeStyle = C.shuDeep; ctx.lineWidth = 4; ctx.stroke();
+  text('廻', 0, 4, 120, '#fff', 'center', true);
+  ctx.restore();
+  text('カイテン', W/2, cy+128, 42, C.ink, 'center', true);
+  text('回転寿司 × 役 × 倍率爆発', W/2, cy+166, 15, C.gosu, 'center', false, 800);
+  const ty = cy+204;
+  text('流れる皿をタップで取り、役を作って食べろ。', W/2, ty, 13, C.sub);
+  text('同じネタを揃えるほど倍率ドン!', W/2, ty+22, 13, C.sub);
+  text('売上ノルマを達成して、のれん八巡を目指せ。', W/2, ty+44, 13, C.sub);
+  button(W/2-110, ty+76, 220, 60, 'のれんをくぐる', 21, C.gosu, '#fff', startRun);
+  if(S.best.runs>0){
+    text('最高売上 '+S.best.score+'点 / 最高 '+S.best.round+'巡目 / 来店 '+S.best.runs+'回', W/2, ty+162, 12, C.sub);
+    if(S.best.wins>0) text('のれん分け '+S.best.wins+'回', W/2, ty+182, 12, C.gold, 'center', false, 800);
+  }
+  // ベルト装飾(タイトルでも回る)
+  const by = H - 74;
+  ctx.fillStyle = C.wood; ctx.fillRect(0, by-30, W, 60);
+  const t = performance.now()/1000;
+  for(let i=0;i<5;i++){
+    const x = ((i*110 + t*40) % (W+100)) - 50;
+    drawPlate(x, by, (i*3+1)%NETAS.length, 24);
+  }
+}
+
+// ゲームオーバー
+function drawOver(dt){
+  S.overInfo.t += dt;
+  drawBG();
+  const cy = H*0.30;
+  const o = S.overInfo;
+  text(o.won?'のれん分け!':'閉店…', W/2, cy-30, 46, o.won?C.gold:C.ink, 'center', true);
+  text(o.won?'伝説の大食い客として名が残った':'ノルマに届かなかった…', W/2, cy+16, 14, C.sub);
+  rrect(W/2-130, cy+44, 260, 110, 10);
+  ctx.fillStyle = '#fffdf4'; ctx.fill();
+  ctx.strokeStyle = C.gosu; ctx.lineWidth=2; ctx.stroke();
+  text('総売上', W/2, cy+70, 14, C.sub);
+  text(o.score+'点', W/2, cy+102, 34, C.shu, 'center', false, 800);
+  text('到達: '+o.round+'巡目', W/2, cy+134, 14, C.ink);
+  if(o.score>=S.best.score && o.score>0) text('★ 自己ベスト!', W/2, cy+176, 17, C.gold, 'center', true);
+  button(W/2-110, cy+200, 220, 58, 'もう一周食べる', 20, C.shu, '#fff', startRun);
+  button(W/2-110, cy+272, 220, 44, 'のれんへ戻る', 15, '#ddd5c0', C.ink, ()=>{ S.mode='title'; });
+}
+
+// ボス入店演出
+function drawIntro(dt){
+  if(S.introT<=0) return;
+  S.introT -= dt;
+  const a = clamp(S.introT/0.4, 0, 1);
+  ctx.globalAlpha = Math.min(a, 1) * 0.92;
+  const y = L.beltY;
+  rrect(W/2-150, y-34, 300, 68, 8);
+  ctx.fillStyle = S.boss ? C.ink : C.gosu; ctx.fill();
+  const label = S.boss==='fast' ? '大皿: 早回しベルト!!' : S.boss==='cheap' ? '大皿: 銅皿の嵐!!' : S.round+'巡目 ノルマ'+S.quota+'点';
+  text(label, W/2, y-6, 19, S.boss?C.goldHi:'#fff', 'center', true);
+  text(S.boss?('ノルマ'+S.quota+'点'):'いらっしゃい!', W/2, y+18, 13, '#fffdf4');
+  ctx.globalAlpha = 1;
+}
+
+// ---------- メインループ(タイトル時点から回す) ----------
+function frame(t){
+  requestAnimationFrame(frame);
+  const dt = Math.min((t-lastT)/1000 || 0.016, 0.05);
+  lastT = t;
+  ctx.setTransform(dpr*scale, 0, 0, dpr*scale, 0, 0); // 毎フレーム再設定(コンテキスト喪失対策)
+  hits.length = 0;
+  layout();
+  // 画面シェイク
+  if(S.shake>0){
+    S.shake -= dt;
+    const m = S.shake*8;
+    ctx.translate((rng()*2-1)*m, (rng()*2-1)*m);
+  }
+  try{
+    if(S.mode==='title'){ drawTitle(dt); }
+    else if(S.mode==='over'){ drawOver(dt); }
+    else {
+      drawBG();
+      if(S.mode==='play') updateBelt(dt);
+      drawHeader();
+      drawYakumi();
+      drawBelt(dt);
+      drawPreview();
+      drawHand();
+      drawButtons();
+      drawIntro(dt);
+      drawMsg(dt);
+      if(S.mode==='eat') drawEat(dt);
+      else if(S.mode==='clear') drawClear(dt);
+      else if(S.mode==='shop') drawShop(dt);
+    }
+    drawParticles(dt);
+  }catch(err){
+    // 描画例外でループを殺さない
+    if(!window.__kaitenErr){ window.__kaitenErr = String(err && err.stack || err); }
+  }
+}
+requestAnimationFrame(frame);
+
+// ---------- テスト用フック ----------
+window.__KAITEN__ = { S, evalHand, quotaFor, bossType, startRun, startRound, doEat, doDiscard, grabPlate, finishEat, openShop, buyItem, nextRound, NETAS, TIERS, YAKU, YAKUMI_DEFS, setRng:(f)=>{rng=f;}, EATS0, DISCARDS0, PLATES0 };
+</script>
+</body>
+</html>
