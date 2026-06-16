@@ -295,9 +295,9 @@
 
   /* ---------- マメ ---------- */
   function beanR() { return tileW * 0.42; }
+  function progress() { return Math.min(1, score / 35000 + playT / 420); }
   function fallSpeed() {
-    const k = Math.min(1, score / 35000 + playT / 420);
-    return H * (0.09 + 0.36 * k);
+    return H * (0.09 + 0.36 * progress());
   }
   function maxBeans() { return Math.min(16, 3 + Math.floor(score / 700)); }
   function spawnBean(type) {
@@ -327,7 +327,7 @@
       if (d < bestD) { bestD = d; bestCol = c; }
     }
     if (bestCol < 0) { addPop(nearX, floorY - 60, "+200"); score += 200; return; }
-    angels.push({ col: bestCol, x: (bestCol + 0.5) * tileW, y: -30, vy: H * 0.4, up: false, wing: 0 });
+    angels.push({ col: bestCol, x: (bestCol + 0.5) * tileW, y: -30, vy: H * (0.4 + 0.5 * progress()), up: false, wing: 0 });
   }
 
   /* ---------- エフェクト ---------- */
