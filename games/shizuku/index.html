@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>シズク — 記憶でつくる、深夜のバー</title>
+<meta name="description" content="閉店間際のバー。客が頼んだカクテルのレシピを一瞬で覚え、棚から正しい材料だけを選んで一杯を仕上げる。実在カクテルの写真で遊ぶ記憶系ローグライト。覚えて、注いで、チップを稼げ。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="シズク — 記憶でつくる、深夜のバー">
+<meta property="og:description" content="客が頼んだカクテルのレシピを一瞬で覚え、棚から正しい材料だけを選んで仕上げる記憶系ローグライト。実在カクテルの写真で遊ぶ。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/shizuku/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/shizuku/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="シズク — 記憶でつくる、深夜のバー">
+<meta name="twitter:description" content="レシピを覚えて材料を選ぶ、実在カクテル写真の記憶ローグライト。">
+<meta name="twitter:image" content="https://nrtkumi.github.io/games/shizuku/assets/ogp.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14110d;
+    --counter: #2a1f16;
+    --counter2: #38291c;
+    --surface: #211a13;
+    --line: #4a3725;
+    --brass: #c9a25e;
+    --amber: #e3a857;
+    --amber-soft: #f0c98a;
+    --teal: #3c6b62;
+    --cream: #f3ead7;
+    --muted: #a08d72;
+    --danger: #d9613f;
+    --ok: #7fb069;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: #0c0a08;
+    color: var(--cream);
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  #app {
+    position: fixed;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: min(480px, 62vh);
+    height: 100%;
+    background:
+      radial-gradient(120% 60% at 50% -8%, rgba(227,168,87,0.16), transparent 60%),
+      linear-gradient(180deg, #1a140e 0%, #14110d 38%, #0f0c08 100%);
+    box-shadow: 0 0 60px rgba(0,0,0,0.7);
+    display: flex;
+    flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    overflow: hidden;
+  }
+  #fx { position: absolute; inset: 0; pointer-events: none; z-index: 40; }
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); }
+  .screen.on { display: flex; }
+  .serif { font-family: "Shippori Mincho", serif; }
+
+  /* ---------- HUD ---------- */
+  .hud { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); letter-spacing: .04em; margin-bottom: 8px; flex: 0 0 auto; }
+  .hud .pill { background: rgba(0,0,0,0.28); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; display: flex; align-items: baseline; gap: 5px; }
+  .hud .pill b { font-family: "Shippori Mincho", serif; color: var(--amber-soft); font-size: 15px; }
+  .hearts { margin-left: auto; letter-spacing: 1px; font-size: 15px; }
+  .combo { color: var(--amber); font-weight: 700; }
+
+  /* ---------- title ---------- */
+  #title { justify-content: center; align-items: center; text-align: center; gap: 4px; }
+  #title .logo { font-size: 64px; font-weight: 800; letter-spacing: .14em; color: var(--cream);
+    text-shadow: 0 2px 0 #7c5a2e, 0 0 34px rgba(227,168,87,.32); }
+  #title .glass { font-size: 52px; margin-bottom: 4px; filter: drop-shadow(0 6px 14px rgba(227,168,87,.25)); }
+  #title .tag { color: var(--amber-soft); font-size: 14px; letter-spacing: .22em; margin-top: 2px; }
+  #title .desc { color: var(--muted); font-size: 13px; line-height: 1.85; margin: 20px 6px 26px; max-width: 320px; }
+  #title .best { color: var(--muted); font-size: 12px; margin-top: 14px; min-height: 16px; }
+  .brass-line { width: 64px; height: 2px; background: linear-gradient(90deg, transparent, var(--brass), transparent); margin: 14px auto; }
+
+  .btn {
+    font-family: "Shippori Mincho", serif;
+    border: 1px solid var(--brass);
+    background: linear-gradient(180deg, #3a2a1a, #271c12);
+    color: var(--amber-soft);
+    font-size: 18px; font-weight: 700; letter-spacing: .12em;
+    padding: 14px 34px; border-radius: 6px;
+    box-shadow: 0 4px 0 #1a120b, inset 0 1px 0 rgba(255,255,255,.06);
+    cursor: pointer; touch-action: manipulation;
+    transition: transform .05s, box-shadow .05s;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a120b; }
+  .btn.sm { font-size: 14px; padding: 9px 18px; }
+
+  /* ---------- order card ---------- */
+  #stageTop { flex: 0 0 auto; text-align: center; }
+  .phaseLabel { font-size: 12px; color: var(--amber); letter-spacing: .3em; height: 16px; }
+  .coaster {
+    width: 168px; height: 168px; margin: 8px auto 6px; border-radius: 50%;
+    background: var(--counter); border: 3px solid var(--brass);
+    box-shadow: 0 0 0 6px rgba(201,162,94,.12), 0 14px 30px rgba(0,0,0,.5);
+    overflow: hidden; position: relative;
+  }
+  .coaster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .coaster .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 60px; color: var(--line); }
+  .drinkName { font-size: 21px; font-weight: 700; color: var(--cream); margin-top: 4px; line-height: 1.2; }
+  .drinkName .jp { display: block; font-size: 12px; color: var(--muted); font-family: "Zen Kaku Gothic New"; letter-spacing: .04em; margin-top: 3px; font-weight: 400; }
+
+  .timerbar { height: 7px; background: rgba(0,0,0,.4); border-radius: 99px; overflow: hidden; margin: 12px 2px 0; border: 1px solid var(--line); flex: 0 0 auto; }
+  .timerbar > i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--amber), var(--amber-soft)); transition: background .2s; }
+
+  /* recipe list (memorize) */
+  .recipe { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 14px 4px; overflow: hidden; }
+  .recipe .ri { display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,.22); border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; }
+  .recipe .ri .thumb { width: 40px; height: 40px; border-radius: 7px; background: var(--counter); object-fit: cover; flex: 0 0 auto; }
+  .recipe .ri .nm { font-size: 15px; font-weight: 500; }
+  .recipe .ri .ms { margin-left: auto; font-size: 12px; color: var(--muted); font-family: "Shippori Mincho"; }
+
+  .hintRow { text-align: center; color: var(--muted); font-size: 12px; margin-top: 4px; flex: 0 0 auto; }
+
+  /* shelf (serve) */
+  .shelf { flex: 1 1 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; align-content: center; padding: 10px 2px; }
+  .bottle {
+    position: relative; aspect-ratio: 1/1.12; border-radius: 10px;
+    background: linear-gradient(180deg, var(--counter2), var(--counter));
+    border: 1px solid var(--line);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    padding: 6px; cursor: pointer; touch-action: manipulation; overflow: hidden;
+    transition: transform .07s, border-color .12s, background .12s;
+  }
+  .bottle:active { transform: scale(.95); }
+  .bottle img { width: 52%; height: 48%; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(0,0,0,.4)); }
+  .bottle .bn { font-size: 10.5px; line-height: 1.15; color: var(--cream); text-align: center; padding: 0 2px; }
+  .bottle .ic { font-size: 30px; }
+  .bottle.pick { border-color: var(--ok); background: linear-gradient(180deg, #2c3b22, #213018); box-shadow: 0 0 14px rgba(127,176,105,.4); }
+  .bottle.pick::after { content: "✓"; position: absolute; top: 4px; right: 6px; color: var(--ok); font-weight: 700; font-size: 14px; }
+  .bottle.wrong { border-color: var(--danger); animation: shake .3s; }
+  .bottle.hintglow { border-color: var(--amber); box-shadow: 0 0 16px rgba(227,168,87,.6); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+
+  /* upgrade / relic */
+  #relics .relicCard {
+    background: linear-gradient(180deg, var(--surface), #1a140e);
+    border: 1px solid var(--brass); border-radius: 12px; padding: 14px 16px; margin: 9px 0;
+    display: flex; gap: 13px; align-items: center; cursor: pointer; touch-action: manipulation;
+    box-shadow: 0 4px 0 #100c08; transition: transform .06s, box-shadow .06s;
+  }
+  #relics .relicCard:active { transform: translateY(3px); box-shadow: 0 1px 0 #100c08; }
+  #relics .relicCard .ic { font-size: 34px; flex: 0 0 auto; }
+  #relics .relicCard .nm { font-family: "Shippori Mincho"; font-size: 17px; color: var(--amber-soft); font-weight: 700; }
+  #relics .relicCard .ds { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+
+  .center { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+  .headline { font-family: "Shippori Mincho"; font-size: 26px; color: var(--amber-soft); text-align: center; }
+  .sub { text-align: center; color: var(--muted); font-size: 13px; margin-top: 8px; line-height: 1.7; }
+
+  /* owned relics strip */
+  .owned { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; margin-top: 10px; min-height: 22px; }
+  .owned span { font-size: 17px; }
+
+  /* loading */
+  #load { justify-content: center; align-items: center; text-align: center; gap: 14px; }
+  #load .bar { width: 200px; height: 6px; background: rgba(0,0,0,.4); border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+  #load .bar > i { display: block; height: 100%; width: 0%; background: var(--amber); transition: width .3s; }
+
+  .toast { position: absolute; left: 50%; top: 46%; transform: translateX(-50%); z-index: 30;
+    font-family: "Shippori Mincho"; font-size: 30px; font-weight: 800; color: var(--amber-soft);
+    text-shadow: 0 2px 12px rgba(0,0,0,.7); pointer-events: none; opacity: 0; }
+  .toast.show { animation: pop 1s ease-out; }
+  @keyframes pop { 0%{opacity:0; transform:translate(-50%,8px) scale(.8)} 20%{opacity:1; transform:translate(-50%,-2px) scale(1.08)} 80%{opacity:1} 100%{opacity:0; transform:translate(-50%,-26px) scale(1)} }
+
+  .muteBtn { position: absolute; top: calc(8px + env(safe-area-inset-top)); right: 10px; z-index: 50;
+    background: rgba(0,0,0,.3); border: 1px solid var(--line); color: var(--muted); border-radius: 8px;
+    width: 34px; height: 30px; font-size: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="fx"></canvas>
+  <button class="muteBtn" id="muteBtn" aria-label="mute">🔊</button>
+  <div class="toast" id="toast"></div>
+
+  <!-- LOADING -->
+  <section class="screen on" id="load">
+    <div class="glass serif" style="font-size:44px">🍸</div>
+    <div class="serif" style="font-size:24px; letter-spacing:.2em; color:var(--amber-soft)">仕込み中…</div>
+    <div class="bar"><i id="loadBar"></i></div>
+    <div id="loadMsg" style="font-size:12px; color:var(--muted)">カクテルを取り寄せています</div>
+  </section>
+
+  <!-- TITLE -->
+  <section class="screen" id="title">
+    <div class="glass serif">🍸</div>
+    <div class="logo serif">シズク</div>
+    <div class="tag serif">記憶でつくる、深夜のバー</div>
+    <div class="brass-line"></div>
+    <div class="desc">客が頼んだカクテルの<b style="color:var(--cream)">レシピを一瞬だけ記憶</b>。<br>棚から<b style="color:var(--cream)">正しい材料だけ</b>を選んで一杯を仕上げろ。<br>速く正確なほどチップが伸び、夜を越えるごとに<b style="color:var(--cream)">知識(レリック)</b>で強くなる。</div>
+    <button class="btn" id="startBtn">開 店</button>
+    <div class="best serif" id="bestLine"></div>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="play">
+    <div class="hud">
+      <div class="pill">夜 <b id="hNight">1</b></div>
+      <div class="pill">¥ <b id="hTip">0</b></div>
+      <div class="pill">客 <b id="hQuota">0/0</b></div>
+      <div class="hearts" id="hHearts"></div>
+    </div>
+    <div id="stageTop">
+      <div class="phaseLabel serif" id="phaseLabel">ご注文</div>
+      <div class="coaster" id="coaster"><div class="ph">🍸</div></div>
+      <div class="drinkName serif" id="drinkName">—</div>
+    </div>
+    <div class="timerbar"><i id="timerFill"></i></div>
+    <div id="recipe" class="recipe"></div>
+    <div id="shelf" class="shelf" style="display:none"></div>
+    <div class="hintRow" id="hintRow"></div>
+  </section>
+
+  <!-- SHIFT CLEAR / RELIC -->
+  <section class="screen" id="relics">
+    <div class="hud"><div class="pill">夜 <b id="rNight">1</b> 営業終了</div><div class="hearts" id="rHearts"></div></div>
+    <div class="center">
+      <div class="headline serif">差し入れを一つ</div>
+      <div class="sub">夜が明ける前に、知識を一つ授かる。</div>
+      <div id="relicChoices" style="margin-top:8px"></div>
+    </div>
+    <div class="owned" id="ownedStrip"></div>
+  </section>
+
+  <!-- GAME OVER -->
+  <section class="screen" id="over">
+    <div class="center">
+      <div class="glass serif" style="font-size:46px; text-align:center">🌙</div>
+      <div class="headline serif" id="overTitle">閉 店</div>
+      <div class="sub" id="overStats"></div>
+      <div class="owned" id="overOwned" style="margin-top:16px"></div>
+      <div style="text-align:center; margin-top:26px"><button class="btn" id="againBtn">もう一杯</button></div>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+(function () {
+  /* ============ DOM ============ */
+  const $ = id => document.getElementById(id);
+  const app = $("app");
+  const screens = { load: $("load"), title: $("title"), play: $("play"), relics: $("relics"), over: $("over") };
+  function show(name) { for (const k in screens) screens[k].classList.toggle("on", k === name); }
+
+  /* ============ audio (iOS消音スイッチ対策込み, hakaiより踏襲) ============ */
+  let AC = null, muted = false;
+  function audio() {
+    if (!AC) {
+      try {
+        AC = new (window.AudioContext || window.webkitAudioContext)();
+        AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+      } catch (e) {}
+    }
+    if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  let silentEl = null;
+  function silentWavUrl() {
+    const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE");
+    str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    str(36, "data"); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  function unlockAudio() {
+    if (!silentEl) {
+      silentEl = document.createElement("audio");
+      silentEl.setAttribute("playsinline", ""); silentEl.loop = true; silentEl.volume = 0.01;
+      silentEl.src = silentWavUrl();
+    }
+    const p = silentEl.play(); if (p && p.catch) p.catch(() => {});
+    audio(); if (!AC) return;
+    const done = () => { if (AC.state === "running") ["pointerdown","pointerup","touchend"].forEach(ev => document.removeEventListener(ev, unlockAudio, true)); };
+    try { AC.resume().then(done); } catch (e) { done(); }
+  }
+  ["pointerdown","pointerup","touchend"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+  function tone(f, d, type, vol, slideTo) {
+    if (muted || !audio()) return;
+    try {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || "sine"; o.frequency.value = f;
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, AC.currentTime + d);
+      g.gain.value = vol || 0.06; g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + d);
+      o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime + d);
+    } catch (e) {}
+  }
+  const sPick = c => tone(420 + Math.min(c,16) * 40, 0.08, "sine", 0.05, 620 + c*40);
+  const sWrong = () => { tone(180, 0.18, "sawtooth", 0.06, 90); };
+  const sServe = () => { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,0.16,"triangle",0.05),i*70)); };
+  const sCoin = () => { tone(1180,0.06,"sine",0.04); setTimeout(()=>tone(1560,0.07,"sine",0.035),55); };
+  const sShift = () => { [392,523,659,880].forEach((f,i)=>setTimeout(()=>tone(f,0.3,"sine",0.05),i*110)); };
+  const sOver = () => { [440,392,330,247].forEach((f,i)=>setTimeout(()=>tone(f,0.4,"sine",0.06),i*180)); };
+  const sTick = () => tone(880, 0.03, "square", 0.02);
+  $("muteBtn").addEventListener("click", () => { muted = !muted; $("muteBtn").textContent = muted ? "🔇" : "🔊"; });
+
+  /* ============ data: TheCocktailDB ============ */
+  const API = "https://www.thecocktaildb.com/api/json/v1/1/";
+  const ING_IMG = n => API.replace(/api.*/, "") + "images/ingredients/" + encodeURIComponent(n) + "-Small.png";
+  const CACHE_KEY = "shizuku_drinks_v2";
+  const BEST_KEY = "shizuku_best_v1";
+  // 通信全滅時の最終フォールバック(画像なし・テキストのみで成立)
+  const FALLBACK = [
+    { id:"f1", name:"Margarita", thumb:"", ings:["Tequila","Triple sec","Lime juice","Salt"] },
+    { id:"f2", name:"Mojito", thumb:"", ings:["White rum","Lime","Sugar","Mint","Soda water"] },
+    { id:"f3", name:"Cosmopolitan", thumb:"", ings:["Vodka","Triple sec","Cranberry juice","Lime juice"] },
+    { id:"f4", name:"Negroni", thumb:"", ings:["Gin","Campari","Sweet Vermouth"] },
+    { id:"f5", name:"Daiquiri", thumb:"", ings:["Light rum","Lime","Sugar"] },
+    { id:"f6", name:"Old Fashioned", thumb:"", ings:["Bourbon","Sugar","Angostura bitters","Water"] },
+    { id:"f7", name:"Whiskey Sour", thumb:"", ings:["Bourbon","Lemon","Sugar","Egg White"] },
+    { id:"f8", name:"Mai Tai", thumb:"", ings:["Light rum","Lime","Orange Curacao","Orgeat syrup"] },
+    { id:"f9", name:"Gin Tonic", thumb:"", ings:["Gin","Tonic water","Lime"] },
+    { id:"f10", name:"Manhattan", thumb:"", ings:["Bourbon","Sweet Vermouth","Angostura bitters"] }
+  ];
+  let DRINKS = [];      // {id,name,thumb,ings:[]}
+  let INGPOOL = [];     // ユニーク材料名(デコイ用)
+
+  function loadCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)) || []; } catch (e) { return []; } }
+  function saveCache(arr) { try { localStorage.setItem(CACHE_KEY, JSON.stringify(arr.slice(0, 90))); } catch (e) {} }
+
+  function fetchJSON(url, ms) {
+    return new Promise((res, rej) => {
+      const ctl = new AbortController();
+      const t = setTimeout(() => { ctl.abort(); rej(new Error("timeout")); }, ms || 8000);
+      fetch(url, { signal: ctl.signal })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error("http " + r.status)))
+        .then(j => { clearTimeout(t); res(j); })
+        .catch(e => { clearTimeout(t); rej(e); });
+    });
+  }
+  function parseDrink(d) {
+    if (!d) return null;
+    const ings = [];
+    for (let i = 1; i <= 15; i++) {
+      const n = d["strIngredient" + i];
+      if (n && n.trim()) ings.push(n.trim());
+    }
+    if (ings.length < 2) return null;
+    return { id: d.idDrink, name: d.strDrink, thumb: d.strDrinkThumb || "", ings: ings.slice(0, 6) };
+  }
+  async function fetchRandomDrinks(target, onProg) {
+    const have = new Map(DRINKS.map(d => [d.id, d]));
+    let done = 0, tries = 0;
+    const TRY_MAX = target * 3;
+    async function one() {
+      try {
+        const j = await fetchJSON(API + "random.php", 7000);
+        const d = parseDrink(j.drinks && j.drinks[0]);
+        if (d && !have.has(d.id)) { have.set(d.id, d); }
+      } catch (e) {}
+      done++; if (onProg) onProg(Math.min(have.size, target), target);
+    }
+    // 4並列で必要数まで
+    while (have.size < target && tries < TRY_MAX) {
+      const batch = [];
+      const need = Math.min(4, TRY_MAX - tries);
+      for (let i = 0; i < need; i++) { batch.push(one()); tries++; }
+      await Promise.all(batch);
+      if (have.size >= target) break;
+    }
+    DRINKS = [...have.values()];
+    saveCache(DRINKS);
+    rebuildPool();
+  }
+  function rebuildPool() {
+    const s = new Set();
+    DRINKS.forEach(d => d.ings.forEach(i => s.add(i)));
+    INGPOOL = [...s];
+  }
+
+  /* ============ game state ============ */
+  const G = {
+    night: 1, tip: 0, hearts: 3, maxHearts: 3,
+    quota: 0, served: 0, combo: 0, bestCombo: 0,
+    relics: {}, phase: "idle",
+    cur: null, correct: [], picked: new Set(), wrongThisDrink: 0,
+    timer: 0, timerMax: 1, timerActive: false, banked: 0,
+    recent: []
+  };
+  const RELIC_DEFS = [
+    { k:"memo",   ic:"📓", nm:"バーテンの手帳", ds:"覚える時間が ＋1.5秒。" },
+    { k:"yokan",  ic:"🔮", nm:"予感",          ds:"一杯につき間違いを1回まで見逃す。" },
+    { k:"jouren", ic:"🥃", nm:"常連の信頼",      ds:"ミスしてもコンボが途切れない(夜1回)。" },
+    { k:"jigger", ic:"⚖️", nm:"純銀のジガー",    ds:"チップがすべて ×1.3。" },
+    { k:"hayami", ic:"👂", nm:"早耳",          ds:"提供開始時、正解の棚を1つ一瞬光らせる。" },
+    { k:"kanban", ic:"🌸", nm:"看板娘",        ds:"今すぐ体力 ＋1、最大体力も ＋1。" },
+    { k:"sober",  ic:"☕", nm:"濃いめの一杯",    ds:"スピードボーナスが2倍効く。" },
+    { k:"regular",ic:"🎩", nm:"上客",          ds:"提供時間が ＋2.5秒。" }
+  ];
+
+  /* ============ helpers ============ */
+  function hearts(n, max) { return "🍒".repeat(Math.max(0,n)) + "·".repeat(Math.max(0, max - n)); }
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function pickDrink(minI, maxI) {
+    const pool = DRINKS.filter(d => d.ings.length >= minI && d.ings.length <= maxI && !G.recent.includes(d.id));
+    const use = pool.length ? pool : DRINKS.filter(d => !G.recent.includes(d.id));
+    const arr = use.length ? use : DRINKS;
+    const d = arr[(Math.random() * arr.length) | 0];
+    G.recent.push(d.id); if (G.recent.length > 8) G.recent.shift();
+    return d;
+  }
+  function ingThumb(name, big) {
+    const img = document.createElement("img");
+    img.className = "thumb"; img.alt = name; img.loading = "eager";
+    img.src = ING_IMG(name);
+    img.onerror = () => { const s = document.createElement("span"); s.className = "ic"; s.textContent = "🧴"; img.replaceWith(s); };
+    return img;
+  }
+
+  /* ============ difficulty ============ */
+  function diff() {
+    const n = G.night;
+    const minI = n <= 1 ? 2 : (n <= 3 ? 3 : (n <= 6 ? 3 : 4));
+    const maxI = n <= 1 ? 3 : (n <= 4 ? 4 : (n <= 8 ? 5 : 6));
+    const decoys = 4 + Math.min(n, 8);
+    let memTime = 4.6 - n * 0.18; memTime = Math.max(2.2, memTime); if (G.relics.memo) memTime += 1.5;
+    let serveTime = 11 - n * 0.45; serveTime = Math.max(6, serveTime); if (G.relics.regular) serveTime += 2.5;
+    const quota = 3 + Math.min(Math.floor(n / 1.5), 6);
+    return { minI, maxI, decoys, memTime, serveTime, quota };
+  }
+
+  /* ============ flow ============ */
+  function startGame() {
+    G.night = 1; G.tip = 0; G.hearts = 3; G.maxHearts = 3;
+    G.combo = 0; G.bestCombo = 0; G.relics = {}; G.recent = [];
+    audio(); show("play"); beginShift();
+  }
+  function beginShift() {
+    const d = diff();
+    G.quota = d.quota; G.served = 0;
+    $("hNight").textContent = G.night;
+    updateHud();
+    nextCustomer();
+  }
+  function updateHud() {
+    $("hNight").textContent = G.night;
+    $("hTip").textContent = G.tip.toLocaleString();
+    $("hQuota").textContent = G.served + "/" + G.quota;
+    $("hHearts").textContent = hearts(G.hearts, G.maxHearts);
+  }
+
+  function nextCustomer() {
+    const d = diff();
+    G.cur = pickDrink(d.minI, d.maxI);
+    G.correct = G.cur.ings.slice();
+    G.picked = new Set();
+    G.wrongThisDrink = 0;
+    G.jourenUsed = G.jourenUsed || false;
+    // order card
+    const co = $("coaster");
+    co.innerHTML = "";
+    if (G.cur.thumb) {
+      const im = document.createElement("img"); im.src = G.cur.thumb; im.alt = G.cur.name;
+      im.onerror = () => { co.innerHTML = '<div class="ph">🍸</div>'; };
+      co.appendChild(im);
+    } else { co.innerHTML = '<div class="ph">🍸</div>'; }
+    $("drinkName").innerHTML = G.cur.name + '<span class="jp">' + G.correct.length + ' 種の材料</span>';
+    // memorize phase
+    $("phaseLabel").textContent = "覚えて";
+    $("shelf").style.display = "none";
+    const rc = $("recipe"); rc.style.display = "flex"; rc.innerHTML = "";
+    G.correct.forEach((name, i) => {
+      const ri = document.createElement("div"); ri.className = "ri";
+      ri.appendChild(ingThumb(name));
+      const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = name; ri.appendChild(nm);
+      rc.appendChild(ri);
+    });
+    $("hintRow").innerHTML = 'タップで<b style="color:var(--amber-soft)">すぐ提供へ</b>(残り時間はボーナス)';
+    startTimer(d.memTime, "mem");
+  }
+
+  function startServe() {
+    if (G.phase !== "mem") return;
+    G.banked = G.timer; // 残り記憶時間→ボーナス
+    const d = diff();
+    $("phaseLabel").textContent = "注いで";
+    $("recipe").style.display = "none";
+    const sh = $("shelf"); sh.style.display = "grid"; sh.innerHTML = "";
+    // 棚 = 正解 + デコイ
+    const decoyPool = INGPOOL.filter(n => !G.correct.includes(n));
+    shuffle(decoyPool);
+    const decoys = decoyPool.slice(0, d.decoys);
+    const tiles = shuffle(G.correct.concat(decoys));
+    tiles.forEach(name => {
+      const b = document.createElement("div"); b.className = "bottle";
+      b.appendChild(ingThumb(name));
+      const bn = document.createElement("div"); bn.className = "bn"; bn.textContent = name; b.appendChild(bn);
+      b.addEventListener("pointerdown", e => { e.preventDefault(); onPick(name, b); });
+      b._name = name; sh.appendChild(b);
+    });
+    $("hintRow").textContent = "レシピの材料をすべて選べ";
+    startTimer(d.serveTime, "serve");
+    // 早耳: 正解1つを一瞬光らせる
+    if (G.relics.hayami) {
+      const tgt = [...sh.children].find(b => G.correct.includes(b._name));
+      if (tgt) { tgt.classList.add("hintglow"); setTimeout(() => tgt.classList.remove("hintglow"), 700); }
+    }
+  }
+
+  function onPick(name, el) {
+    if (G.phase !== "serve") return;
+    if (el.classList.contains("pick")) return;
+    if (G.correct.includes(name)) {
+      el.classList.add("pick"); G.picked.add(name);
+      G.combo++; sPick(G.combo); spawnCoins(el);
+      if (G.picked.size >= G.correct.length) finishServe(true);
+    } else {
+      el.classList.add("wrong"); setTimeout(() => el.classList.remove("wrong"), 320);
+      sWrong();
+      G.wrongThisDrink++;
+      const allow = G.relics.yokan ? 1 : 0;
+      if (G.wrongThisDrink > allow) {
+        penalize();
+      } else {
+        flashToast("セーフ", "var(--amber-soft)");
+      }
+    }
+  }
+
+  function penalize() {
+    // コンボ維持(常連)判定
+    if (G.relics.jouren && !G.jourenUsed) { G.jourenUsed = true; flashToast("常連がフォロー", "var(--teal)"); }
+    else { G.combo = 0; }
+    G.hearts--;
+    updateHud();
+    if (G.hearts <= 0) { finishServe(false, true); }
+  }
+
+  function finishServe(ok, dead) {
+    stopTimer();
+    if (ok) {
+      const d = diff();
+      const speedFrac = Math.max(0, G.timer / d.serveTime);
+      const speedMul = 1 + speedFrac * (G.relics.sober ? 1.0 : 0.5);
+      const memBonus = 1 + Math.min(G.banked, 4) * 0.06;
+      const comboMul = 1 + Math.min(G.combo, 25) * 0.08;
+      const relicMul = G.relics.jigger ? 1.3 : 1;
+      const base = 8 * G.correct.length;
+      const tip = Math.round(base * comboMul * speedMul * memBonus * relicMul);
+      G.tip += tip; G.served++;
+      G.bestCombo = Math.max(G.bestCombo, G.combo);
+      sServe();
+      flashToast("¥" + tip + (G.combo > 1 ? "  ×" + G.combo : ""), "var(--ok)");
+      updateHud();
+      setTimeout(() => {
+        if (G.served >= G.quota) shiftClear();
+        else nextCustomer();
+      }, 720);
+    } else {
+      // 時間切れ or 体力切れ
+      if (!dead) { penalizeTimeout(); }
+      else gameOver();
+    }
+  }
+  function penalizeTimeout() {
+    G.combo = 0; G.hearts--; sWrong(); flashToast("時間切れ…", "var(--danger)");
+    updateHud();
+    setTimeout(() => { if (G.hearts <= 0) gameOver(); else nextCustomer(); }, 700);
+  }
+
+  function shiftClear() {
+    stopTimer(); sShift();
+    G.night++;
+    G.jourenUsed = false;
+    $("rNight").textContent = G.night - 1;
+    $("rHearts").textContent = hearts(G.hearts, G.maxHearts);
+    // レリック候補3つ
+    const owned = Object.keys(G.relics);
+    let pool = RELIC_DEFS.filter(r => !owned.includes(r.k));
+    if (pool.length === 0) pool = [{ k:"_tip", ic:"💴", nm:"祝儀", ds:"チップ ＋500。" }];
+    shuffle(pool);
+    const choices = pool.slice(0, 3);
+    const cc = $("relicChoices"); cc.innerHTML = "";
+    choices.forEach(r => {
+      const c = document.createElement("div"); c.className = "relicCard";
+      c.innerHTML = '<div class="ic">' + r.ic + '</div><div><div class="nm">' + r.nm + '</div><div class="ds">' + r.ds + '</div></div>';
+      c.addEventListener("pointerdown", e => { e.preventDefault(); chooseRelic(r); });
+      cc.appendChild(c);
+    });
+    renderOwned($("ownedStrip"));
+    show("relics");
+  }
+  function chooseRelic(r) {
+    sCoin();
+    if (r.k === "_tip") { G.tip += 500; }
+    else {
+      G.relics[r.k] = true;
+      if (r.k === "kanban") { G.maxHearts++; G.hearts++; }
+    }
+    updateHud();
+    show("play");
+    beginShift();
+  }
+  function renderOwned(el) {
+    el.innerHTML = "";
+    Object.keys(G.relics).forEach(k => { const def = RELIC_DEFS.find(d => d.k === k); if (def) { const s = document.createElement("span"); s.textContent = def.ic; s.title = def.nm; el.appendChild(s); } });
+  }
+
+  function gameOver() {
+    stopTimer(); G.phase = "idle"; sOver();
+    let best = {}; try { best = JSON.parse(localStorage.getItem(BEST_KEY)) || {}; } catch (e) {}
+    const isBestTip = !best.tip || G.tip > best.tip;
+    const nb = { tip: Math.max(best.tip || 0, G.tip), night: Math.max(best.night || 0, G.night), combo: Math.max(best.combo || 0, G.bestCombo) };
+    try { localStorage.setItem(BEST_KEY, JSON.stringify(nb)); } catch (e) {}
+    $("overTitle").textContent = isBestTip ? "自己ベスト!" : "閉 店";
+    $("overStats").innerHTML = "今夜の売上 <b style='color:var(--amber-soft);font-size:22px'>¥" + G.tip.toLocaleString() + "</b><br>" +
+      "夜 " + (G.night) + " まで営業 ・ 最大コンボ " + G.bestCombo + "<br>" +
+      "<span style='font-size:11px'>ベスト ¥" + nb.tip.toLocaleString() + " / 夜" + nb.night + "</span>";
+    renderOwned($("overOwned"));
+    show("over");
+  }
+
+  /* ============ timer (rAFループは下) ============ */
+  function startTimer(sec, phase) {
+    G.timer = sec; G.timerMax = sec; G.timerActive = true; G.phase = phase;
+    G._lastTick = Math.ceil(sec);
+    $("timerFill").style.width = "100%";
+    $("timerFill").style.background = "linear-gradient(90deg, var(--amber), var(--amber-soft))";
+  }
+  function stopTimer() { G.timerActive = false; }
+
+  /* ============ render fx: コイン粒子 ============ */
+  const fx = $("fx"); const fxc = fx.getContext("2d");
+  let DPR = 1, parts = [];
+  function sizeFx() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    const r = app.getBoundingClientRect();
+    fx.width = r.width * DPR; fx.height = r.height * DPR;
+    fx.style.width = r.width + "px"; fx.style.height = r.height + "px";
+  }
+  function spawnCoins(el) {
+    const ar = app.getBoundingClientRect(), r = el.getBoundingClientRect();
+    const cx = r.left - ar.left + r.width / 2, cy = r.top - ar.top + r.height / 2;
+    for (let i = 0; i < 8; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 3;
+      parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2, life: 1, r: 2 + Math.random() * 3 });
+    }
+  }
+  let lastT = 0;
+  function loop(t) {
+    requestAnimationFrame(loop);
+    const dt = Math.min(0.05, (t - lastT) / 1000 || 0); lastT = t;
+    // timer
+    if (G.timerActive) {
+      G.timer -= dt;
+      const frac = Math.max(0, G.timer / G.timerMax);
+      const fill = $("timerFill");
+      fill.style.width = (frac * 100) + "%";
+      if (frac < 0.3) fill.style.background = "linear-gradient(90deg, var(--danger), #e8895f)";
+      const ic = Math.ceil(G.timer);
+      if (ic !== G._lastTick && ic <= 3 && ic > 0) { G._lastTick = ic; sTick(); }
+      if (G.timer <= 0) {
+        G.timerActive = false;
+        if (G.phase === "mem") startServe();
+        else if (G.phase === "serve") finishServe(false, false);
+      }
+    }
+    // particles
+    if (parts.length) {
+      fxc.setTransform(DPR, 0, 0, DPR, 0, 0);
+      fxc.clearRect(0, 0, fx.width, fx.height);
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const p = parts[i]; p.vy += 0.18; p.x += p.vx; p.y += p.vy; p.life -= dt * 1.6;
+        if (p.life <= 0) { parts.splice(i, 1); continue; }
+        fxc.globalAlpha = Math.max(0, p.life);
+        fxc.fillStyle = "#e3a857"; fxc.beginPath(); fxc.arc(p.x, p.y, p.r, 0, 7); fxc.fill();
+      }
+      fxc.globalAlpha = 1;
+    } else if (fxc && fx.width) {
+      fxc.clearRect(0, 0, fx.width, fx.height);
+    }
+  }
+  requestAnimationFrame(loop);
+  window.addEventListener("resize", sizeFx);
+  sizeFx();
+
+  let toastT = null;
+  function flashToast(txt, col) {
+    const el = $("toast"); el.textContent = txt; el.style.color = col || "var(--amber-soft)";
+    el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+  }
+
+  // 提供フェーズへ早送り(注文カードタップ)
+  $("stageTop").addEventListener("pointerdown", e => { if (G.phase === "mem") { e.preventDefault(); G.timerActive = false; startServe(); } });
+
+  /* ============ zoom抑止 (iOS) ============ */
+  let lastTouch = 0;
+  document.addEventListener("touchend", e => {
+    const now = Date.now();
+    if (now - lastTouch < 350) e.preventDefault();
+    lastTouch = now;
+  }, { passive: false });
+  document.addEventListener("gesturestart", e => e.preventDefault());
+  document.addEventListener("dblclick", e => e.preventDefault());
+
+  /* ============ buttons ============ */
+  $("startBtn").addEventListener("pointerdown", e => { e.preventDefault(); startGame(); });
+  $("againBtn").addEventListener("pointerdown", e => { e.preventDefault(); startGame(); });
+
+  function showBest() {
+    let best = {}; try { best = JSON.parse(localStorage.getItem(BEST_KEY)) || {}; } catch (e) {}
+    if (best.tip) $("bestLine").textContent = "ベスト ¥" + best.tip.toLocaleString() + " ・ 夜" + (best.night || 1);
+  }
+
+  /* ============ boot ============ */
+  async function boot() {
+    DRINKS = loadCache();
+    rebuildPool();
+    const TARGET = 30;
+    if (DRINKS.length >= 16) {
+      // 充分: 即プレイ可。裏で補充
+      $("loadBar").style.width = "100%"; toTitle();
+      fetchRandomDrinks(TARGET, () => {}).catch(() => {});
+      return;
+    }
+    // 不足: 取り寄せ
+    $("loadMsg").textContent = "カクテルを取り寄せています…";
+    try {
+      await fetchRandomDrinks(20, (n, tot) => { $("loadBar").style.width = Math.round(n / tot * 100) + "%"; });
+    } catch (e) {}
+    if (DRINKS.length < 6) {
+      DRINKS = FALLBACK.slice(); rebuildPool();
+      $("loadMsg").textContent = "オフライン用レシピで開店します";
+      await new Promise(r => setTimeout(r, 500));
+    }
+    toTitle();
+  }
+  function toTitle() { showBest(); show("title"); }
+  boot();
+})();
+</script>
+</body>
+</html>
