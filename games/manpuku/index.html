@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>満腹食堂 — 爆速まかないアクション</title>
+<meta name="description" content="伝票の食材を、棚から大急ぎでかき集めて配膳しろ!客の腹が減りきる前に手際よくさばくほど手際メーターが燃え、FEVERで売上が倍に。実在料理の写真で遊ぶ昭和食堂の早さばきアクション。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="満腹食堂 — 爆速まかないアクション">
+<meta property="og:description" content="伝票の食材を棚から大急ぎでかき集めて配膳。手際よくさばくほどメーターが燃え、FEVERで売上が倍に。実在料理写真で遊ぶ昭和食堂の早さばきアクション。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/manpuku/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/manpuku/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="満腹食堂 — 爆速まかないアクション">
+<meta name="twitter:description" content="実在料理写真で遊ぶ、昭和食堂の早さばきアクション。手際メーターを燃やしてFEVERへ。">
+<meta name="twitter:image" content="https://nrtkumi.github.io/games/manpuku/assets/ogp.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fbf1da;
+    --noren: #d2402f;
+    --noren-d: #a82f22;
+    --yolk: #f2b53e;
+    --yolk-d: #e09a1f;
+    --teal: #2f8d7e;
+    --cream: #fff8ea;
+    --ink: #2c2018;
+    --brown: #6b4a2f;
+    --muted: #8a755c;
+    --green: #4f9d4a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: #6b4a2f;
+    color: var(--ink);
+    font-family: "Zen Maru Gothic", sans-serif;
+    overflow: hidden; overscroll-behavior: none;
+    -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  #app {
+    position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: min(480px, 64vh); height: 100%;
+    background:
+      linear-gradient(180deg, #fdf6e6 0%, #fbf1da 60%, #f4e6c8 100%);
+    box-shadow: 0 0 50px rgba(0,0,0,.6);
+    display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    overflow: hidden;
+  }
+  /* タイル壁テクスチャ */
+  #app::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.045;
+    background-image: linear-gradient(var(--teal) 1px, transparent 1px), linear-gradient(90deg, var(--teal) 1px, transparent 1px);
+    background-size: 30px 30px; }
+  #fx { position: absolute; inset: 0; pointer-events: none; z-index: 40; }
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); z-index: 5; }
+  .screen.on { display: flex; }
+  .dela { font-family: "Dela Gothic One", sans-serif; }
+
+  /* HUD */
+  .hud { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; margin-bottom: 6px; }
+  .hud .pill { background: var(--cream); border: 2px solid var(--ink); border-radius: 10px; padding: 3px 9px; font-size: 10px; color: var(--muted); font-weight: 700; box-shadow: 2px 2px 0 var(--ink); }
+  .hud .pill b { font-family: "Dela Gothic One"; color: var(--noren); font-size: 14px; margin-left: 3px; }
+  .hud .hearts { margin-left: auto; font-size: 16px; letter-spacing: 1px; }
+
+  /* tempo / fever */
+  .tempoWrap { flex: 0 0 auto; height: 16px; background: var(--cream); border: 2px solid var(--ink); border-radius: 99px; overflow: hidden; position: relative; margin-bottom: 7px; box-shadow: 2px 2px 0 var(--ink); }
+  .tempoWrap > i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--yolk), var(--noren)); transition: width .12s; }
+  .tempoWrap > span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: "Dela Gothic One"; font-size: 10px; color: var(--ink); letter-spacing: .15em; }
+  .tempoWrap.fever { animation: feverpulse .4s infinite alternate; }
+  .tempoWrap.fever > i { background: linear-gradient(90deg, #ff5a3c, #ffd23c, #ff5a3c); background-size: 200%; animation: feverflow .6s linear infinite; }
+  @keyframes feverpulse { from { box-shadow: 2px 2px 0 var(--ink); } to { box-shadow: 0 0 14px var(--noren), 2px 2px 0 var(--ink); } }
+  @keyframes feverflow { to { background-position: 200%; } }
+
+  /* order ticket */
+  .order { flex: 0 0 auto; display: flex; gap: 10px; align-items: center; background: var(--cream); border: 2px solid var(--ink); border-radius: 12px; padding: 8px 10px; box-shadow: 3px 3px 0 var(--ink); position: relative; }
+  .order .face { font-size: 34px; flex: 0 0 auto; transition: transform .15s; }
+  .order .bowl { width: 60px; height: 60px; border-radius: 50%; overflow: hidden; flex: 0 0 auto; border: 3px solid var(--brown); background: #efe2c8; box-shadow: inset 0 0 0 2px var(--cream); }
+  .order .bowl img { width: 100%; height: 100%; object-fit: cover; }
+  .order .bowl .ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:30px; }
+  .order .info { flex: 1 1 auto; min-width: 0; }
+  .order .dish { font-family: "Dela Gothic One"; font-size: 14px; color: var(--ink); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .order .small { font-size: 10px; color: var(--muted); font-weight: 700; }
+
+  /* patience bar */
+  .patience { flex: 0 0 auto; height: 9px; background: #e7d8b8; border: 2px solid var(--ink); border-radius: 99px; overflow: hidden; margin: 7px 0; }
+  .patience > i { display: block; height: 100%; width: 100%; background: var(--green); transition: background .2s; }
+
+  /* recipe checklist */
+  .recipe { flex: 0 0 auto; display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; margin-bottom: 7px; min-height: 26px; }
+  .chip { display: flex; align-items: center; gap: 4px; background: var(--cream); border: 2px solid var(--ink); border-radius: 99px; padding: 2px 8px 2px 3px; font-size: 10px; font-weight: 700; }
+  .chip img { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+  .chip .ic { font-size: 14px; }
+  .chip.done { background: var(--green); color: #fff; border-color: var(--ink); }
+  .chip.done .nm { text-decoration: line-through; opacity: .8; }
+
+  /* pantry grid */
+  .pantry { flex: 1 1 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-content: center; padding: 4px 0; min-height: 0; }
+  .tile {
+    position: relative; aspect-ratio: 1/1; border-radius: 12px;
+    background: var(--cream); border: 2px solid var(--ink);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    padding: 4px; cursor: pointer; touch-action: manipulation; overflow: hidden;
+    box-shadow: 3px 3px 0 rgba(44,32,24,.85); transition: transform .06s, box-shadow .06s;
+  }
+  .tile:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 rgba(44,32,24,.85); }
+  .tile img { width: 50%; height: 46%; object-fit: contain; }
+  .tile .ic { font-size: 30px; }
+  .tile .tn { font-size: 9.5px; line-height: 1.1; text-align: center; font-weight: 700; color: var(--ink); }
+  .tile.got { background: var(--green); border-color: var(--ink); pointer-events: none; }
+  .tile.got::after { content: "✓"; position: absolute; top: 3px; right: 6px; color: #fff; font-weight: 900; font-size: 15px; }
+  .tile.miss { animation: wobble .3s; background: #f3c0b6; }
+  .tile.hl { box-shadow: 0 0 0 3px var(--yolk), 3px 3px 0 rgba(44,32,24,.85); }
+  @keyframes wobble { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px) rotate(-3deg)} 75%{transform:translateX(5px) rotate(3deg)} }
+
+  /* title */
+  #title { justify-content: center; align-items: center; text-align: center; }
+  .noren { background: var(--noren); color: var(--cream); font-family: "Dela Gothic One"; font-size: 17px; letter-spacing: .3em; padding: 8px 22px 8px 26px; border-radius: 4px; box-shadow: 4px 4px 0 var(--noren-d); position: relative; }
+  #title .logo { font-family: "Dela Gothic One"; font-size: 52px; color: var(--noren); line-height: 1.05; margin: 14px 0 2px; text-shadow: 4px 4px 0 var(--yolk); }
+  #title .tag { color: var(--brown); font-size: 14px; font-weight: 700; letter-spacing: .12em; }
+  #title .desc { color: var(--ink); font-size: 13px; line-height: 1.9; margin: 22px 8px 26px; max-width: 330px; font-weight: 500; }
+  #title .best { color: var(--muted); font-size: 12px; margin-top: 14px; min-height: 16px; font-weight: 700; }
+  .btn {
+    font-family: "Dela Gothic One"; border: 3px solid var(--ink);
+    background: var(--yolk); color: var(--ink); font-size: 22px; letter-spacing: .1em;
+    padding: 12px 38px; border-radius: 12px; box-shadow: 5px 5px 0 var(--ink); cursor: pointer; touch-action: manipulation;
+    transition: transform .06s, box-shadow .06s;
+  }
+  .btn:active { transform: translate(3px,3px); box-shadow: 2px 2px 0 var(--ink); }
+
+  /* boost (まかない) */
+  #boost { justify-content: center; }
+  .headline { font-family: "Dela Gothic One"; font-size: 26px; color: var(--noren); text-align: center; }
+  .sub { text-align: center; color: var(--brown); font-size: 13px; margin: 6px 0 12px; font-weight: 700; }
+  .boostCard { background: var(--cream); border: 3px solid var(--ink); border-radius: 14px; padding: 13px 15px; margin: 8px 0; display: flex; gap: 12px; align-items: center; cursor: pointer; touch-action: manipulation; box-shadow: 4px 4px 0 var(--ink); transition: transform .06s, box-shadow .06s; }
+  .boostCard:active { transform: translate(3px,3px); box-shadow: 1px 1px 0 var(--ink); }
+  .boostCard .ic { font-size: 32px; }
+  .boostCard .nm { font-family: "Dela Gothic One"; font-size: 16px; color: var(--noren); }
+  .boostCard .ds { font-size: 12.5px; color: var(--brown); font-weight: 600; margin-top: 2px; line-height: 1.4; }
+  .owned { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; margin-top: 12px; min-height: 22px; }
+  .owned span { font-size: 17px; }
+
+  /* loading */
+  #load { justify-content: center; align-items: center; text-align: center; gap: 14px; }
+  #load .bar { width: 200px; height: 8px; background: var(--cream); border: 2px solid var(--ink); border-radius: 99px; overflow: hidden; }
+  #load .bar > i { display: block; height: 100%; width: 0%; background: var(--noren); transition: width .3s; }
+
+  .toast { position: absolute; left: 50%; top: 40%; transform: translateX(-50%); z-index: 30; text-align: center;
+    font-family: "Dela Gothic One"; font-size: 32px; color: var(--noren); text-shadow: 3px 3px 0 var(--yolk); pointer-events: none; opacity: 0; }
+  .toast small { display: block; font-size: 15px; color: var(--ink); }
+  .toast.show { animation: pop 1s ease-out; }
+  @keyframes pop { 0%{opacity:0; transform:translate(-50%,12px) scale(.7) rotate(-4deg)} 18%{opacity:1; transform:translate(-50%,0) scale(1.12) rotate(2deg)} 80%{opacity:1} 100%{opacity:0; transform:translate(-50%,-20px) scale(1)} }
+
+  .muteBtn { position: absolute; top: calc(8px + env(safe-area-inset-top)); right: 10px; z-index: 50;
+    background: var(--cream); border: 2px solid var(--ink); color: var(--ink); border-radius: 8px; width: 34px; height: 30px; font-size: 14px; cursor: pointer; box-shadow: 2px 2px 0 var(--ink); }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="fx"></canvas>
+  <button class="muteBtn" id="muteBtn" aria-label="mute">🔊</button>
+  <div class="toast" id="toast"></div>
+
+  <section class="screen on" id="load">
+    <div class="dela" style="font-size:40px; color:var(--noren)">🍚</div>
+    <div class="dela" style="font-size:20px; color:var(--noren); letter-spacing:.1em">仕込み中…</div>
+    <div class="bar"><i id="loadBar"></i></div>
+    <div id="loadMsg" style="font-size:12px; color:var(--brown); font-weight:700">本日の品書きを用意中</div>
+  </section>
+
+  <section class="screen" id="title">
+    <div class="noren dela">の れ ん</div>
+    <div class="logo dela">満腹食堂</div>
+    <div class="tag">爆速まかないアクション</div>
+    <div class="desc"><b style="color:var(--noren)">伝票の食材</b>を、棚から大急ぎでかき集めて配膳しろ。<br>客の腹が減りきる前に手際よくさばくほど<b style="color:var(--noren)">手際メーター</b>が燃え、<b style="color:var(--noren)">FEVER</b>で売上が倍に。</div>
+    <button class="btn" id="startBtn">のれんを出す</button>
+    <div class="best dela" id="bestLine"></div>
+  </section>
+
+  <section class="screen" id="play">
+    <div class="hud">
+      <div class="pill">売上 <b id="hScore">0</b></div>
+      <div class="pill">客 <b id="hServed">0</b></div>
+      <div class="hearts" id="hHearts"></div>
+    </div>
+    <div class="tempoWrap" id="tempoWrap"><i id="tempoFill"></i><span id="tempoTxt">手際</span></div>
+    <div class="order">
+      <div class="face" id="custFace">🙂</div>
+      <div class="bowl" id="bowl"><div class="ph">🍚</div></div>
+      <div class="info">
+        <div class="dish" id="dishName">—</div>
+        <div class="small" id="dishSmall"></div>
+      </div>
+    </div>
+    <div class="patience"><i id="patFill"></i></div>
+    <div class="recipe" id="recipe"></div>
+    <div class="pantry" id="pantry"></div>
+  </section>
+
+  <section class="screen" id="boost">
+    <div class="headline dela">まかない</div>
+    <div class="sub" id="boostSub">ひと息。好きな仕込みを一つ選べ。</div>
+    <div id="boostChoices"></div>
+    <div class="owned" id="ownedStrip"></div>
+  </section>
+
+  <section class="screen" id="over">
+    <div style="flex:1 1 auto; display:flex; flex-direction:column; justify-content:center">
+      <div class="dela" style="font-size:42px; text-align:center; color:var(--noren)" id="overTitle">本日の営業終了</div>
+      <div class="sub" id="overStats" style="font-size:14px; margin-top:10px"></div>
+      <div class="owned" id="overOwned" style="margin-top:14px"></div>
+      <div style="text-align:center; margin-top:26px"><button class="btn" id="againBtn">もう一営業</button></div>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+(function () {
+  const $ = id => document.getElementById(id);
+  const app = $("app");
+  const screens = { load: $("load"), title: $("title"), play: $("play"), boost: $("boost"), over: $("over") };
+  function show(name) { for (const k in screens) screens[k].classList.toggle("on", k === name); }
+
+  /* ===== audio ===== */
+  let AC = null, muted = false;
+  function audio() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } }; } catch (e) {} }
+    if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  let silentEl = null;
+  function silentWavUrl() {
+    const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE"); str(12, "fmt "); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr, true);
+    v.setUint16(32, 1, true); v.setUint16(34, 8, true); str(36, "data"); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  function unlockAudio() {
+    if (!silentEl) { silentEl = document.createElement("audio"); silentEl.setAttribute("playsinline", ""); silentEl.loop = true; silentEl.volume = 0.01; silentEl.src = silentWavUrl(); }
+    const p = silentEl.play(); if (p && p.catch) p.catch(() => {});
+    audio(); if (!AC) return;
+    const done = () => { if (AC.state === "running") ["pointerdown","pointerup","touchend"].forEach(ev => document.removeEventListener(ev, unlockAudio, true)); };
+    try { AC.resume().then(done); } catch (e) { done(); }
+  }
+  ["pointerdown","pointerup","touchend"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+  function tone(f, d, type, vol, slideTo) {
+    if (muted || !audio()) return;
+    try { const o = AC.createOscillator(), g = AC.createGain(); o.type = type || "sine"; o.frequency.value = f;
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, AC.currentTime + d);
+      g.gain.value = vol || 0.06; g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + d);
+      o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime + d); } catch (e) {}
+  }
+  function noise(d, vol) { if (muted || !audio()) return; try { const n = Math.floor(AC.sampleRate * d), buf = AC.createBuffer(1, n, AC.sampleRate), dt = buf.getChannelData(0); for (let i = 0; i < n; i++) dt[i] = (Math.random()*2-1)*(1-i/n); const s = AC.createBufferSource(); s.buffer = buf; const g = AC.createGain(); g.gain.value = vol||0.06; s.connect(g); g.connect(AC.destination); s.start(); } catch (e) {} }
+  const sGrab = c => tone(500 + Math.min(c,20)*35, 0.06, "square", 0.035, 720 + c*35);
+  const sMiss = () => { noise(0.08, 0.05); tone(160, 0.16, "sawtooth", 0.05, 80); };
+  const sServe = () => { [659,784,988,1319].forEach((f,i)=>setTimeout(()=>tone(f,0.14,"triangle",0.05),i*55)); };
+  const sFever = () => { [523,659,784,1047,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,0.18,"square",0.045),i*55)); };
+  const sLeave = () => { tone(300,0.3,"sine",0.05,160); };
+  const sBoost = () => { tone(880,0.06,"sine",0.04); setTimeout(()=>tone(1320,0.08,"sine",0.035),60); };
+  const sOver = () => { [523,440,349,262].forEach((f,i)=>setTimeout(()=>tone(f,0.4,"sine",0.06),i*180)); };
+  $("muteBtn").addEventListener("click", () => { muted = !muted; $("muteBtn").textContent = muted ? "🔇" : "🔊"; });
+
+  /* ===== data: TheMealDB ===== */
+  const API = "https://www.themealdb.com/api/json/v1/1/";
+  const ING_IMG = n => "https://www.themealdb.com/images/ingredients/" + encodeURIComponent(n) + "-Small.png";
+  const CACHE_KEY = "manpuku_meals_v1";
+  const BEST_KEY = "manpuku_best_v1";
+  const FALLBACK = [
+    { id:"f1", name:"Curry Rice", thumb:"", ings:["Rice","Onion","Carrot","Potato","Beef","Curry Powder"] },
+    { id:"f2", name:"Ramen", thumb:"", ings:["Noodles","Pork","Egg","Spring Onions","Soy Sauce"] },
+    { id:"f3", name:"Omelette", thumb:"", ings:["Eggs","Milk","Butter","Cheese","Salt"] },
+    { id:"f4", name:"Fried Rice", thumb:"", ings:["Rice","Egg","Spring Onions","Soy Sauce","Garlic"] },
+    { id:"f5", name:"Pancakes", thumb:"", ings:["Flour","Milk","Eggs","Sugar","Butter"] },
+    { id:"f6", name:"Tomato Pasta", thumb:"", ings:["Pasta","Tomatoes","Garlic","Olive Oil","Basil"] },
+    { id:"f7", name:"Miso Soup", thumb:"", ings:["Miso","Tofu","Spring Onions","Dashi","Seaweed"] },
+    { id:"f8", name:"Hamburger", thumb:"", ings:["Beef","Bun","Lettuce","Tomato","Cheese","Onion"] },
+    { id:"f9", name:"Salad", thumb:"", ings:["Lettuce","Tomato","Cucumber","Olive Oil","Lemon"] },
+    { id:"f10", name:"Pizza", thumb:"", ings:["Flour","Tomatoes","Cheese","Basil","Olive Oil"] }
+  ];
+  let MEALS = [], INGPOOL = [];
+  function loadCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)) || []; } catch (e) { return []; } }
+  function saveCache(a) { try { localStorage.setItem(CACHE_KEY, JSON.stringify(a.slice(0, 160))); } catch (e) {} }
+  function fetchJSON(url, ms) {
+    return new Promise((res, rej) => { const ctl = new AbortController(), t = setTimeout(() => { ctl.abort(); rej(new Error("timeout")); }, ms || 9000);
+      fetch(url, { signal: ctl.signal }).then(r => r.ok ? r.json() : Promise.reject(new Error("http"))).then(j => { clearTimeout(t); res(j); }).catch(e => { clearTimeout(t); rej(e); }); });
+  }
+  function parseMeal(m) {
+    if (!m) return null;
+    const ings = [];
+    for (let i = 1; i <= 20; i++) { const n = m["strIngredient" + i]; if (n && n.trim() && n.trim().toLowerCase() !== "water") ings.push(n.trim()); }
+    if (ings.length < 3) return null;
+    return { id: m.idMeal, name: m.strMeal, thumb: m.strMealThumb || "", ings: ings };
+  }
+  async function fetchMeals(onProg) {
+    const letters = ["b","c","s","p","a","t","g","m","l"];
+    for (let i = letters.length - 1; i > 0; i--) { const j = (Math.random()*(i+1))|0; [letters[i],letters[j]]=[letters[j],letters[i]]; }
+    const have = new Map(MEALS.map(m => [m.id, m]));
+    let used = 0;
+    for (const L of letters) {
+      if (have.size >= 70) break;
+      try {
+        const j = await fetchJSON(API + "search.php?f=" + L, 8000);
+        (j.meals || []).forEach(m => { const pm = parseMeal(m); if (pm) have.set(pm.id, pm); });
+      } catch (e) {}
+      used++; if (onProg) onProg(Math.min(have.size, 70), 70);
+    }
+    MEALS = [...have.values()]; saveCache(MEALS); rebuildPool();
+  }
+  function rebuildPool() { const s = new Set(); MEALS.forEach(m => m.ings.forEach(i => s.add(i))); INGPOOL = [...s]; }
+
+  /* ===== state ===== */
+  const G = {
+    score: 0, served: 0, lives: 3, maxLives: 3, combo: 0,
+    tempo: 0, fever: 0, phase: "idle",
+    cur: null, need: [], got: new Set(),
+    patience: 0, patienceMax: 1, recent: [],
+    boosts: {}, nextBoostAt: 5, missForgiven: false
+  };
+  const BOOST_DEFS = [
+    { k:"dashi",  ic:"🍲", nm:"出汁",   ds:"客の待ち時間がいつも長くなる。" },
+    { k:"oomori", ic:"🍚", nm:"大盛り", ds:"売上がすべて +30%。" },
+    { k:"shinagaki", ic:"📋", nm:"品書き", ds:"毎回、必要な棚を1つ光らせる。" },
+    { k:"jouren", ic:"🍶", nm:"常連客", ds:"1皿につき最初のミスを見逃す。" },
+    { k:"kanban", ic:"🏮", nm:"招き猫", ds:"今すぐ信用 ＋1、最大も ＋1。" },
+    { k:"shikomi", ic:"🔪", nm:"仕込み", ds:"棚のニセ食材(デコイ)が減る。" },
+    { k:"hayate", ic:"💨", nm:"韋駄天", ds:"手際メーターが2倍たまる(FEVERしやすい)。" }
+  ];
+
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+  /* ===== difficulty ===== */
+  function diff() {
+    const s = G.served;
+    const need = Math.min(2 + Math.floor(s / 4), 6);
+    let decoys = 3 + Math.floor(s / 3); decoys = Math.min(decoys, 12); if (G.boosts.shikomi) decoys = Math.max(2, decoys - 3);
+    let pat = 7.5 - s * 0.12; pat = Math.max(3.4, pat); pat += need * 0.9; if (G.boosts.dashi) pat += 2.2;
+    return { need, decoys, pat };
+  }
+
+  /* ===== flow ===== */
+  function startGame() {
+    G.score = 0; G.served = 0; G.lives = 3; G.maxLives = 3; G.combo = 0; G.tempo = 0; G.fever = 0;
+    G.boosts = {}; G.recent = []; G.nextBoostAt = 5;
+    audio(); show("play"); updateHud(); nextOrder();
+  }
+  function updateHud() {
+    $("hScore").textContent = G.score.toLocaleString();
+    $("hServed").textContent = G.served;
+    $("hHearts").textContent = "🍜".repeat(Math.max(0, G.lives)) + "·".repeat(Math.max(0, G.maxLives - G.lives));
+  }
+  function ingThumb(name, cls) {
+    const img = document.createElement("img"); img.alt = name; img.src = ING_IMG(name); if (cls) img.className = cls;
+    img.onerror = () => { const s = document.createElement("span"); s.className = "ic"; s.textContent = "🥘"; img.replaceWith(s); };
+    return img;
+  }
+  function pickMeal(needN) {
+    const pool = MEALS.filter(m => m.ings.length >= needN && !G.recent.includes(m.id));
+    const arr = pool.length ? pool : MEALS.filter(m => m.ings.length >= needN);
+    const use = arr.length ? arr : MEALS;
+    const m = use[(Math.random()*use.length)|0];
+    G.recent.push(m.id); if (G.recent.length > 10) G.recent.shift();
+    return m;
+  }
+  function nextOrder() {
+    const d = diff();
+    G.cur = pickMeal(d.need);
+    G.need = shuffle(G.cur.ings.slice()).slice(0, d.need);
+    G.got = new Set();
+    G.missForgiven = false;
+    G.phase = "serve";
+    // customer + dish
+    $("custFace").textContent = "🙂";
+    const bowl = $("bowl"); bowl.innerHTML = "";
+    if (G.cur.thumb) { const im = document.createElement("img"); im.src = G.cur.thumb; im.onerror = () => bowl.innerHTML = '<div class="ph">🍚</div>'; bowl.appendChild(im); }
+    else bowl.innerHTML = '<div class="ph">🍚</div>';
+    $("dishName").textContent = G.cur.name;
+    $("dishSmall").textContent = "材料 " + G.need.length + " 品をそろえて";
+    // recipe checklist
+    const rc = $("recipe"); rc.innerHTML = "";
+    G.need.forEach(name => {
+      const c = document.createElement("div"); c.className = "chip"; c._name = name;
+      c.appendChild(ingThumb(name));
+      const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = name; c.appendChild(nm);
+      rc.appendChild(c);
+    });
+    // pantry
+    const decoyPool = INGPOOL.filter(n => !G.need.includes(n)); shuffle(decoyPool);
+    const tiles = shuffle(G.need.concat(decoyPool.slice(0, d.decoys)));
+    const pan = $("pantry"); pan.innerHTML = "";
+    tiles.forEach(name => {
+      const t = document.createElement("div"); t.className = "tile"; t._name = name;
+      t.appendChild(ingThumb(name));
+      const tn = document.createElement("div"); tn.className = "tn"; tn.textContent = name; t.appendChild(tn);
+      t.addEventListener("pointerdown", e => { e.preventDefault(); onTap(name, t); });
+      pan.appendChild(t);
+    });
+    // 品書き: 必要な棚を1つ光らせる
+    if (G.boosts.shinagaki) { const tgt = [...pan.children].find(t => G.need.includes(t._name)); if (tgt) { tgt.classList.add("hl"); setTimeout(() => tgt.classList.remove("hl"), 900); } }
+    // patience
+    G.patienceMax = d.pat; G.patience = d.pat;
+  }
+
+  function onTap(name, el) {
+    if (G.phase !== "serve") return;
+    if (G.need.includes(name) && !G.got.has(name)) {
+      G.got.add(name); el.classList.add("got");
+      G.combo++; sGrab(G.combo);
+      addTempo(G.boosts.hayate ? 16 : 8);
+      // check off recipe chip
+      const chip = [...$("recipe").children].find(c => c._name === name); if (chip) chip.classList.add("done");
+      spawnPop(el, "#4f9d4a");
+      $("custFace").textContent = "😋";
+      if (G.got.size >= G.need.length) serve();
+    } else if (!G.need.includes(name)) {
+      el.classList.add("miss"); setTimeout(() => el.classList.remove("miss"), 300);
+      if (G.boosts.jouren && !G.missForgiven) { G.missForgiven = true; sGrab(0); flashToast("常連がフォロー", null, "var(--teal)"); return; }
+      sMiss(); G.combo = 0; G.tempo = Math.max(0, G.tempo - 22);
+      G.patience = Math.max(0, G.patience - G.patienceMax * 0.12);
+      $("custFace").textContent = "😣";
+    }
+  }
+  function addTempo(v) {
+    if (G.fever > 0) return;
+    G.tempo += v;
+    if (G.tempo >= 100) { G.tempo = 100; triggerFever(); }
+  }
+  function triggerFever() {
+    G.fever = 6; sFever(); flashToast("FEVER!", "売上 ×2", "var(--noren)");
+    $("tempoWrap").classList.add("fever");
+  }
+  function serve() {
+    const d = diff();
+    const speedFrac = Math.max(0, G.patience / G.patienceMax);
+    const speedMul = 1 + speedFrac * 0.8;
+    const comboMul = 1 + Math.min(G.combo, 30) * 0.06;
+    const feverMul = G.fever > 0 ? 2 : 1;
+    const boostMul = G.boosts.oomori ? 1.3 : 1;
+    const base = 30 * G.need.length;
+    const tip = Math.round(base * comboMul * speedMul * feverMul * boostMul);
+    G.score += tip; G.served++;
+    sServe(); spawnBurst();
+    flashToast("¥" + tip.toLocaleString(), (G.combo > 1 ? "手際 " + G.combo + " 連" : "") + (feverMul > 1 ? "  FEVER!" : ""), "var(--noren)");
+    $("custFace").textContent = "😆";
+    updateHud();
+    G.phase = "between";
+    if (G.served >= G.nextBoostAt) {
+      G.nextBoostAt += Math.max(5, 8 - Math.floor(G.served / 10));
+      setTimeout(() => offerBoost(), 650);
+    } else {
+      setTimeout(() => { if (G.lives > 0) nextOrder(); }, 600);
+    }
+  }
+  function loseCustomer() {
+    G.combo = 0; G.tempo = Math.max(0, G.tempo - 30); G.lives--; sLeave();
+    $("custFace").textContent = "😡"; flashToast("帰られた…", null, "var(--noren-d)");
+    updateHud(); G.phase = "between";
+    setTimeout(() => { if (G.lives <= 0) gameOver(); else nextOrder(); }, 750);
+  }
+
+  function offerBoost() {
+    G.phase = "boost"; sBoost();
+    const owned = Object.keys(G.boosts);
+    let pool = BOOST_DEFS.filter(b => !owned.includes(b.k) || b.k === "kanban");
+    if (pool.length < 3) pool = BOOST_DEFS.slice();
+    shuffle(pool);
+    const choices = pool.slice(0, 3);
+    $("boostSub").textContent = G.served + " 人さばいた。好きな仕込みを一つ。";
+    const cc = $("boostChoices"); cc.innerHTML = "";
+    choices.forEach(b => {
+      const c = document.createElement("div"); c.className = "boostCard";
+      c.innerHTML = '<div class="ic">' + b.ic + '</div><div><div class="nm">' + b.nm + '</div><div class="ds">' + b.ds + '</div></div>';
+      c.addEventListener("pointerdown", e => { e.preventDefault(); chooseBoost(b); });
+      cc.appendChild(c);
+    });
+    renderOwned($("ownedStrip"));
+    show("boost");
+  }
+  function chooseBoost(b) {
+    sBoost();
+    if (b.k === "kanban") { G.maxLives++; G.lives++; }
+    else G.boosts[b.k] = true;
+    updateHud(); show("play"); nextOrder();
+  }
+  function renderOwned(el) {
+    el.innerHTML = "";
+    Object.keys(G.boosts).forEach(k => { const d = BOOST_DEFS.find(x => x.k === k); if (d) { const s = document.createElement("span"); s.textContent = d.ic; s.title = d.nm; el.appendChild(s); } });
+  }
+
+  function gameOver() {
+    G.phase = "idle"; sOver();
+    let best = {}; try { best = JSON.parse(localStorage.getItem(BEST_KEY)) || {}; } catch (e) {}
+    const isBest = !best.score || G.score > best.score;
+    const nb = { score: Math.max(best.score || 0, G.score), served: Math.max(best.served || 0, G.served) };
+    try { localStorage.setItem(BEST_KEY, JSON.stringify(nb)); } catch (e) {}
+    $("overTitle").textContent = isBest ? "本日の最高記録!" : "本日の営業終了";
+    $("overStats").innerHTML = "売上 <b style='color:var(--noren);font-size:24px'>¥" + G.score.toLocaleString() + "</b><br>" +
+      "<b>" + G.served + "</b> 人を満腹に<br><span style='font-size:11px;color:var(--muted)'>ベスト ¥" + nb.score.toLocaleString() + " / " + nb.served + "人</span>";
+    renderOwned($("overOwned"));
+    show("over");
+  }
+
+  /* ===== fx + rAF loop ===== */
+  const fx = $("fx"), fxc = fx.getContext("2d");
+  let DPR = 1, parts = [];
+  function sizeFx() { DPR = Math.min(2, window.devicePixelRatio || 1); const r = app.getBoundingClientRect(); fx.width = r.width * DPR; fx.height = r.height * DPR; fx.style.width = r.width + "px"; fx.style.height = r.height + "px"; }
+  function spawnPop(el, col) {
+    const ar = app.getBoundingClientRect(), r = el.getBoundingClientRect();
+    const cx = r.left - ar.left + r.width/2, cy = r.top - ar.top + r.height/2;
+    for (let i = 0; i < 7; i++) { const a = Math.random()*Math.PI*2, sp = 1.5+Math.random()*3; parts.push({ x: cx, y: cy, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp-2, life: 1, r: 2+Math.random()*3, c: col }); }
+  }
+  function spawnBurst() {
+    const r = app.getBoundingClientRect();
+    const cols = ["#d2402f","#f2b53e","#4f9d4a","#2f8d7e"];
+    for (let i = 0; i < 22; i++) { const a = Math.random()*Math.PI*2, sp = 2+Math.random()*5; parts.push({ x: r.width/2, y: r.height*0.4, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp-3, life: 1, r: 3+Math.random()*3, c: cols[(Math.random()*cols.length)|0] }); }
+  }
+  let lastT = 0;
+  function loop(t) {
+    requestAnimationFrame(loop);
+    const dt = Math.min(0.05, (t - lastT)/1000 || 0); lastT = t;
+    // patience / fever / tempo decay
+    if (G.phase === "serve") {
+      G.patience -= dt;
+      const frac = Math.max(0, G.patience / G.patienceMax);
+      const pf = $("patFill"); pf.style.width = (frac*100) + "%";
+      pf.style.background = frac < 0.25 ? "var(--noren)" : (frac < 0.5 ? "var(--yolk)" : "var(--green)");
+      if (frac < 0.25) $("custFace").textContent = "😰";
+      if (G.patience <= 0) { loseCustomer(); }
+    }
+    if (G.fever > 0) { G.fever -= dt; G.tempo = Math.max(0, (G.fever / 6) * 100); if (G.fever <= 0) { G.tempo = 0; $("tempoWrap").classList.remove("fever"); } }
+    else { G.tempo = Math.max(0, G.tempo - dt * 4); }
+    $("tempoFill").style.width = G.tempo + "%";
+    $("tempoTxt").textContent = G.fever > 0 ? "🔥 FEVER 🔥" : "手際";
+    // particles
+    if (parts.length) {
+      fxc.setTransform(DPR,0,0,DPR,0,0); fxc.clearRect(0,0,fx.width,fx.height);
+      for (let i = parts.length-1; i>=0; i--) { const p = parts[i]; p.vy += 0.2; p.x += p.vx; p.y += p.vy; p.life -= dt*1.5; if (p.life<=0){parts.splice(i,1);continue;} fxc.globalAlpha = Math.max(0,p.life); fxc.fillStyle = p.c; fxc.fillRect(p.x-p.r, p.y-p.r, p.r*2, p.r*2); }
+      fxc.globalAlpha = 1;
+    } else if (fx.width) { fxc.clearRect(0,0,fx.width,fx.height); }
+  }
+  requestAnimationFrame(loop);
+  window.addEventListener("resize", sizeFx); sizeFx();
+
+  function flashToast(txt, sub, col) { const el = $("toast"); el.innerHTML = txt + (sub ? '<small>'+sub+'</small>' : ""); el.style.color = col || "var(--noren)"; el.classList.remove("show"); void el.offsetWidth; el.classList.add("show"); }
+
+  /* ===== zoom抑止 ===== */
+  let lastTouch = 0;
+  document.addEventListener("touchend", e => { const now = Date.now(); if (now - lastTouch < 350) e.preventDefault(); lastTouch = now; }, { passive: false });
+  document.addEventListener("gesturestart", e => e.preventDefault());
+  document.addEventListener("dblclick", e => e.preventDefault());
+
+  $("startBtn").addEventListener("pointerdown", e => { e.preventDefault(); startGame(); });
+  $("againBtn").addEventListener("pointerdown", e => { e.preventDefault(); startGame(); });
+
+  function showBest() { let best = {}; try { best = JSON.parse(localStorage.getItem(BEST_KEY)) || {}; } catch (e) {} if (best.score) $("bestLine").textContent = "ベスト ¥" + best.score.toLocaleString() + " ・ " + (best.served||0) + "人"; }
+
+  /* ===== boot ===== */
+  async function boot() {
+    MEALS = loadCache(); rebuildPool();
+    if (MEALS.length >= 30) { $("loadBar").style.width = "100%"; showBest(); show("title"); fetchMeals(() => {}).catch(() => {}); return; }
+    $("loadMsg").textContent = "本日の品書きを用意中…";
+    try { await fetchMeals((n, t) => { $("loadBar").style.width = Math.round(n/t*100) + "%"; }); } catch (e) {}
+    if (MEALS.length < 8) { MEALS = FALLBACK.slice(); rebuildPool(); $("loadMsg").textContent = "予備の品書きで開店します"; await new Promise(r => setTimeout(r, 500)); }
+    showBest(); show("title");
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
