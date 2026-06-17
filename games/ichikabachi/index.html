@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>一か八か — 賭場のブラックジャック・ローグライト</title>
+<meta name="description" content="引くか、勝負か。21に近いほど配当が跳ねる賭場のブラックジャック。軍資金を溶かさずノルマを越え、縁起物で運を盛れ。実在トランプ画像で遊ぶ、押し引きローグライト。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="一か八か — 賭場のブラックジャック・ローグライト">
+<meta property="og:description" content="21に近いほど配当が跳ねる押し引きブラックジャック。ノルマを越え、縁起物で運を盛れ。実在トランプ画像で遊ぶローグライト。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/ichikabachi/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/ichikabachi/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="一か八か — 賭場のブラックジャック・ローグライト">
+<meta name="twitter:description" content="21に近いほど配当が跳ねる押し引きブラックジャック・ローグライト。">
+<meta name="twitter:image" content="https://nrtkumi.github.io/games/ichikabachi/assets/ogp.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Shippori+Mincho:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0a09;
+    --felt: #14110f;
+    --tatami: #1c1714;
+    --line: #3a2c20;
+    --gold: #d8b25a;
+    --gold-soft: #f0d79a;
+    --vermil: #c8412b;
+    --vermil-soft: #e6634a;
+    --cream: #efe6d4;
+    --muted: #978872;
+    --ok: #b6924a;
+    --red: #cf3b2c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: #000;
+    color: var(--cream);
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    overflow: hidden; overscroll-behavior: none;
+    -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  #app {
+    position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: min(480px, 64vh); height: 100%;
+    background:
+      radial-gradient(120% 70% at 50% 30%, #1f1813 0%, #14100d 55%, #0a0807 100%);
+    box-shadow: 0 0 60px rgba(0,0,0,.8);
+    display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    overflow: hidden;
+  }
+  /* 麻の葉 風の薄いテクスチャ */
+  #app::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .05;
+    background-image: repeating-linear-gradient(45deg, var(--gold) 0 1px, transparent 1px 22px),
+                      repeating-linear-gradient(-45deg, var(--gold) 0 1px, transparent 1px 22px);
+  }
+  #fx { position: absolute; inset: 0; pointer-events: none; z-index: 40; }
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column; padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); z-index: 5; }
+  .screen.on { display: flex; }
+  .brush { font-family: "Yuji Syuku", serif; }
+  .mincho { font-family: "Shippori Mincho", serif; }
+
+  /* HUD */
+  .hud { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 0 0 auto; margin-bottom: 6px; }
+  .hud .pill { background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 8px; padding: 5px 11px; font-size: 11px; color: var(--muted); letter-spacing: .05em; }
+  .hud .pill b { display: block; font-family: "Shippori Mincho"; color: var(--gold-soft); font-size: 18px; line-height: 1.2; }
+  .goalbar { grid-column: 1 / -1; height: 8px; background: rgba(0,0,0,.4); border: 1px solid var(--line); border-radius: 99px; overflow: hidden; position: relative; }
+  .goalbar > i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--vermil), var(--gold)); transition: width .4s; }
+  .goalbar > span { position: absolute; right: 7px; top: -1px; font-size: 9px; color: var(--cream); }
+
+  /* table */
+  .table { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+  .seat { flex: 1 1 0; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+  .seat.dealer { justify-content: flex-start; padding-top: 4px; }
+  .seat.player { justify-content: flex-end; padding-bottom: 2px; }
+  .seatLabel { font-family: "Shippori Mincho"; font-size: 12px; color: var(--muted); letter-spacing: .2em; display: flex; align-items: center; gap: 8px; }
+  .seatLabel .tot { margin-left: auto; font-size: 17px; color: var(--gold-soft); font-weight: 700; min-width: 30px; text-align: right; }
+  .seatLabel .tot.bust { color: var(--red); }
+  .seatLabel .tot.soft::after { content: " (soft)"; font-size: 10px; color: var(--muted); }
+  .hand { display: flex; gap: 5px; min-height: 92px; align-items: center; padding: 4px 0; flex-wrap: nowrap; }
+  .card {
+    width: 62px; height: 88px; border-radius: 7px; flex: 0 0 auto; position: relative;
+    background: #f4efe4; box-shadow: 0 4px 8px rgba(0,0,0,.5);
+    overflow: hidden; animation: deal .28s ease-out;
+    margin-left: -14px;
+  }
+  .card:first-child { margin-left: 0; }
+  .card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card.back { background: repeating-linear-gradient(45deg, #7a1f17 0 6px, #5e160f 6px 12px); border: 2px solid var(--gold); }
+  .card.back::after { content: "壱"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: "Yuji Syuku"; color: var(--gold-soft); font-size: 26px; }
+  /* CSSフォールバックカード */
+  .card .cface { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 4px 5px; color: #1a1a1a; }
+  .card .cface.red { color: #c0271a; }
+  .card .cface .r { font-family: "Shippori Mincho"; font-weight: 800; font-size: 17px; line-height: 1; }
+  .card .cface .s { font-size: 15px; }
+  .card .cface .big { font-size: 30px; align-self: center; }
+  @keyframes deal { 0% { transform: translateY(-26px) rotate(-6deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+
+  .midline { text-align: center; font-family: "Shippori Mincho"; color: var(--muted); font-size: 12px; letter-spacing: .3em; padding: 2px 0; flex: 0 0 auto; min-height: 18px; }
+
+  /* action bar */
+  .actions { flex: 0 0 auto; padding-top: 6px; }
+  .betRow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+  .hitRow { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .abtn {
+    font-family: "Shippori Mincho"; font-weight: 800; letter-spacing: .06em;
+    border: 1px solid var(--gold); color: var(--gold-soft);
+    background: linear-gradient(180deg, #2a201a, #1a130f);
+    border-radius: 8px; padding: 13px 4px; font-size: 16px; text-align: center;
+    box-shadow: 0 4px 0 #0d0a08; cursor: pointer; touch-action: manipulation;
+    transition: transform .05s, box-shadow .05s;
+  }
+  .abtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0d0a08; }
+  .abtn small { display: block; font-family: "Zen Kaku Gothic New"; font-weight: 400; font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .abtn.hit { border-color: var(--vermil); color: var(--vermil-soft); }
+  .abtn.allin { border-color: var(--vermil); color: var(--vermil-soft); background: linear-gradient(180deg, #3a1a14, #24100c); }
+  .abtn.stand { border-color: var(--gold); }
+  .abtn:disabled { opacity: .4; }
+  .contHint { text-align: center; color: var(--muted); font-size: 12px; padding: 14px; }
+
+  /* title */
+  #title { justify-content: center; align-items: center; text-align: center; }
+  #title .logo { font-family: "Yuji Syuku"; font-size: 72px; color: var(--cream); line-height: 1.05; text-shadow: 0 3px 0 #6a1109, 0 0 36px rgba(200,65,43,.35); }
+  #title .seal { width: 86px; height: 86px; border-radius: 8px; border: 3px solid var(--vermil); color: var(--vermil-soft); font-family: "Yuji Syuku"; font-size: 40px; display: flex; align-items: center; justify-content: center; margin: 6px auto 10px; transform: rotate(-4deg); box-shadow: 0 0 24px rgba(200,65,43,.25); }
+  #title .tag { color: var(--gold-soft); font-size: 14px; letter-spacing: .24em; margin-top: 12px; font-family: "Shippori Mincho"; }
+  #title .desc { color: var(--muted); font-size: 13px; line-height: 1.9; margin: 20px 8px 26px; max-width: 330px; }
+  #title .best { color: var(--muted); font-size: 12px; margin-top: 16px; min-height: 16px; }
+  .gold-line { width: 60px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 14px auto; }
+  .btn {
+    font-family: "Yuji Syuku"; border: 1px solid var(--gold);
+    background: linear-gradient(180deg, #3a2018, #24130d); color: var(--gold-soft);
+    font-size: 24px; letter-spacing: .14em; padding: 13px 40px; border-radius: 8px;
+    box-shadow: 0 4px 0 #0d0a08, inset 0 1px 0 rgba(255,255,255,.05); cursor: pointer; touch-action: manipulation;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0d0a08; }
+
+  /* relic */
+  #relics { justify-content: center; }
+  .headline { font-family: "Yuji Syuku"; font-size: 30px; color: var(--gold-soft); text-align: center; }
+  .sub { text-align: center; color: var(--muted); font-size: 13px; margin: 8px 0 10px; line-height: 1.7; }
+  .relicCard {
+    background: linear-gradient(180deg, #211913, #160f0b); border: 1px solid var(--gold);
+    border-radius: 10px; padding: 13px 15px; margin: 8px 0; display: flex; gap: 13px; align-items: center;
+    cursor: pointer; touch-action: manipulation; box-shadow: 0 4px 0 #0c0908; transition: transform .06s, box-shadow .06s;
+  }
+  .relicCard:active { transform: translateY(3px); box-shadow: 0 1px 0 #0c0908; }
+  .relicCard .ic { font-size: 32px; flex: 0 0 auto; }
+  .relicCard .nm { font-family: "Shippori Mincho"; font-size: 17px; color: var(--gold-soft); font-weight: 800; }
+  .relicCard .ds { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+  .owned { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; margin-top: 12px; min-height: 22px; }
+  .owned span { font-size: 18px; }
+
+  /* loading */
+  #load { justify-content: center; align-items: center; text-align: center; gap: 14px; }
+  #load .bar { width: 200px; height: 6px; background: rgba(0,0,0,.4); border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+  #load .bar > i { display: block; height: 100%; width: 0%; background: var(--gold); transition: width .3s; }
+
+  .toast { position: absolute; left: 50%; top: 42%; transform: translateX(-50%); z-index: 30; text-align: center;
+    font-family: "Yuji Syuku"; font-size: 40px; color: var(--gold-soft); text-shadow: 0 2px 16px rgba(0,0,0,.8); pointer-events: none; opacity: 0; }
+  .toast small { display: block; font-family: "Shippori Mincho"; font-size: 18px; color: var(--cream); }
+  .toast.show { animation: pop 1.1s ease-out; }
+  @keyframes pop { 0%{opacity:0; transform:translate(-50%,12px) scale(.7)} 18%{opacity:1; transform:translate(-50%,0) scale(1.12)} 80%{opacity:1} 100%{opacity:0; transform:translate(-50%,-22px) scale(1)} }
+
+  .muteBtn { position: absolute; top: calc(8px + env(safe-area-inset-top)); right: 10px; z-index: 50;
+    background: rgba(0,0,0,.3); border: 1px solid var(--line); color: var(--muted); border-radius: 8px; width: 34px; height: 30px; font-size: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="fx"></canvas>
+  <button class="muteBtn" id="muteBtn" aria-label="mute">🔊</button>
+  <div class="toast" id="toast"></div>
+
+  <section class="screen on" id="load">
+    <div class="brush" style="font-size:48px; color:var(--gold-soft)">壱</div>
+    <div class="mincho" style="font-size:22px; letter-spacing:.2em; color:var(--gold-soft)">場を開いています…</div>
+    <div class="bar"><i id="loadBar"></i></div>
+    <div id="loadMsg" style="font-size:12px; color:var(--muted)">札を切っています</div>
+  </section>
+
+  <section class="screen" id="title">
+    <div class="seal brush">賭</div>
+    <div class="logo brush">一か<br>八か</div>
+    <div class="tag">引くか、勝負か。</div>
+    <div class="gold-line"></div>
+    <div class="desc"><b style="color:var(--cream)">21</b>に近いほど配当が跳ねる、賭場のブラックジャック。<br>軍資金を溶かさず<b style="color:var(--cream)">ノルマ</b>を越え、<br><b style="color:var(--cream)">縁起物</b>で運を盛って、何場まで生き残れるか。</div>
+    <button class="btn" id="startBtn">勝負</button>
+    <div class="best mincho" id="bestLine"></div>
+  </section>
+
+  <section class="screen" id="play">
+    <div class="hud">
+      <div class="pill">場<b id="hStage">1</b></div>
+      <div class="pill">軍資金<b id="hBank">100</b></div>
+      <div class="goalbar"><i id="goalFill"></i><span id="goalTxt"></span></div>
+    </div>
+    <div class="table">
+      <div class="seat dealer">
+        <div class="seatLabel mincho"><span>親</span><span class="tot" id="dTot"></span></div>
+        <div class="hand" id="dHand"></div>
+      </div>
+      <div class="midline mincho" id="midLine"></div>
+      <div class="seat player">
+        <div class="seatLabel mincho"><span>自分</span><span class="tot" id="pTot"></span></div>
+        <div class="hand" id="pHand"></div>
+      </div>
+    </div>
+    <div class="actions" id="actions"></div>
+  </section>
+
+  <section class="screen" id="relics">
+    <div class="headline brush">縁起物</div>
+    <div class="sub" id="relicSub">場を越えた。験を担ぐ品を一つ。</div>
+    <div id="relicChoices"></div>
+    <div class="owned" id="ownedStrip"></div>
+  </section>
+
+  <section class="screen" id="over">
+    <div style="flex:1 1 auto; display:flex; flex-direction:column; justify-content:center">
+      <div class="brush" style="font-size:54px; text-align:center; color:var(--vermil-soft)" id="overSeal">破産</div>
+      <div class="sub" id="overStats" style="font-size:14px"></div>
+      <div class="owned" id="overOwned" style="margin-top:14px"></div>
+      <div style="text-align:center; margin-top:26px"><button class="btn" id="againBtn">再勝負</button></div>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+(function () {
+  const $ = id => document.getElementById(id);
+  const app = $("app");
+  const screens = { load: $("load"), title: $("title"), play: $("play"), relics: $("relics"), over: $("over") };
+  function show(name) { for (const k in screens) screens[k].classList.toggle("on", k === name); }
+
+  /* ===== audio (iOS消音対策, hakaiより) ===== */
+  let AC = null, muted = false;
+  function audio() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } }; } catch (e) {} }
+    if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  let silentEl = null;
+  function silentWavUrl() {
+    const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE"); str(12, "fmt "); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr, true);
+    v.setUint16(32, 1, true); v.setUint16(34, 8, true); str(36, "data"); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  function unlockAudio() {
+    if (!silentEl) { silentEl = document.createElement("audio"); silentEl.setAttribute("playsinline", ""); silentEl.loop = true; silentEl.volume = 0.01; silentEl.src = silentWavUrl(); }
+    const p = silentEl.play(); if (p && p.catch) p.catch(() => {});
+    audio(); if (!AC) return;
+    const done = () => { if (AC.state === "running") ["pointerdown","pointerup","touchend"].forEach(ev => document.removeEventListener(ev, unlockAudio, true)); };
+    try { AC.resume().then(done); } catch (e) { done(); }
+  }
+  ["pointerdown","pointerup","touchend"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+  function tone(f, d, type, vol, slideTo) {
+    if (muted || !audio()) return;
+    try { const o = AC.createOscillator(), g = AC.createGain(); o.type = type || "sine"; o.frequency.value = f;
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, AC.currentTime + d);
+      g.gain.value = vol || 0.06; g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + d);
+      o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime + d); } catch (e) {}
+  }
+  const sFlip = () => tone(520, 0.06, "triangle", 0.04, 380);
+  const sHit = () => tone(300, 0.06, "triangle", 0.045, 230);
+  const sWin = () => { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,0.18,"triangle",0.05),i*80)); };
+  const sBig = () => { [659,784,988,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,0.22,"square",0.04),i*70)); };
+  const sLose = () => { tone(200,0.3,"sawtooth",0.05,80); };
+  const sPush = () => tone(440, 0.18, "sine", 0.04);
+  const sBust = () => { tone(150,0.35,"sawtooth",0.06,60); };
+  const sChip = () => { tone(1100,0.05,"sine",0.035); setTimeout(()=>tone(1500,0.06,"sine",0.03),50); };
+  const sStage = () => { [392,523,659,880,1047].forEach((f,i)=>setTimeout(()=>tone(f,0.3,"sine",0.05),i*100)); };
+  const sOver = () => { [330,294,247,196].forEach((f,i)=>setTimeout(()=>tone(f,0.45,"sine",0.06),i*200)); };
+  $("muteBtn").addEventListener("click", () => { muted = !muted; $("muteBtn").textContent = muted ? "🔇" : "🔊"; });
+
+  /* ===== deck: Deck of Cards API ===== */
+  const DECKAPI = "https://deckofcardsapi.com/api/deck/";
+  let DECK = [], deckId = null, fetching = false;
+  const SUIT = { HEARTS: "♥", DIAMONDS: "♦", CLUBS: "♣", SPADES: "♠" };
+  const RANK = { ACE:"A", KING:"K", QUEEN:"Q", JACK:"J" };
+  function fetchJSON(url, ms) {
+    return new Promise((res, rej) => {
+      const ctl = new AbortController(); const t = setTimeout(() => { ctl.abort(); rej(new Error("timeout")); }, ms || 9000);
+      fetch(url, { signal: ctl.signal }).then(r => r.ok ? r.json() : Promise.reject(new Error("http " + r.status)))
+        .then(j => { clearTimeout(t); res(j); }).catch(e => { clearTimeout(t); rej(e); });
+    });
+  }
+  function localDeck() {
+    const out = [];
+    for (const s in SUIT) for (const r of ["ACE","2","3","4","5","6","7","8","9","10","JACK","QUEEN","KING"]) {
+      out.push({ value: r, suit: s, code: (RANK[r]||r) + s[0], image: null });
+    }
+    // 6デッキ相当に増やしてシャッフル
+    let pool = [];
+    for (let i = 0; i < 6; i++) pool = pool.concat(out.map(c => ({ ...c })));
+    for (let i = pool.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    return pool;
+  }
+  async function refillDeck() {
+    if (fetching) return; fetching = true;
+    try {
+      const sh = await fetchJSON(DECKAPI + "new/shuffle/?deck_count=6", 8000);
+      deckId = sh.deck_id;
+      const dr = await fetchJSON(DECKAPI + deckId + "/draw/?count=220", 9000);
+      const cards = (dr.cards || []).map(c => ({ value: c.value, suit: c.suit, code: c.code, image: c.image }));
+      if (cards.length >= 40) DECK = DECK.concat(cards);
+      else DECK = DECK.concat(localDeck());
+    } catch (e) { DECK = DECK.concat(localDeck()); }
+    fetching = false;
+  }
+  function drawCard() {
+    if (DECK.length < 12 && !fetching) refillDeck();
+    if (DECK.length === 0) DECK = localDeck();
+    return DECK.pop();
+  }
+
+  /* ===== value ===== */
+  function cardVal(c) { if (c.value === "ACE") return 11; if (["KING","QUEEN","JACK"].includes(c.value)) return 10; return parseInt(c.value, 10); }
+  function handValue(cards) {
+    let sum = 0, aces = 0;
+    cards.forEach(c => { sum += cardVal(c); if (c.value === "ACE") aces++; });
+    let soft = false;
+    while (sum > 21 && aces > 0) { sum -= 10; aces--; }
+    if (aces > 0 && sum <= 21) soft = true;
+    return { total: sum, soft };
+  }
+  function proximityMult(total) {
+    if (total >= 21) return 3;
+    if (total === 20) return 2;
+    if (total === 19) return 1.6;
+    if (total === 18) return 1.3;
+    return 1;
+  }
+
+  /* ===== state ===== */
+  const G = {
+    bank: 100, stage: 1, goal: 200, startBank: 100,
+    relics: {}, streak: 0, bestStreak: 0,
+    phase: "idle", ante: 0, p: [], d: [], dealerStand: 17,
+    darumaUsed: false, maxBank: 100
+  };
+  const RELIC_DEFS = [
+    { k:"jizo",   ic:"🗿", nm:"身代わり地蔵", ds:"1勝負に1度、バストを無かったことに(引いた札を捨てる)。" },
+    { k:"fuku",   ic:"🎴", nm:"福の神",       ds:"ピッタリ21の配当が ×3 → ×5 に。" },
+    { k:"ikasama",ic:"👁️", nm:"いかさま札",   ds:"親の伏せ札が最初から見える。" },
+    { k:"goko",   ic:"🌕", nm:"五光",         ds:"5枚引いてバストしなければ自動的に勝ち(×3)。" },
+    { k:"kinun",  ic:"🪙", nm:"金運",         ds:"勝ったときの配当が +25%。" },
+    { k:"mamori", ic:"🛡️", nm:"守り銭",       ds:"負けても賭け金の半分が戻る。" },
+    { k:"renshou",ic:"🔥", nm:"連勝札",       ds:"連勝するほど配当が伸びる(連勝数×0.2倍)。" },
+    { k:"oiri",   ic:"💰", nm:"大入り袋",     ds:"今すぐ軍資金 ＋80。" }
+  ];
+
+  /* ===== helpers ===== */
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function cardEl(c, faceDown) {
+    const el = document.createElement("div"); el.className = "card" + (faceDown ? " back" : "");
+    if (faceDown) return el;
+    if (c.image) {
+      const im = document.createElement("img"); im.src = c.image; im.alt = c.code;
+      im.onerror = () => { el.appendChild(cface(c)); im.remove(); };
+      el.appendChild(im);
+    } else { el.appendChild(cface(c)); }
+    return el;
+  }
+  function cface(c) {
+    const red = c.suit === "HEARTS" || c.suit === "DIAMONDS";
+    const f = document.createElement("div"); f.className = "cface" + (red ? " red" : "");
+    const r = RANK[c.value] || c.value, s = SUIT[c.suit];
+    f.innerHTML = '<div class="r">' + r + '<div class="s">' + s + '</div></div><div class="big">' + s + '</div><div class="r" style="align-self:flex-end; transform:rotate(180deg)">' + r + '<div class="s">' + s + '</div></div>';
+    return f;
+  }
+  function renderHands(revealDealer) {
+    const dh = $("dHand"); dh.innerHTML = "";
+    G.d.forEach((c, i) => { const fd = (i === 1 && !revealDealer && !G.relics.ikasama); dh.appendChild(cardEl(c, fd)); });
+    const ph = $("pHand"); ph.innerHTML = "";
+    G.p.forEach(c => ph.appendChild(cardEl(c, false)));
+    // totals
+    const pv = handValue(G.p);
+    $("pTot").textContent = pv.total; $("pTot").className = "tot" + (pv.total > 21 ? " bust" : "") + (pv.soft ? " soft" : "");
+    if (revealDealer) {
+      const dv = handValue(G.d);
+      $("dTot").textContent = dv.total; $("dTot").className = "tot" + (dv.total > 21 ? " bust" : "") + (dv.soft ? " soft" : "");
+    } else if (G.relics.ikasama) {
+      const dv = handValue(G.d); $("dTot").textContent = dv.total; $("dTot").className = "tot";
+    } else {
+      const up = cardVal(G.d[0]); $("dTot").textContent = up + "+"; $("dTot").className = "tot";
+    }
+  }
+
+  /* ===== flow ===== */
+  function startGame() {
+    G.bank = 100; G.startBank = 100; G.stage = 1; G.goal = 200; G.relics = {}; G.streak = 0; G.bestStreak = 0; G.dealerStand = 17; G.maxBank = 100;
+    audio(); show("play"); newRound();
+  }
+  function updateHud() {
+    $("hStage").textContent = G.stage; $("hBank").textContent = G.bank.toLocaleString();
+    const prog = Math.max(0, Math.min(1, (G.bank - G.startBank) / Math.max(1, (G.goal - G.startBank))));
+    $("goalFill").style.width = (prog * 100) + "%";
+    $("goalTxt").textContent = "ノルマ " + G.goal.toLocaleString();
+  }
+  function newRound() {
+    G.phase = "bet"; G.p = []; G.d = []; G.ante = 0; G.darumaUsed = false;
+    G.maxBank = Math.max(G.maxBank, G.bank);
+    updateHud();
+    $("dHand").innerHTML = ""; $("pHand").innerHTML = "";
+    $("dTot").textContent = ""; $("pTot").textContent = "";
+    $("midLine").textContent = "いくら賭ける?";
+    renderBet();
+  }
+  function renderBet() {
+    const b = G.bank;
+    const small = Math.max(10, Math.round(b * 0.1));
+    const mid = Math.max(10, Math.round(b * 0.25));
+    const big = Math.max(10, Math.round(b * 0.5));
+    const defs = [
+      { lb: "小", v: small }, { lb: "中", v: mid }, { lb: "大", v: big },
+      { lb: "一か八か", v: b, allin: true }
+    ];
+    const wrap = $("actions"); wrap.innerHTML = '<div class="betRow" id="betRow"></div>';
+    const row = $("betRow");
+    defs.forEach(d => {
+      const btn = document.createElement("button");
+      btn.className = "abtn" + (d.allin ? " allin" : "");
+      btn.innerHTML = (d.allin ? '<span style="font-size:13px">' + d.lb + '</span>' : d.lb) + '<small>' + Math.min(d.v, b).toLocaleString() + '</small>';
+      btn.addEventListener("pointerdown", e => { e.preventDefault(); placeBet(Math.min(d.v, b)); });
+      row.appendChild(btn);
+    });
+  }
+  function placeBet(amt) {
+    if (G.phase !== "bet") return;
+    amt = Math.max(1, Math.min(amt, G.bank));
+    G.ante = amt; G.bank -= amt; G.phase = "player"; sChip(); updateHud();
+    // deal
+    G.p = [drawCard(), drawCard()];
+    G.d = [drawCard(), drawCard()];
+    sFlip();
+    renderHands(false);
+    $("midLine").textContent = "賭け金 " + amt.toLocaleString();
+    const pv = handValue(G.p);
+    if (pv.total === 21) { // ナチュラル
+      setTimeout(() => resolve(true), 450); return;
+    }
+    renderActions();
+  }
+  function renderActions() {
+    const wrap = $("actions");
+    wrap.innerHTML = '<div class="hitRow"><button class="abtn hit" id="hitBtn">引く<small>もう一枚</small></button><button class="abtn stand" id="standBtn">勝負<small>ここで止める</small></button></div>';
+    $("hitBtn").addEventListener("pointerdown", e => { e.preventDefault(); doHit(); });
+    $("standBtn").addEventListener("pointerdown", e => { e.preventDefault(); resolve(false); });
+  }
+  function doHit() {
+    if (G.phase !== "player") return;
+    G.p.push(drawCard()); sHit(); renderHands(false);
+    const pv = handValue(G.p);
+    if (pv.total > 21) {
+      // 身代わり地蔵
+      if (G.relics.jizo && !G.darumaUsed) {
+        G.darumaUsed = true; G.p.pop(); flashToast("身代わり", null, "var(--gold-soft)"); sChip();
+        renderHands(false); return;
+      }
+      G.phase = "resolve"; flashToast("バースト", null, "var(--red)"); sBust();
+      $("midLine").textContent = "";
+      setTimeout(() => finishRound("lose", 0), 700);
+      return;
+    }
+    // 五光: 5枚ノーバスト → 自動勝ち
+    if (G.relics.goko && G.p.length >= 5) { resolve(false, true); return; }
+  }
+  function resolve(natural, gokoWin) {
+    if (G.phase !== "player") return;
+    G.phase = "dealer";
+    renderActions2Hide();
+    // dealer draws
+    let guard = 0;
+    while (handValue(G.d).total < G.dealerStand && guard++ < 12) {
+      const dv = handValue(G.d);
+      if (dv.total >= G.dealerStand) break;
+      G.d.push(drawCard());
+    }
+    renderHands(true); sFlip();
+    const pv = handValue(G.p).total, dv = handValue(G.d).total;
+    let outcome, mult = proximityMult(pv);
+    if (gokoWin) { outcome = "win"; mult = 3; }
+    else if (pv > 21) outcome = "lose";
+    else if (dv > 21) outcome = "win";
+    else if (pv > dv) outcome = "win";
+    else if (pv === dv) outcome = "push";
+    else outcome = "lose";
+    if (natural && outcome === "win") mult = Math.max(mult, 3);
+    setTimeout(() => finishRound(outcome, mult, natural), 650);
+  }
+  function renderActions2Hide() { $("actions").innerHTML = ""; }
+
+  function finishRound(outcome, mult, natural) {
+    let gain = 0, label = "", col = "var(--cream)", sub = "";
+    if (outcome === "win") {
+      if (G.relics.fuku && mult >= 3) mult = 5;
+      if (G.relics.renshou) mult += G.streak * 0.2;
+      let payout = G.ante * (1 + mult);
+      if (G.relics.kinun) payout = Math.round(payout * 1.25);
+      payout = Math.round(payout);
+      G.bank += payout; gain = payout;
+      G.streak++; G.bestStreak = Math.max(G.bestStreak, G.streak);
+      const profit = payout - G.ante;
+      label = natural ? "ブラックジャック!" : (mult >= 3 ? "ピッタリ!" : "勝ち");
+      sub = "+" + profit.toLocaleString() + "  ×" + (mult).toFixed(mult % 1 ? 1 : 0);
+      col = "var(--gold-soft)";
+      if (mult >= 3) sBig(); else sWin();
+      spawnChips();
+    } else if (outcome === "push") {
+      G.bank += G.ante; label = "引き分け"; sub = "賭け金が戻る"; col = "var(--cream)"; sPush();
+    } else {
+      G.streak = 0;
+      if (G.relics.mamori) { const back = Math.floor(G.ante * 0.5); G.bank += back; sub = back > 0 ? "守り銭 +" + back : ""; }
+      label = "負け"; col = "var(--red)"; sLose();
+    }
+    flashToast(label, sub, col);
+    G.phase = "result";
+    updateHud();
+    // 続行 or クリア or 破産
+    setTimeout(() => {
+      if (G.bank >= G.goal) { stageClear(); }
+      else if (G.bank < 10) { gameOver(); }
+      else { showContinue(); }
+    }, 950);
+  }
+  function showContinue() {
+    G.phase = "cont";
+    $("midLine").textContent = G.streak > 1 ? G.streak + " 連勝中" : "";
+    $("actions").innerHTML = '<div class="contHint">タップで次の勝負へ</div>';
+    const handler = e => { e.preventDefault(); app.removeEventListener("pointerdown", handler, true); newRound(); };
+    setTimeout(() => app.addEventListener("pointerdown", handler, true), 120);
+  }
+
+  function stageClear() {
+    G.phase = "relic"; sStage();
+    G.stage++;
+    G.startBank = G.bank;
+    G.goal = Math.round(G.goal * 1.85 + 80);
+    if (G.stage === 3) G.dealerStand = 18;
+    if (G.stage >= 5) G.dealerStand = 18;
+    $("relicSub").textContent = "場 " + (G.stage - 1) + " を突破。次のノルマは " + G.goal.toLocaleString() + "。";
+    const owned = Object.keys(G.relics);
+    let pool = RELIC_DEFS.filter(r => !owned.includes(r.k) || r.k === "oiri");
+    shuffle(pool);
+    // oiriは複数回出ても良いように、足りなければ補充
+    let choices = pool.slice(0, 3);
+    if (choices.length < 3) { while (choices.length < 3) choices.push(RELIC_DEFS.find(r => r.k === "oiri")); }
+    const cc = $("relicChoices"); cc.innerHTML = "";
+    choices.forEach(r => {
+      const c = document.createElement("div"); c.className = "relicCard";
+      c.innerHTML = '<div class="ic">' + r.ic + '</div><div><div class="nm">' + r.nm + '</div><div class="ds">' + r.ds + '</div></div>';
+      c.addEventListener("pointerdown", e => { e.preventDefault(); chooseRelic(r); });
+      cc.appendChild(c);
+    });
+    renderOwned($("ownedStrip"));
+    show("relics");
+  }
+  function chooseRelic(r) {
+    sChip();
+    if (r.k === "oiri") G.bank += 80; else G.relics[r.k] = true;
+    G.startBank = G.bank; // 大入り後も基準更新
+    show("play"); newRound();
+  }
+  function renderOwned(el) {
+    el.innerHTML = "";
+    Object.keys(G.relics).forEach(k => { const d = RELIC_DEFS.find(x => x.k === k); if (d) { const s = document.createElement("span"); s.textContent = d.ic; s.title = d.nm; el.appendChild(s); } });
+  }
+
+  function gameOver() {
+    G.phase = "idle"; sOver();
+    let best = {}; try { best = JSON.parse(localStorage.getItem("ichikabachi_best")) || {}; } catch (e) {}
+    const isBest = !best.stage || G.stage > best.stage || (G.stage === best.stage && G.maxBank > (best.bank || 0));
+    const nb = { stage: Math.max(best.stage || 1, G.stage), bank: Math.max(best.bank || 0, G.maxBank), streak: Math.max(best.streak || 0, G.bestStreak) };
+    try { localStorage.setItem("ichikabachi_best", JSON.stringify(nb)); } catch (e) {}
+    $("overSeal").textContent = isBest ? "自己最高" : "破産";
+    $("overStats").innerHTML = "場 <b style='color:var(--gold-soft);font-size:22px'>" + G.stage + "</b> まで到達<br>" +
+      "最高軍資金 <b style='color:var(--gold-soft)'>" + G.maxBank.toLocaleString() + "</b> 両 ・ 最大 " + G.bestStreak + " 連勝<br>" +
+      "<span style='font-size:11px'>ベスト 場" + nb.stage + " / " + nb.bank.toLocaleString() + "両</span>";
+    renderOwned($("overOwned"));
+    show("over");
+  }
+
+  /* ===== fx ===== */
+  const fx = $("fx"), fxc = fx.getContext("2d");
+  let DPR = 1, parts = [];
+  function sizeFx() { DPR = Math.min(2, window.devicePixelRatio || 1); const r = app.getBoundingClientRect(); fx.width = r.width * DPR; fx.height = r.height * DPR; fx.style.width = r.width + "px"; fx.style.height = r.height + "px"; }
+  function spawnChips() {
+    const r = app.getBoundingClientRect();
+    for (let i = 0; i < 18; i++) { const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 4; parts.push({ x: r.width / 2, y: r.height * 0.42, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 3, life: 1, r: 3 + Math.random() * 3, c: Math.random() < .5 ? "#d8b25a" : "#c8412b" }); }
+  }
+  let lastT = 0;
+  function loop(t) {
+    requestAnimationFrame(loop);
+    const dt = Math.min(0.05, (t - lastT) / 1000 || 0); lastT = t;
+    if (parts.length) {
+      fxc.setTransform(DPR, 0, 0, DPR, 0, 0); fxc.clearRect(0, 0, fx.width, fx.height);
+      for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.vy += 0.2; p.x += p.vx; p.y += p.vy; p.life -= dt * 1.3; if (p.life <= 0) { parts.splice(i, 1); continue; } fxc.globalAlpha = Math.max(0, p.life); fxc.fillStyle = p.c; fxc.beginPath(); fxc.arc(p.x, p.y, p.r, 0, 7); fxc.fill(); }
+      fxc.globalAlpha = 1;
+    } else if (fx.width) { fxc.clearRect(0, 0, fx.width, fx.height); }
+  }
+  requestAnimationFrame(loop);
+  window.addEventListener("resize", sizeFx); sizeFx();
+
+  function flashToast(txt, sub, col) {
+    const el = $("toast"); el.innerHTML = txt + (sub ? '<small>' + sub + '</small>' : ""); el.style.color = col || "var(--gold-soft)";
+    el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+  }
+
+  /* ===== zoom抑止 ===== */
+  let lastTouch = 0;
+  document.addEventListener("touchend", e => { const now = Date.now(); if (now - lastTouch < 350) e.preventDefault(); lastTouch = now; }, { passive: false });
+  document.addEventListener("gesturestart", e => e.preventDefault());
+  document.addEventListener("dblclick", e => e.preventDefault());
+
+  /* ===== keyboard (PC) ===== */
+  document.addEventListener("keydown", e => {
+    if (G.phase === "player") { if (e.key === " " || e.key === "ArrowUp") { e.preventDefault(); doHit(); } else if (e.key === "Enter" || e.key === "ArrowDown") { e.preventDefault(); resolve(false); } }
+    else if (G.phase === "cont") { newRound(); }
+    else if (G.phase === "bet") { if (e.key === "1") placeBet(Math.max(10, Math.round(G.bank*0.1))); if (e.key === "4") placeBet(G.bank); }
+  });
+
+  $("startBtn").addEventListener("pointerdown", e => { e.preventDefault(); startGame(); });
+  $("againBtn").addEventListener("pointerdown", e => { e.preventDefault(); startGame(); });
+
+  function showBest() { let best = {}; try { best = JSON.parse(localStorage.getItem("ichikabachi_best")) || {}; } catch (e) {} if (best.stage) $("bestLine").textContent = "ベスト 場" + best.stage + " ・ " + (best.bank || 0).toLocaleString() + "両"; }
+
+  /* ===== boot ===== */
+  async function boot() {
+    $("loadMsg").textContent = "札を切っています…";
+    const to = setTimeout(() => { if (DECK.length === 0) { DECK = localDeck(); } }, 6000);
+    $("loadBar").style.width = "40%";
+    await refillDeck();
+    clearTimeout(to);
+    if (DECK.length === 0) DECK = localDeck();
+    $("loadBar").style.width = "100%";
+    showBest(); show("title");
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
