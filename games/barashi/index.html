@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>BARASHI バラシ — ネジ外しローグライト</title>
+
+<meta name="description" content="むき出しのネジだけタップして外し、同色のトレーに3本そろえてバラす。あふれトレーが満杯になる前に全部バラせ。盤面が育つほど色も段数も増えるエンドレス・ローグライト。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="BARASHI バラシ — ネジ外しローグライト">
+<meta property="og:description" content="むき出しのネジだけ外せる。同色3本でバラしてスコア爆発。あふれトレーが満杯になったら終わり。盤面ごとに工具を買い足して際限なく潜るネジ外しパズル。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/barashi/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/barashi/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="BARASHI バラシ — ネジ外しローグライト">
+<meta name="twitter:description" content="むき出しのネジだけ外せる。同色3本でバラしてスコア爆発。あふれトレーが満杯になったら終わり。">
+<meta name="twitter:image" content="https://nrtkumi.github.io/games/barashi/assets/ogp.jpg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Saira:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --steel:#1b1f24; --steel2:#11151a; --panel:#2a3037; --line:#3a434d;
+    --ink:#e9eef2; --dim:#9aa6b0; --hazard:#f5c518; --hazard2:#caa00c;
+    --danger:#e2483b;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  html,body{ height:100%; }
+  body{
+    background:#070a0d;
+    color:var(--ink);
+    font-family:"Zen Kaku Gothic New",system-ui,sans-serif;
+    overflow:hidden;
+    overscroll-behavior:none;
+    user-select:none; -webkit-user-select:none;
+    display:flex; justify-content:center;
+  }
+  #stage{
+    position:relative;
+    width:100%;
+    max-width:min(480px,62vh);
+    height:100%;
+    background:
+      radial-gradient(120% 80% at 50% 0%, #20262d 0%, var(--steel) 42%, var(--steel2) 100%);
+    box-shadow:0 0 0 1px #000, 0 0 60px rgba(0,0,0,.8);
+    overflow:hidden;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  canvas{ display:block; width:100%; height:100%; touch-action:none; }
+
+  /* ---- HUD ---- */
+  #hud{
+    position:absolute; left:0; right:0; top:0;
+    padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;
+    display:flex; align-items:center; gap:8px;
+    pointer-events:none; z-index:5;
+  }
+  .chip{
+    background:linear-gradient(180deg,#2c333b,#1d242b);
+    border:1px solid var(--line);
+    border-radius:8px; padding:5px 9px;
+    display:flex; flex-direction:column; line-height:1;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .chip .lab{ font-size:9px; letter-spacing:.14em; color:var(--dim); font-weight:700; }
+  .chip .val{ font-family:"Saira",sans-serif; font-weight:900; font-size:18px; margin-top:2px; }
+  .chip.bolts .val{ color:var(--hazard); }
+  #hud .spacer{ flex:1; }
+  #comboTag{
+    font-family:"Saira",sans-serif; font-weight:900; font-size:15px;
+    color:var(--hazard); opacity:0; transition:opacity .15s;
+  }
+
+  /* ---- overlays ---- */
+  .overlay{
+    position:absolute; inset:0; z-index:20;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:28px;
+    background:radial-gradient(120% 90% at 50% 30%, rgba(10,13,16,.72), rgba(6,8,11,.94));
+    backdrop-filter:blur(2px);
+  }
+  .overlay.hidden{ display:none; }
+  .wordmark{
+    font-family:"Saira Stencil One",sans-serif;
+    font-size:clamp(46px,16vw,84px); line-height:.86;
+    color:var(--ink); letter-spacing:.02em;
+    text-shadow:0 3px 0 #000, 0 0 26px rgba(245,197,24,.18);
+  }
+  .wordmark .accent{ color:var(--hazard); }
+  .jp{ font-weight:900; letter-spacing:.42em; color:var(--dim); margin:10px 0 2px; font-size:14px; padding-left:.42em;}
+  .tag{ color:var(--dim); font-size:13px; max-width:21em; line-height:1.7; margin-top:14px; }
+  .tag b{ color:var(--ink); }
+  .btn{
+    margin-top:26px;
+    font-family:"Saira",sans-serif; font-weight:900; letter-spacing:.06em;
+    font-size:20px; color:#1a1205;
+    background:linear-gradient(180deg,#ffd83a,var(--hazard2));
+    border:none; border-radius:11px; padding:15px 40px; cursor:pointer;
+    box-shadow:0 5px 0 #8c6f08, 0 8px 18px rgba(0,0,0,.5);
+    transition:transform .05s, box-shadow .05s;
+  }
+  .btn:active{ transform:translateY(4px); box-shadow:0 1px 0 #8c6f08; }
+  .btn.ghost{
+    background:transparent; color:var(--dim);
+    border:1px solid var(--line); box-shadow:none; font-size:15px; padding:11px 24px;
+    margin-top:14px;
+  }
+  .stat{ color:var(--dim); font-size:13px; margin-top:18px; line-height:1.8; }
+  .stat b{ color:var(--hazard); font-family:"Saira",sans-serif; font-size:17px; }
+
+  /* ---- shop ---- */
+  #shopTitle{ font-family:"Saira Stencil One",sans-serif; font-size:30px; color:var(--ink); }
+  #shopSub{ color:var(--dim); font-size:12px; letter-spacing:.1em; margin-top:4px; }
+  #shopBolts{ color:var(--hazard); font-family:"Saira",sans-serif; font-weight:900; font-size:22px; margin:10px 0 18px; }
+  #shopCards{ display:flex; flex-direction:column; gap:11px; width:100%; max-width:330px; }
+  .card{
+    text-align:left; background:linear-gradient(180deg,#2b333b,#1c232a);
+    border:1px solid var(--line); border-radius:12px; padding:13px 15px;
+    display:flex; align-items:center; gap:13px; cursor:pointer;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    transition:transform .05s, border-color .1s;
+  }
+  .card:active{ transform:scale(.98); }
+  .card.dis{ opacity:.4; pointer-events:none; }
+  .card .ic{ font-size:26px; width:34px; text-align:center; }
+  .card .body{ flex:1; }
+  .card .nm{ font-weight:900; font-size:15px; }
+  .card .ds{ color:var(--dim); font-size:11.5px; line-height:1.45; margin-top:3px; }
+  .card .cost{ font-family:"Saira",sans-serif; font-weight:900; color:var(--hazard); font-size:18px; white-space:nowrap; }
+  .card .cost small{ font-size:10px; color:var(--dim); display:block; text-align:right; letter-spacing:.1em; }
+
+  /* mute */
+  #mute{
+    position:absolute; top:calc(env(safe-area-inset-top) + 10px); right:10px;
+    z-index:6; width:34px; height:34px; border-radius:8px;
+    background:rgba(20,25,30,.6); border:1px solid var(--line); color:var(--dim);
+    font-size:16px; cursor:pointer; display:none; align-items:center; justify-content:center;
+  }
+  .toast{
+    position:absolute; left:50%; top:14%; transform:translateX(-50%);
+    z-index:8; pointer-events:none;
+    font-family:"Saira",sans-serif; font-weight:900; letter-spacing:.04em;
+    color:var(--hazard); font-size:16px; text-shadow:0 2px 6px #000;
+    opacity:0; transition:opacity .2s, transform .2s;
+    white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+
+  <div id="hud">
+    <div class="chip"><span class="lab">LV</span><span class="val" id="hLv">1</span></div>
+    <div class="chip"><span class="lab">SCORE</span><span class="val" id="hScore">0</span></div>
+    <div class="spacer"></div>
+    <span id="comboTag"></span>
+    <div class="chip bolts"><span class="lab">BOLT</span><span class="val" id="hBolts">0</span></div>
+  </div>
+  <button id="mute" aria-label="mute">♪</button>
+  <div id="toast" class="toast"></div>
+
+  <!-- title -->
+  <div id="ovTitle" class="overlay">
+    <div class="wordmark">BA<span class="accent">RA</span>SHI</div>
+    <div class="jp">バ ラ シ</div>
+    <div class="tag"><b>むき出しのネジだけ外せる。</b><br>同じ色を3本そろえて<b>バラす</b>。<br>あふれトレーが満杯になったら終わり。</div>
+    <button class="btn" id="btnStart">バラし始める</button>
+    <button class="btn ghost" id="btnHow">遊び方</button>
+    <div class="stat" id="titleBest"></div>
+  </div>
+
+  <!-- how to -->
+  <div id="ovHow" class="overlay hidden">
+    <div class="wordmark" style="font-size:34px">あそびかた</div>
+    <div class="tag" style="max-width:23em; text-align:left; line-height:1.85">
+      ① <b>上にパネルが乗っていないネジ</b>(明るいネジ)だけタップで外せる。<br><br>
+      ② 外したネジは下の<b>トレー</b>へ。同じ色が<b>3本</b>そろうと<b>バラし成功</b><span style="color:var(--hazard)">=スコア</span>。<br><br>
+      ③ 空きトレーが無い色は右の<b>あふれ棚</b>へ。<br><span style="color:var(--danger)">あふれ棚が満杯のまま置けなくなったら終わり。</span><br><br>
+      ④ パネルを全部バラすとクリア。<b>BOLT</b>で工具を買い足して次の階へ。
+    </div>
+    <button class="btn" id="btnHowBack">とじる</button>
+  </div>
+
+  <!-- shop -->
+  <div id="ovShop" class="overlay hidden">
+    <div id="shopTitle">WORKBENCH</div>
+    <div id="shopSub">— LV<span id="shopLv">1</span> CLEAR・工具を買い足す —</div>
+    <div id="shopBolts">🔩 0</div>
+    <div id="shopCards"></div>
+    <button class="btn" id="btnNext">次の階へ降りる</button>
+  </div>
+
+  <!-- gameover -->
+  <div id="ovOver" class="overlay hidden">
+    <div class="wordmark" style="font-size:40px; color:var(--danger)">あふれた</div>
+    <div class="stat" id="overStats"></div>
+    <button class="btn" id="btnRetry">もう一度バラす</button>
+    <div class="stat" id="overBest"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+(function(){
+/* ====================================================================== *
+ *  BARASHI — unscrew & sort roguelite.  Single file.
+ * ====================================================================== */
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const ov = { title:$("ovTitle"), how:$("ovHow"), shop:$("ovShop"), over:$("ovOver") };
+
+/* ---------- layout / canvas ---------- */
+let W = 400, H = 720, DPR = 1;
+function resize(){
+  const st = $("stage").getBoundingClientRect();
+  W = Math.max(300, Math.round(st.width));
+  H = Math.max(480, Math.round(st.height));
+  DPR = Math.min(3, window.devicePixelRatio || 1);
+  cv.width = Math.round(W * DPR);
+  cv.height = Math.round(H * DPR);
+}
+window.addEventListener("resize", resize);
+resize();
+
+/* ---------- storage ---------- */
+const store = {
+  load(k, d){ try{ const v = localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } },
+  save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+let best = store.load("barashi_best", { score:0, level:0 });
+
+/* ---------- audio (iOS消音スイッチ対策込み, hakai流) ---------- */
+let AC = null, muted = store.load("barashi_muted", false);
+function audio(){
+  if(!AC){
+    try{
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => { if(AC.state!=="running" && !document.hidden){ try{ AC.resume(); }catch(e){} } };
+    }catch(e){}
+  }
+  if(AC && AC.state!=="running"){ try{ AC.resume(); }catch(e){} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl(){
+  const sr=8000, n=800, buf=new ArrayBuffer(44+n), v=new DataView(buf);
+  const str=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+  str(0,"RIFF"); v.setUint32(4,36+n,true); str(8,"WAVE");
+  str(12,"fmt "); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr,true); v.setUint16(32,1,true); v.setUint16(34,8,true);
+  str(36,"data"); v.setUint32(40,n,true);
+  for(let i=0;i<n;i++) v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline","");
+    silentEl.loop = true; silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play(); if(p && p.catch) p.catch(()=>{});
+  audio(); if(!AC) return;
+  const done = () => { if(AC.state==="running"){ ["pointerdown","pointerup","touchend"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true)); } };
+  try{ AC.resume().then(done); }catch(e){ done(); }
+}
+["pointerdown","pointerup","touchend"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) audio(); });
+
+function tone(f, d, type, vol, slideTo){
+  if(muted) return;
+  const ac = audio(); if(!ac || ac.state!=="running") return;
+  try{
+    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+    o.type = type||"sine"; o.frequency.setValueAtTime(f, t);
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t+d);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol||0.2, t+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+d+0.02);
+  }catch(e){}
+}
+function noise(d, vol){
+  if(muted) return;
+  const ac = audio(); if(!ac || ac.state!=="running") return;
+  try{
+    const len = Math.floor(ac.sampleRate*d), b = ac.createBuffer(1,len,ac.sampleRate), dt = b.getChannelData(0);
+    for(let i=0;i<len;i++) dt[i] = (Math.random()*2-1) * (1 - i/len);
+    const s = ac.createBufferSource(); s.buffer = b;
+    const g = ac.createGain(); g.gain.value = vol||0.2;
+    const f = ac.createBiquadFilter(); f.type="bandpass"; f.frequency.value=2400;
+    s.connect(f); f.connect(g); g.connect(ac.destination); s.start();
+  }catch(e){}
+}
+const sfx = {
+  ratchet(){ tone(220+Math.random()*60, 0.06, "square", 0.10, 120); noise(0.05,0.07); },
+  land(){ tone(440, 0.07, "triangle", 0.12); },
+  pop(c){ const base=520+ c*40; tone(base,0.10,"triangle",0.2,base*1.5); tone(base*1.5,0.14,"sine",0.14,base*2); noise(0.06,0.05); },
+  clatter(){ noise(0.22,0.22); tone(120,0.18,"sawtooth",0.12,60); },
+  buy(){ tone(660,0.08,"square",0.16,990); tone(990,0.10,"square",0.12); },
+  over(){ tone(300,0.5,"sawtooth",0.22,70); noise(0.4,0.18); },
+  bad(){ tone(160,0.18,"square",0.18,90); }
+};
+
+/* ---------- palette ---------- */
+const COLORS = [
+  { id:0, hex:"#e2483b", lo:"#9c2a22" }, // red
+  { id:1, hex:"#3a8dde", lo:"#235a92" }, // blue
+  { id:2, hex:"#f5c518", lo:"#ad8a0c" }, // yellow
+  { id:3, hex:"#3fc07a", lo:"#26794c" }, // green
+  { id:4, hex:"#ef8c2f", lo:"#a85d18" }, // orange
+  { id:5, hex:"#2bc4c4", lo:"#1a7d7d" }, // teal
+  { id:6, hex:"#e85a9b", lo:"#9c3865" }, // pink
+];
+const NEED = 3;
+
+/* ---------- game state (全部宣言時に初期化: 初回フレームでループが触っても安全) ---------- */
+const G = {
+  scene:"title",                 // title | playing | shop | over
+  level:1, score:0, bolts:0,
+  combo:0, comboTimer:0, comboBest:0,
+  holderSlots:3, traySlots:5,
+  holders:[],                    // {color|null, count}
+  tray:[],                       // [colorId,...]  overflow
+  planks:[],                     // {x,y,w,h,z,removed,fall,alpha,screws:[id]}
+  screws:[],                     // {id,x,y,c,plank,removed,free,anim,...}
+  particles:[],
+  shake:0, flash:0,
+  magnetCharges:0, undoCharges:0, undoStack:null,
+  upgradesTaken:{},
+  // layout rects (computed each board)
+  play:{x:0,y:0,w:0,h:0},
+  holderRect:{x:0,y:0,w:0,h:0},
+  trayRect:{x:0,y:0,w:0,h:0},
+};
+
+/* ---------- deterministic-ish RNG per board (just Math.random; fine for casual) ---------- */
+const rnd = (a,b)=> a + Math.random()*(b-a);
+const ri = (a,b)=> Math.floor(rnd(a,b+1));
+const pick = arr => arr[ri(0,arr.length-1)];
+
+/* ---------- layout regions ---------- */
+function computeRegions(){
+  const top = (parseInt(getComputedStyle(document.documentElement).fontSize)||16);
+  const hudH = 66;            // approx HUD height
+  const pad = 14;
+  const trayH = 64;
+  const holderH = 92;
+  G.play = { x:pad, y:hudH, w:W-pad*2, h:H - hudH - holderH - trayH - pad };
+  G.holderRect = { x:pad, y:G.play.y+G.play.h+6, w:W-pad*2, h:holderH };
+  G.trayRect = { x:pad, y:G.holderRect.y+holderH+6, w:W-pad*2, h:trayH };
+}
+
+/* ---------- board generation ---------- */
+function buildLevel(){
+  computeRegions();
+  G.holders = []; for(let i=0;i<G.holderSlots;i++) G.holders.push({color:null,count:0,pop:0});
+  G.tray = [];
+  G.planks = []; G.screws = []; G.particles = [];
+  G.undoStack = null;
+  const L = G.level;
+  const numColors = Math.min(COLORS.length, 3 + Math.floor((L-1)/2));   // 3..7
+  const activeColors = [];
+  for(let i=0;i<numColors;i++) activeColors.push(i);
+  const numPlanks = Math.min(11, 3 + Math.floor(L*0.9));
+
+  // screws total: groups of NEED, each group one color
+  let groups = Math.max(numColors, Math.round(numPlanks*1.25) + Math.floor(L*0.6));
+  // make sure each active color appears at least once
+  const groupColors = [];
+  for(let i=0;i<numColors;i++) groupColors.push(activeColors[i]);
+  while(groupColors.length < groups) groupColors.push(pick(activeColors));
+  // shuffle group colors
+  for(let i=groupColors.length-1;i>0;i--){ const j=ri(0,i); [groupColors[i],groupColors[j]]=[groupColors[j],groupColors[i]]; }
+  const screwColors = [];
+  groupColors.forEach(c=>{ for(let k=0;k<NEED;k++) screwColors.push(c); });
+  for(let i=screwColors.length-1;i>0;i--){ const j=ri(0,i); [screwColors[i],screwColors[j]]=[screwColors[j],screwColors[i]]; }
+  const totalScrews = screwColors.length;
+
+  // create planks as axis-aligned rounded rects within play region, varied & overlapping
+  const P = G.play;
+  const minW = P.w*0.30, maxW = P.w*0.62;
+  const minH = P.h*0.16, maxH = P.h*0.30;
+  for(let i=0;i<numPlanks;i++){
+    const w = rnd(minW,maxW), h = rnd(minH,maxH);
+    const x = rnd(P.x, P.x+P.w-w);
+    const y = rnd(P.y, P.y+P.h-h);
+    G.planks.push({ x,y,w,h, z:i, removed:false, fall:0, alpha:1, screws:[],
+                    rot:rnd(-0.05,0.05), tone: ri(0,3) });
+  }
+
+  // distribute screws across planks (each plank gets >=1), positions jittered & non-overlapping within plank
+  let pi = 0;
+  for(let s=0;s<totalScrews;s++){
+    // round-robin but bias to keep each plank populated
+    const plank = G.planks[pi % numPlanks]; pi++;
+    plank.screws.push(s);
+  }
+  // ensure no empty plank: steal from richest
+  G.planks.forEach(pk=>{
+    if(pk.screws.length===0){
+      const rich = G.planks.slice().sort((a,b)=>b.screws.length-a.screws.length)[0];
+      if(rich && rich.screws.length>1) pk.screws.push(rich.screws.pop());
+    }
+  });
+
+  // build screw objects with positions inside their plank
+  let id = 0;
+  G.planks.forEach(pk=>{
+    const n = pk.screws.length;
+    const ids = pk.screws.slice(); pk.screws = [];
+    // place in a small grid inside plank
+    const cols = Math.ceil(Math.sqrt(n));
+    const rows = Math.ceil(n/cols);
+    const mx = pk.w*0.18, my = pk.h*0.24;
+    let k=0;
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols && k<n;c++){
+        const gx = cols===1 ? 0.5 : c/(cols-1);
+        const gy = rows===1 ? 0.5 : r/(rows-1);
+        const sx = pk.x + mx + gx*(pk.w-2*mx) + rnd(-4,4);
+        const sy = pk.y + my + gy*(pk.h-2*my) + rnd(-4,4);
+        const color = screwColors[ids[k]];
+        const scr = { id:id, x:sx, y:sy, c:color, plank:pk.z, removed:false, free:false,
+                      anim:0, ax:sx, ay:sy, tx:sx, ty:sy, spin:rnd(0,6.28), dest:null };
+        G.screws.push(scr); pk.screws.push(scr.id); id++; k++;
+      }
+    }
+  });
+
+  recomputeFree();
+}
+
+/* ---------- accessibility: a screw is free if no non-removed plank with higher z covers its head ---------- */
+function recomputeFree(){
+  for(const s of G.screws){
+    if(s.removed || s.anim>0){ s.free = false; continue; }
+    const mine = s.plank;
+    let covered = false;
+    for(const p of G.planks){
+      if(p.removed || p.z<=mine) continue;
+      if(s.x >= p.x-2 && s.x <= p.x+p.w+2 && s.y >= p.y-2 && s.y <= p.y+p.h+2){ covered = true; break; }
+    }
+    s.free = !covered;
+  }
+}
+
+/* ---------- HUD ---------- */
+function syncHud(){
+  $("hLv").textContent = G.level;
+  $("hScore").textContent = G.score;
+  $("hBolts").textContent = G.bolts;
+  const tag = $("comboTag");
+  if(G.combo>=2){ tag.textContent = "x"+G.combo+" COMBO"; tag.style.opacity = 1; }
+  else tag.style.opacity = 0;
+}
+
+/* ---------- toast ---------- */
+let toastT = 0;
+function toast(msg){
+  const el = $("toast"); el.textContent = msg;
+  el.style.opacity = 1; el.style.transform = "translateX(-50%) translateY(0)";
+  toastT = 1.4;
+}
+
+/* ---------- particles ---------- */
+function burst(x,y,color,n){
+  for(let i=0;i<n;i++){
+    const a = rnd(0,6.28), sp = rnd(40,260);
+    G.particles.push({ x,y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-60, life:rnd(0.4,0.9), max:0.9,
+                       col:color, r:rnd(2,5), g:520 });
+  }
+}
+
+/* ---------- core action: try to unscrew a free screw ---------- */
+function snapUndo(){
+  // lightweight snapshot for single-undo upgrade
+  G.undoStack = {
+    holders: G.holders.map(h=>({color:h.color,count:h.count,pop:0})),
+    tray: G.tray.slice(),
+    screws: G.screws.map(s=>({id:s.id,removed:s.removed,anim:0})),
+    planks: G.planks.map(p=>({z:p.z,removed:p.removed,fall:p.removed?1:0,alpha:p.removed?0:1})),
+    score:G.score, combo:G.combo, bolts:G.bolts
+  };
+}
+
+function holderTarget(scr){
+  // returns {type:'holder',idx} | {type:'empty',idx} | {type:'tray'} | null(=lose)
+  for(let i=0;i<G.holders.length;i++){ const h=G.holders[i]; if(h.color===scr.c && h.count<NEED) return {type:"holder",idx:i}; }
+  for(let i=0;i<G.holders.length;i++){ const h=G.holders[i]; if(h.color===null) return {type:"empty",idx:i}; }
+  if(G.tray.length < G.traySlots) return {type:"tray"};
+  return null;
+}
+
+function flyTo(scr, point){ scr.anim = 0.26; scr.ax=scr.x; scr.ay=scr.y; scr.tx=point.x; scr.ty=point.y; }
+
+function holderSlotPoint(idx){
+  const r = G.holderRect, n = G.holderSlots;
+  const gap = 8, cw = (r.w-(n-1)*gap)/n;
+  return { x:r.x + idx*(cw+gap)+cw/2, y:r.y + r.h*0.5 };
+}
+function trayPoint(idx){
+  const r = G.trayRect, n=G.traySlots, gap=6, cw=(r.w-(n-1)*gap)/n;
+  return { x:r.x + idx*(cw+gap)+cw/2, y:r.y+r.h*0.5 };
+}
+
+function placeColor(c, fromScrew){
+  // place a single screw of color c into holders/tray (logic only). returns false on lose.
+  const fake = fromScrew || {c:c};
+  const t = holderTarget(fake);
+  if(!t){ return false; }
+  if(t.type==="holder"){
+    const h=G.holders[t.idx]; h.count++;
+    if(fromScrew) flyTo(fromScrew, holderSlotPoint(t.idx));
+    if(h.count>=NEED) popHolder(t.idx);
+  } else if(t.type==="empty"){
+    const h=G.holders[t.idx]; h.color=c; h.count=1;
+    if(fromScrew) flyTo(fromScrew, holderSlotPoint(t.idx));
+  } else { // tray
+    G.tray.push(c);
+    if(fromScrew) flyTo(fromScrew, trayPoint(G.tray.length-1));
+  }
+  return true;
+}
+
+function popHolder(idx){
+  const h = G.holders[idx];
+  const c = h.color;
+  G.combo++; G.comboTimer = 2.4; if(G.combo>G.comboBest) G.comboBest=G.combo;
+  const gain = 10 * NEED * Math.max(1,G.combo);
+  G.score += gain;
+  G.bolts += 1 + Math.floor(G.combo/3);
+  const p = holderSlotPoint(idx);
+  burst(p.x,p.y, COLORS[c].hex, 16 + G.combo*2);
+  G.flash = Math.min(0.5, 0.18 + G.combo*0.03);
+  sfx.pop(G.combo);
+  h.color=null; h.count=0; h.pop=0.3;
+}
+
+function reconcile(){
+  // drain tray into holders whenever possible; cascade pops. logic only (no fly anim for tray moves).
+  let changed = true, guard=0;
+  while(changed && guard++<200){
+    changed = false;
+    // 1) move tray screw into a matching holder with space
+    for(let i=0;i<G.holders.length;i++){
+      const h=G.holders[i]; if(h.color===null || h.count>=NEED) continue;
+      const ti = G.tray.indexOf(h.color);
+      if(ti>=0){ G.tray.splice(ti,1); h.count++; if(h.count>=NEED) popHolder(i); changed=true; }
+    }
+    // 2) open an empty holder for the most common tray color
+    if(G.tray.length){
+      let empty=-1; for(let i=0;i<G.holders.length;i++) if(G.holders[i].color===null){ empty=i; break; }
+      if(empty>=0){
+        const cnt={}; G.tray.forEach(c=>cnt[c]=(cnt[c]||0)+1);
+        let bestC=null,bestN=0; for(const k in cnt) if(cnt[k]>bestN){ bestN=cnt[k]; bestC=+k; }
+        if(bestC!==null){
+          const ti=G.tray.indexOf(bestC); G.tray.splice(ti,1);
+          G.holders[empty].color=bestC; G.holders[empty].count=1; changed=true;
+        }
+      }
+    }
+  }
+}
+
+let lockInput = false;
+function unscrew(scr){
+  if(G.scene!=="playing" || lockInput) return;
+  if(scr.removed || !scr.free || scr.anim>0) return;
+  if(G.undoCharges>0) snapUndo();
+
+  const target = holderTarget(scr);
+  scr.removed = true;
+  sfx.ratchet();
+  // recompute free immediately so visuals update
+  recomputeFree();
+
+  if(!target){
+    // overflow -> lose. still show the screw flying nowhere; trigger gameover
+    G.tray.push(scr.c); // visually overfull
+    sfx.over();
+    G.shake = 16;
+    return gameOver();
+  }
+  placeColor(scr.c, scr);
+  // after placing, if it went to tray try to reconcile (a holder might open later only via pops; reconcile handles it)
+  reconcile();
+  // plank removal check
+  checkPlanks();
+  // win check
+  if(G.screws.every(s=>s.removed)) levelClear();
+}
+
+function checkPlanks(){
+  let removedAny=false;
+  for(const p of G.planks){
+    if(p.removed) continue;
+    const alive = p.screws.some(sid=>!G.screws[sid].removed);
+    if(!alive){ p.removed=true; p.fall=0; removedAny=true; sfx.clatter(); }
+  }
+  if(removedAny) recomputeFree();
+}
+
+function doUndo(){
+  if(G.undoCharges<=0 || !G.undoStack || G.scene!=="playing") return;
+  const u = G.undoStack;
+  G.holders = u.holders.map(h=>({color:h.color,count:h.count,pop:0}));
+  G.tray = u.tray.slice();
+  u.screws.forEach(su=>{ G.screws[su.id].removed = su.removed; G.screws[su.id].anim=0; });
+  u.planks.forEach(pu=>{ const p=G.planks[pu.z]; p.removed=pu.removed; p.fall=pu.fall; p.alpha=pu.alpha; });
+  G.score=u.score; G.combo=u.combo; G.bolts=u.bolts;
+  G.undoStack=null; G.undoCharges--;
+  recomputeFree(); sfx.buy(); toast("UNDO");
+}
+
+function useMagnet(){
+  if(G.magnetCharges<=0 || G.scene!=="playing" || lockInput) return;
+  // auto-unscrew all currently free screws of the most-common free color
+  const free = G.screws.filter(s=>!s.removed && s.free && s.anim===0);
+  if(!free.length) return;
+  const cnt={}; free.forEach(s=>cnt[s.c]=(cnt[s.c]||0)+1);
+  let bc=free[0].c,bn=0; for(const k in cnt) if(cnt[k]>bn){ bn=cnt[k]; bc=+k; }
+  G.magnetCharges--; toast("MAGNET");
+  const targets = free.filter(s=>s.c===bc).slice(0,6);
+  let i=0;
+  const step = ()=>{
+    if(i>=targets.length || G.scene!=="playing") return;
+    const s=targets[i++]; if(!s.removed && s.free) unscrew(s);
+    if(i<targets.length && G.scene==="playing") setTimeout(step,90);
+  };
+  step();
+}
+
+/* ---------- level flow ---------- */
+function levelClear(){
+  lockInput = true;
+  G.combo=0; G.comboTimer=0;
+  const reward = 8 + G.level*3;
+  G.bolts += reward;
+  G.score += 100 + G.level*20;
+  if(G.score>best.score || (G.score===best.score && G.level>best.level)){ best={score:G.score,level:G.level}; store.save("barashi_best",best); }
+  setTimeout(()=>{ openShop(); lockInput=false; }, 650);
+}
+
+function gameOver(){
+  G.scene="over"; lockInput=false;
+  if(G.score>best.score || (G.score===best.score && G.level>best.level)){ best={score:G.score,level:G.level}; store.save("barashi_best",best); }
+  $("overStats").innerHTML = `LV <b>${G.level}</b> であふれた<br>SCORE <b>${G.score}</b><br>最大コンボ <b>x${G.comboBest}</b>`;
+  $("overBest").innerHTML = `BEST  SCORE <b>${best.score}</b> / LV <b>${best.level}</b>`;
+  show("over");
+}
+
+/* ---------- SHOP ---------- */
+const SHOP_POOL = [
+  { key:"tray", ic:"🗄️", nm:"あふれ棚 +1", ds:"あふれを置ける棚を1つ増やす。生存の保険。", cost:()=>10+G.traySlots*4, max:()=>G.traySlots>=9,
+    buy:()=>{ G.traySlots++; } },
+  { key:"holder", ic:"🧰", nm:"作業トレー +1", ds:"同時に仕分けられる色を1つ増やす。詰みにくくなる。", cost:()=>16+G.holderSlots*8, max:()=>G.holderSlots>=6,
+    buy:()=>{ G.holderSlots++; } },
+  { key:"magnet", ic:"🧲", nm:"マグネット x2", ds:"同色のむき出しネジを一気に外す。2回使える。", cost:()=>14, max:()=>false,
+    buy:()=>{ G.magnetCharges+=2; } },
+  { key:"undo", ic:"↩️", nm:"巻き戻し x2", ds:"直前の1手を取り消す。2回ぶん持てる。", cost:()=>12, max:()=>false,
+    buy:()=>{ G.undoCharges+=2; } },
+  { key:"clear", ic:"🧹", nm:"棚そうじ", ds:"あふれ棚を空にして再仕分けする。", cost:()=>9, max:()=>false,
+    buy:()=>{ G.tray=[]; } },
+];
+let shopOffer = [];
+function openShop(){
+  G.scene="shop";
+  $("shopLv").textContent = G.level;
+  // offer: tray + holder always available + 1-2 random consumables
+  const pool = SHOP_POOL.slice();
+  const offer = [];
+  offer.push(SHOP_POOL[0], SHOP_POOL[1]);
+  const extras = SHOP_POOL.slice(2);
+  for(let i=extras.length-1;i>0;i--){ const j=ri(0,i); [extras[i],extras[j]]=[extras[j],extras[i]]; }
+  offer.push(extras[0], extras[1]);
+  shopOffer = offer;
+  renderShop();
+  show("shop");
+}
+function renderShop(){
+  $("shopBolts").textContent = "🔩 " + G.bolts;
+  const wrap = $("shopCards"); wrap.innerHTML = "";
+  shopOffer.forEach((item)=>{
+    const cost = item.cost();
+    const maxed = item.max();
+    const card = document.createElement("div");
+    card.className = "card" + ((maxed || G.bolts<cost) ? " dis":"");
+    card.innerHTML = `<div class="ic">${item.ic}</div>
+      <div class="body"><div class="nm">${item.nm}</div><div class="ds">${maxed?"これ以上は強化できない":item.ds}</div></div>
+      <div class="cost">${maxed?"MAX":("🔩"+cost)}<small>${maxed?"":"BOLT"}</small></div>`;
+    if(!maxed && G.bolts>=cost){
+      card.addEventListener("pointerdown",(e)=>{ e.preventDefault(); buy(item,cost); }, {passive:false});
+    }
+    wrap.appendChild(card);
+  });
+}
+function buy(item,cost){
+  if(G.bolts<cost) return;
+  G.bolts-=cost; item.buy(); sfx.buy();
+  renderShop();
+}
+
+/* ---------- scene switching ---------- */
+function show(name){
+  for(const k in ov) ov[k].classList.toggle("hidden", k!==name && name!==null);
+  if(name===null) for(const k in ov) ov[k].classList.add("hidden");
+  $("mute").style.display = (name===null||name==="shop") && AC ? "flex" : ($("mute").style.display);
+  $("mute").style.display = "flex";
+}
+
+function startGame(){
+  G.scene="playing";
+  G.level=1; G.score=0; G.bolts=0; G.combo=0; G.comboTimer=0; G.comboBest=0;
+  G.holderSlots=3; G.traySlots=5; G.magnetCharges=0; G.undoCharges=0;
+  buildLevel();
+  show(null);
+}
+function nextLevel(){
+  G.level++;
+  G.combo=0; G.comboTimer=0;
+  buildLevel();
+  G.scene="playing";
+  show(null);
+}
+
+/* ---------- input: pointer hit-test nearest free screw ---------- */
+function canvasPoint(e){
+  const r = cv.getBoundingClientRect();
+  return { x:(e.clientX-r.left), y:(e.clientY-r.top) };
+}
+cv.addEventListener("pointerdown",(e)=>{
+  e.preventDefault();
+  if(G.scene!=="playing") return;
+  const p = canvasPoint(e);
+  let bestS=null, bestD=1e9;
+  for(const s of G.screws){
+    if(s.removed || !s.free || s.anim>0) continue;
+    const d=(s.x-p.x)**2+(s.y-p.y)**2;
+    if(d<bestD){ bestD=d; bestS=s; }
+  }
+  const R=30; // tap radius
+  if(bestS && bestD < R*R) unscrew(bestS);
+}, {passive:false});
+
+// double-tap zoom prevention (iOS Safari ignores user-scalable=no)
+let lastTouchEnd=0;
+document.addEventListener("touchend",(e)=>{
+  const now=Date.now();
+  if(now-lastTouchEnd<=350){ e.preventDefault(); }
+  lastTouchEnd=now;
+},{passive:false});
+document.addEventListener("dblclick",e=>e.preventDefault());
+document.addEventListener("gesturestart",e=>e.preventDefault());
+
+// keyboard (PC): M=magnet, U=undo
+window.addEventListener("keydown",(e)=>{
+  if(G.scene!=="playing") return;
+  if(e.key==="m"||e.key==="M") useMagnet();
+  if(e.key==="u"||e.key==="U") doUndo();
+});
+
+/* ---------- buttons ---------- */
+$("btnStart").addEventListener("pointerdown",e=>{ e.preventDefault(); startGame(); },{passive:false});
+$("btnRetry").addEventListener("pointerdown",e=>{ e.preventDefault(); startGame(); },{passive:false});
+$("btnNext").addEventListener("pointerdown",e=>{ e.preventDefault(); nextLevel(); },{passive:false});
+$("btnHow").addEventListener("pointerdown",e=>{ e.preventDefault(); show("how"); },{passive:false});
+$("btnHowBack").addEventListener("pointerdown",e=>{ e.preventDefault(); show("title"); },{passive:false});
+$("mute").addEventListener("pointerdown",e=>{ e.preventDefault(); muted=!muted; store.save("barashi_muted",muted); $("mute").textContent=muted?"🔇":"♪"; if(!muted){audio();} },{passive:false});
+
+/* ---------- rendering ---------- */
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+function drawScrew(x,y,r,colorObj,free,spin){
+  // body
+  ctx.save(); ctx.translate(x,y);
+  // shadow
+  ctx.fillStyle="rgba(0,0,0,.35)"; ctx.beginPath(); ctx.arc(2,3,r,0,6.28); ctx.fill();
+  const g = ctx.createRadialGradient(-r*0.35,-r*0.35,r*0.2, 0,0,r);
+  if(free){ g.addColorStop(0, "#ffffff"); g.addColorStop(0.18, colorObj.hex); g.addColorStop(1, colorObj.lo); }
+  else { g.addColorStop(0, "#6a747c"); g.addColorStop(1, "#3a4046"); }
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,r,0,6.28); ctx.fill();
+  // rim
+  ctx.lineWidth=1.5; ctx.strokeStyle= free? "rgba(255,255,255,.45)":"rgba(0,0,0,.4)"; ctx.stroke();
+  // cross slot
+  ctx.rotate(spin||0);
+  ctx.strokeStyle= free? "rgba(0,0,0,.55)":"rgba(0,0,0,.5)"; ctx.lineWidth=Math.max(2,r*0.28); ctx.lineCap="round";
+  ctx.beginPath(); ctx.moveTo(-r*0.5,0); ctx.lineTo(r*0.5,0); ctx.moveTo(0,-r*0.5); ctx.lineTo(0,r*0.5); ctx.stroke();
+  ctx.restore();
+}
+
+function draw(dt){
+  ctx.setTransform(DPR,0,0,DPR,0,0); // re-set every frame (iOS context-loss / screenshot safety)
+  ctx.clearRect(0,0,W,H);
+
+  // shake
+  let sx=0,sy=0;
+  if(G.shake>0){ sx=rnd(-G.shake,G.shake); sy=rnd(-G.shake,G.shake); G.shake=Math.max(0,G.shake-dt*60); }
+  ctx.save(); ctx.translate(sx,sy);
+
+  if(G.scene==="playing" || G.scene==="shop" || G.scene==="over"){
+    drawBoard(dt);
+  }
+
+  // particles
+  for(let i=G.particles.length-1;i>=0;i--){
+    const p=G.particles[i]; p.life-=dt;
+    if(p.life<=0){ G.particles.splice(i,1); continue; }
+    p.vy += p.g*dt; p.x+=p.vx*dt; p.y+=p.vy*dt;
+    ctx.globalAlpha = Math.max(0,p.life/p.max);
+    ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.28); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+
+  // flash
+  if(G.flash>0){ ctx.fillStyle=`rgba(245,197,24,${G.flash*0.4})`; ctx.fillRect(0,0,W,H); G.flash=Math.max(0,G.flash-dt*1.6); }
+}
+
+function drawBoard(dt){
+  // play region frame (workbench surface)
+  const P=G.play;
+  ctx.fillStyle="#0c1014";
+  roundRect(P.x-2,P.y-2,P.w+4,P.h+4,10); ctx.fill();
+  // faint grid scratches
+  ctx.strokeStyle="rgba(255,255,255,.025)"; ctx.lineWidth=1;
+  for(let gy=P.y+18; gy<P.y+P.h; gy+=26){ ctx.beginPath(); ctx.moveTo(P.x,gy); ctx.lineTo(P.x+P.w,gy); ctx.stroke(); }
+
+  // planks sorted by z (low first). animate falling.
+  const sorted = G.planks.slice().sort((a,b)=>a.z-b.z);
+  for(const p of sorted){
+    if(p.removed){
+      p.fall = Math.min(1, p.fall + dt*2.2);
+      if(p.fall>=1) continue;
+    }
+    const yoff = p.removed ? p.fall*p.fall*(H*0.6) : 0;
+    const rot = p.removed ? p.fall*0.5*(p.z%2?1:-1) : p.rot;
+    const al = p.removed ? (1-p.fall) : 1;
+    ctx.save();
+    ctx.globalAlpha = al;
+    ctx.translate(p.x+p.w/2, p.y+p.h/2 + yoff);
+    ctx.rotate(rot);
+    drawPlank(-p.w/2,-p.h/2,p.w,p.h,p.tone);
+    ctx.restore();
+  }
+
+  // screws (advance fly anim)
+  for(const s of G.screws){
+    if(s.removed && s.anim<=0) continue;
+    if(s.anim>0){
+      s.anim=Math.max(0,s.anim-dt*4);
+      const t=1-(s.anim/0.26);
+      const ease=t<1? 1-Math.pow(1-t,2):1;
+      s.x = s.ax + (s.tx-s.ax)*ease;
+      s.y = s.ay + (s.ty-s.ay)*ease;
+      s.spin += dt*22;
+      const r = 13*(1-0.4*t);
+      drawScrew(s.x,s.y,r,COLORS[s.c],true,s.spin);
+      if(s.anim<=0){ s.x=s.tx; s.y=s.ty; sfx.land(); }
+      continue;
+    }
+    drawScrew(s.x,s.y,13,COLORS[s.c],s.free,s.spin);
+  }
+
+  // holders
+  drawHolders();
+  // tray
+  drawTray();
+}
+
+function drawPlank(x,y,w,h,tone){
+  const tones=[["#444b52","#2b3036"],["#4a4540","#302c28"],["#3e4750","#262c33"],["#52453a","#332a22"]];
+  const tc=tones[tone%tones.length];
+  ctx.save();
+  ctx.shadowColor="rgba(0,0,0,.5)"; ctx.shadowBlur=12; ctx.shadowOffsetY=5;
+  const g=ctx.createLinearGradient(x,y,x,y+h); g.addColorStop(0,tc[0]); g.addColorStop(1,tc[1]);
+  ctx.fillStyle=g; roundRect(x,y,w,h,9); ctx.fill();
+  ctx.shadowColor="transparent";
+  // bevel
+  ctx.lineWidth=1.5; ctx.strokeStyle="rgba(255,255,255,.10)"; roundRect(x+1.5,y+1.5,w-3,h-3,8); ctx.stroke();
+  ctx.lineWidth=1; ctx.strokeStyle="rgba(0,0,0,.4)"; roundRect(x,y,w,h,9); ctx.stroke();
+  // brushed lines
+  ctx.strokeStyle="rgba(255,255,255,.04)";
+  for(let i=x+8;i<x+w-6;i+=7){ ctx.beginPath(); ctx.moveTo(i,y+5); ctx.lineTo(i,y+h-5); ctx.stroke(); }
+  ctx.restore();
+}
+
+function drawHolders(){
+  const r=G.holderRect, n=G.holderSlots, gap=8, cw=(r.w-(n-1)*gap)/n;
+  // label
+  ctx.fillStyle="rgba(154,166,176,.6)"; ctx.font='700 9px "Saira"'; ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+  ctx.fillText("WORK TRAYS", r.x+2, r.y-2);
+  for(let i=0;i<n;i++){
+    const h=G.holders[i];
+    const x=r.x+i*(cw+gap), y=r.y, hh=r.h;
+    if(h.pop>0) h.pop=Math.max(0,h.pop-0.02);
+    const sc = 1 + (h.pop>0? Math.sin(h.pop/0.3*Math.PI)*0.06:0);
+    ctx.save(); ctx.translate(x+cw/2,y+hh/2); ctx.scale(sc,sc); ctx.translate(-(x+cw/2),-(y+hh/2));
+    // slot well
+    ctx.fillStyle="#0a0d10"; roundRect(x,y,cw,hh,8); ctx.fill();
+    ctx.lineWidth=1.5; ctx.strokeStyle= h.color!==null? COLORS[h.color].hex+"":"rgba(58,67,77,.9)";
+    if(h.color!==null) ctx.globalAlpha=0.7;
+    roundRect(x+1,y+1,cw-2,hh-2,7); ctx.stroke(); ctx.globalAlpha=1;
+    // need pips (3 holes)
+    const r2=Math.min(cw,hh)*0.16;
+    for(let k=0;k<NEED;k++){
+      const px=x+cw/2 + (k-1)*(r2*2.4);
+      const py=y+hh*0.42;
+      const filled = h.color!==null && k<h.count;
+      if(filled){ drawScrew(px,py,r2,COLORS[h.color],true,0); }
+      else { ctx.fillStyle="rgba(255,255,255,.06)"; ctx.beginPath(); ctx.arc(px,py,r2,0,6.28); ctx.fill();
+             ctx.strokeStyle="rgba(255,255,255,.10)"; ctx.lineWidth=1; ctx.stroke(); }
+    }
+    // count text
+    if(h.color!==null){
+      ctx.fillStyle=COLORS[h.color].hex; ctx.font='900 11px "Saira"'; ctx.textAlign="center";
+      ctx.fillText(h.count+"/"+NEED, x+cw/2, y+hh-7);
+    }
+    ctx.restore();
+  }
+}
+
+function drawTray(){
+  const r=G.trayRect, n=G.traySlots, gap=6, cw=(r.w-(n-1)*gap)/n;
+  const danger = G.tray.length>=n-1;
+  ctx.fillStyle= danger? "rgba(226,72,59,.85)":"rgba(154,166,176,.6)";
+  ctx.font='700 9px "Saira"'; ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+  ctx.fillText("OVERFLOW  "+G.tray.length+"/"+n, r.x+2, r.y-2);
+  for(let i=0;i<n;i++){
+    const x=r.x+i*(cw+gap), y=r.y, hh=r.h;
+    ctx.fillStyle="#0a0d10"; roundRect(x,y,cw,hh,7); ctx.fill();
+    const near = (i>=n-1);
+    ctx.lineWidth=1.5;
+    ctx.strokeStyle= (i<G.tray.length)? "rgba(0,0,0,0)" : (near? "rgba(226,72,59,.6)":"rgba(58,67,77,.8)");
+    roundRect(x+1,y+1,cw-2,hh-2,6); ctx.stroke();
+    if(i<G.tray.length){
+      drawScrew(x+cw/2,y+hh/2, Math.min(cw,hh)*0.32, COLORS[G.tray[i]], true, 0);
+    }
+  }
+  // tool charges (magnet/undo) on the right edge of tray label row
+  let tx=r.x+r.w;
+  ctx.textAlign="right"; ctx.font='900 11px "Saira"';
+  if(G.undoCharges>0){ ctx.fillStyle="#9aa6b0"; ctx.fillText("↩️"+G.undoCharges, tx, r.y-2); tx-=42; }
+  if(G.magnetCharges>0){ ctx.fillStyle="#9aa6b0"; ctx.fillText("🧲"+G.magnetCharges, tx, r.y-2); }
+}
+
+/* ---------- main loop (タイトル時点から回る) ---------- */
+let last = 0;
+function frame(ts){
+  const dt = Math.min(0.05, last? (ts-last)/1000 : 0.016); last=ts;
+  // combo timer
+  if(G.comboTimer>0){ G.comboTimer-=dt; if(G.comboTimer<=0){ G.combo=0; } }
+  if(toastT>0){ toastT-=dt; if(toastT<=0){ const el=$("toast"); el.style.opacity=0; el.style.transform="translateX(-50%) translateY(-6px)"; } }
+  syncHud();
+  try{ draw(dt); }catch(e){ /* never let the loop die */ }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// title best display + persistent mute button
+function refreshTitle(){
+  $("titleBest").innerHTML = best.score>0 ? `BEST  SCORE <b>${best.score}</b> / LV <b>${best.level}</b>` : "";
+}
+refreshTitle();
+$("mute").style.display = "flex";
+$("mute").textContent = muted ? "🔇" : "♪";
+
+// expose minimal hooks for headless testing
+window.__BARASHI__ = { G, startGame, unscrew, recomputeFree, nextLevel, buildLevel, COLORS, reconcile, useMagnet,
+  _setLock:v=>{ lockInput=v; }, get _lock(){ return lockInput; } };
+
+})();
+</script>
+</body>
+</html>
