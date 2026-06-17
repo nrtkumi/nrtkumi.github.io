@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>カミヒコーキ — どこまで飛ばせる?</title>
+<meta name="description" content="長押しでパワーをためて、ピークで指を離して紙ヒコーキを発射。飛んでる間はタップで羽ばたき、上昇気流とブーストリングを乗り継いで、ノートの空をどこまでも飛ばせ。距離を伸ばす一発勝負の飛距離ゲーム。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="カミヒコーキ — どこまで飛ばせる?">
+<meta property="og:description" content="長押しでためてピークで離して発射。タップで羽ばたき、上昇気流とリングを乗り継いでノートの空をどこまでも。一発勝負の飛距離ゲーム。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/kamihikoki/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/kamihikoki/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="カミヒコーキ — どこまで飛ばせる?">
+<meta name="twitter:description" content="長押しでためてピークで離して発射。羽ばたきと上昇気流でノートの空をどこまでも飛ばす飛距離ゲーム。">
+<meta name="twitter:image" content="https://nrtkumi.github.io/games/kamihikoki/assets/ogp.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Yusei+Magic&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky: #aee3f5;
+    --sky2: #d8f3ff;
+    --paper: #fbfaf2;
+    --ink: #34506a;
+    --pencil: #5b6b7a;
+    --sun: #ffd24a;
+    --leaf: #7cc26a;
+    --pink: #ff8fa3;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  html, body { height: 100%; }
+  body {
+    background: #6fb9d6;
+    color: var(--ink);
+    font-family: "Yusei Magic", sans-serif;
+    overflow: hidden; overscroll-behavior: none;
+    -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
+  }
+  #app {
+    position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: min(480px, 64vh); height: 100%;
+    background: linear-gradient(180deg, var(--sky2) 0%, var(--sky) 60%, #cdeecb 100%);
+    box-shadow: 0 0 60px rgba(0,0,0,.45);
+    overflow: hidden;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+
+  #hud {
+    position: absolute; top: calc(env(safe-area-inset-top) + 12px); left: 0; right: 0;
+    padding: 0 16px; z-index: 6; pointer-events: none; display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  #dist { font-family: "Mochiy Pop One"; font-size: 40px; color: var(--ink); line-height: 1; text-shadow: 2px 2px 0 #fff; }
+  #dist small { font-size: 17px; margin-left: 3px; }
+  #hRight { text-align: right; font-size: 12px; color: var(--pencil); line-height: 1.7; }
+  #hRight b { font-family: "Mochiy Pop One"; color: var(--ink); font-size: 15px; }
+  #stamWrap { position: absolute; bottom: calc(env(safe-area-inset-bottom) + 14px); left: 50%; transform: translateX(-50%); z-index: 6; pointer-events: none; display: none; }
+  #stamWrap.show { display: block; }
+  #stamBar { width: 160px; height: 12px; background: rgba(255,255,255,.6); border: 2px solid #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+  #stamFill { height: 100%; width: 100%; background: linear-gradient(90deg,#ffce4a,#ff8fa3); transition: width .08s; }
+  #stamLbl { text-align: center; font-size: 11px; color: var(--pencil); margin-top: 3px; }
+
+  .screen { position: absolute; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; }
+  .screen.on { display: flex; }
+  .title { font-family: "Mochiy Pop One"; font-size: 50px; color: var(--ink); line-height: 1; text-shadow: 3px 3px 0 #fff, 5px 5px 0 rgba(0,0,0,.08); margin-bottom: 4px; }
+  .plane-emoji { font-size: 54px; margin: 8px 0 14px; transform: rotate(-12deg); display: inline-block; }
+  .lead { font-size: 15px; color: var(--ink); line-height: 1.9; max-width: 320px; margin-bottom: 24px; background: rgba(255,255,255,.55); padding: 14px 18px; border-radius: 14px; }
+  .lead b { color: var(--pink); }
+  .btn {
+    font-family: "Mochiy Pop One"; font-size: 24px; color: #fff;
+    background: linear-gradient(180deg, #ff9db0 0%, var(--pink) 100%);
+    border: 3px solid #fff; border-radius: 50px; padding: 14px 44px; cursor: pointer;
+    box-shadow: 0 6px 0 #d96b80, 0 10px 18px rgba(0,0,0,.2); pointer-events: auto;
+  }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #d96b80; }
+  .btn.sub { background: linear-gradient(180deg,#9fd8ef,#6fb9d6); box-shadow: 0 6px 0 #4f93b0; font-size: 18px; padding: 13px 24px; }
+  .hint { margin-top: 18px; font-size: 12px; color: var(--pencil); line-height: 1.7; }
+  #over { background: rgba(214,238,247,.8); backdrop-filter: blur(2px); }
+  .card { background: var(--paper); border: 3px solid #fff; border-radius: 20px; padding: 20px 28px; box-shadow: 0 10px 30px rgba(0,0,0,.18); margin-bottom: 8px;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 25px, rgba(120,170,200,.18) 26px); }
+  .big { font-family: "Mochiy Pop One"; font-size: 60px; color: var(--ink); line-height: 1; }
+  .big small { font-size: 22px; }
+  .sub-row { display: flex; gap: 26px; justify-content: center; margin-top: 12px; font-size: 13px; color: var(--pencil); }
+  .sub-row b { display: block; font-family: "Mochiy Pop One"; color: var(--ink); font-size: 18px; }
+  .newrec { color: var(--pink); font-weight: 900; margin-top: 8px; font-size: 15px; animation: pop 1s infinite; }
+  @keyframes pop { 50% { transform: scale(1.08); } }
+  .row2 { display: flex; gap: 12px; margin-top: 16px; }
+  #muteBtn { position: absolute; top: calc(env(safe-area-inset-top) + 12px); left: 50%; transform: translateX(-50%); z-index: 8; background: rgba(255,255,255,.6); border: 2px solid #fff; color: var(--ink); width: 38px; height: 38px; border-radius: 50%; font-size: 15px; cursor: pointer; display: none; }
+  #muteBtn.show { display: block; }
+  #coach { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); z-index: 7; font-family: "Mochiy Pop One"; font-size: 22px; color: var(--ink); text-shadow: 2px 2px 0 #fff; pointer-events: none; opacity: 0; transition: opacity .2s; text-align: center; }
+  #coach.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <div id="dist">0<small>m</small></div>
+    <div id="hRight">BEST <b id="hBest">0</b>m</div>
+  </div>
+  <div id="coach"></div>
+  <div id="stamWrap"><div id="stamBar"><div id="stamFill"></div></div><div id="stamLbl">はばたき スタミナ</div></div>
+  <button id="muteBtn">♪</button>
+
+  <div id="start" class="screen on">
+    <div class="title">カミヒコーキ</div>
+    <div class="plane-emoji">🛩️</div>
+    <div class="lead"><b>長押し</b>でパワーをためて、ゲージが<b>てっぺん</b>に来た瞬間に<b>指を離して</b>発射!<br>飛んでる間は<b>タップで羽ばたき</b>。<b>上昇気流</b>と<b>リング</b>を乗り継いで、どこまでも飛ばそう。</div>
+    <button class="btn" id="startBtn">飛ばす!</button>
+    <div class="hint">押す=ためる / 離す=発射 / 飛行中タップ=はばたき</div>
+  </div>
+
+  <div id="over" class="screen">
+    <div class="title" style="font-size:38px">ちゃくりく!</div>
+    <div class="card">
+      <div class="big" id="oDist">0<small>m</small></div>
+      <div class="sub-row">
+        <div>リング<b id="oRings">0</b></div>
+        <div>気流<b id="oTherm">0</b></div>
+        <div>はばたき<b id="oFlaps">0</b></div>
+      </div>
+      <div class="newrec" id="newrec" style="display:none">🎉 新記録! 🎉</div>
+    </div>
+    <div class="row2">
+      <button class="btn" id="retryBtn">もう一回</button>
+      <button class="btn sub" id="shareBtn">記録を共有</button>
+    </div>
+    <div class="hint" id="bestLine">BEST 0m</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const cv = $("cv"), ctx = cv.getContext("2d");
+  const app = $("app");
+
+  let W = 0, H = 0, dpr = 1;
+  function resize() {
+    const r = app.getBoundingClientRect(); W = r.width; H = r.height;
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+
+  /* ---------- audio ---------- */
+  let AC = null, muted = false;
+  function audio() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } }; } catch (e) {} }
+    if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  let silentEl = null;
+  function silentWavUrl() {
+    const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE"); str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); str(36, "data"); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  function unlockAudio() {
+    if (!silentEl) { silentEl = document.createElement("audio"); silentEl.setAttribute("playsinline", ""); silentEl.loop = true; silentEl.volume = 0.01; silentEl.src = silentWavUrl(); }
+    const p = silentEl.play(); if (p && p.catch) p.catch(() => {});
+    audio(); if (!AC) return;
+    const done = () => { if (AC.state === "running") ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true)); };
+    try { AC.resume().then(done); } catch (e) { done(); }
+  }
+  ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+  function tone(f, d, type, vol, slideTo) {
+    if (muted || !audio()) return;
+    try { const o = AC.createOscillator(), g = AC.createGain(); o.type = type || "sine"; o.frequency.value = f;
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, AC.currentTime + d);
+      g.gain.value = vol || 0.05; g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + d);
+      o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime + d); } catch (e) {}
+  }
+  function noise(d, vol, lp) {
+    if (muted || !audio()) return;
+    try { const n = Math.floor(AC.sampleRate * d), buf = AC.createBuffer(1, n, AC.sampleRate), data = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const src = AC.createBufferSource(); src.buffer = buf; const g = AC.createGain(); g.gain.value = vol || 0.06;
+      if (lp) { const f = AC.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = lp; src.connect(f); f.connect(g); } else src.connect(g);
+      g.connect(AC.destination); src.start(); } catch (e) {}
+  }
+  let chargeOsc = null, chargeGain = null;
+  function startChargeSound() {
+    if (muted || !audio()) return;
+    try { chargeOsc = AC.createOscillator(); chargeGain = AC.createGain(); chargeOsc.type = "triangle"; chargeOsc.frequency.value = 200;
+      chargeGain.gain.value = 0.05; chargeOsc.connect(chargeGain); chargeGain.connect(AC.destination); chargeOsc.start(); } catch (e) {}
+  }
+  function updateChargeSound(p) { if (chargeOsc) { try { chargeOsc.frequency.value = 200 + p * 700; } catch (e) {} } }
+  function stopChargeSound() { if (chargeOsc) { try { chargeGain.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + 0.1); chargeOsc.stop(AC.currentTime + 0.12); } catch (e) {} chargeOsc = null; } }
+  function sLaunch(p) { noise(0.18, 0.08, 4000); tone(300 + p * 400, 0.25, "sawtooth", 0.06, 900); }
+  function sFlap() { noise(0.08, 0.05, 2500); tone(520, 0.06, "sine", 0.03, 760); }
+  function sRing() { tone(880, 0.08, "sine", 0.06); setTimeout(() => tone(1320, 0.1, "sine", 0.05), 55); }
+  function sTherm() { tone(330, 0.3, "sine", 0.05, 880); noise(0.25, 0.03, 1800); }
+  function sBounce(v) { tone(180 + v * 30, 0.12, "sine", 0.06, 90); noise(0.05, 0.04, 700); }
+  function sLand() { noise(0.2, 0.06, 600); tone(160, 0.2, "sawtooth", 0.05, 70); }
+  function sRecord() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.18, "triangle", 0.06), i * 90)); }
+  const vibe = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+  /* ---------- store ---------- */
+  const store = { load(k, fb) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } }, save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+  let best = store.load("kamihikoki_best", 0);
+
+  /* ---------- constants ---------- */
+  const PXM = 6;            // pixels per meter (world)
+  const GROUND = () => H - 70;
+  const G = 0.42;           // gravity
+  const FLAP_COST = 12;
+  const MAX_STAM = 100;
+
+  /* ---------- state ---------- */
+  let state = "start"; // start | charge | fly | land | over
+  let plane = { x: 0, y: 0, vx: 0, vy: 0, ang: 0 };
+  let camX = 0, camY = 0;
+  let charge = 0, chargeDir = 1;
+  let stamina = MAX_STAM;
+  let dist = 0, maxX = 0;
+  let rings = [], thermals = [], clouds = [], birds = [], gusts = [];
+  let particles = [], trail = [], floats = [];
+  let ringsHit = 0, thermHit = 0, flaps = 0;
+  let shake = 0, t = 0, landTimer = 0;
+  let launchX = 60;
+
+  function buildScenery() {
+    clouds = [];
+    for (let i = 0; i < 40; i++) clouds.push({ x: 200 + i * (500 + Math.random() * 700), y: 40 + Math.random() * (H * 0.5), s: 0.6 + Math.random() * 1.2, sp: 0.2 + Math.random() * 0.3 });
+    birds = [];
+    for (let i = 0; i < 14; i++) birds.push({ x: 800 + i * (1400 + Math.random() * 1200), y: 60 + Math.random() * (H * 0.4), ph: Math.random() * 6.28 });
+  }
+
+  function spawnAhead(fromX) {
+    // procedurally add rings & thermals ahead of fromX up to fromX + 4000
+    const limit = fromX + 4000;
+    while (nextSpawnX < limit) {
+      const x = nextSpawnX;
+      const r = Math.random();
+      if (r < 0.5) {
+        rings.push({ x, y: GROUND() - (90 + Math.random() * (H * 0.55)), r: 26, hit: false });
+      } else if (r < 0.8) {
+        thermals.push({ x, y: GROUND() - (60 + Math.random() * (H * 0.5)), w: 60, h: 150 + Math.random() * 120, used: 0 });
+      } else {
+        // chain of 3 rings (slalom)
+        const baseY = GROUND() - (120 + Math.random() * (H * 0.4));
+        for (let k = 0; k < 3; k++) rings.push({ x: x + k * 90, y: baseY - k * 30, r: 24, hit: false });
+        nextSpawnX += 200;
+      }
+      nextSpawnX += 240 + Math.random() * 260;
+    }
+  }
+  let nextSpawnX = 0;
+
+  function init() {
+    launchX = 60;
+    plane = { x: launchX, y: GROUND() - 40, vx: 0, vy: 0, ang: -0.6 };
+    camX = 0; camY = 0;
+    charge = 0; chargeDir = 1; stamina = MAX_STAM;
+    dist = 0; maxX = launchX;
+    rings = []; thermals = []; particles = []; trail = []; floats = []; gusts = [];
+    ringsHit = 0; thermHit = 0; flaps = 0; shake = 0; landTimer = 0;
+    nextSpawnX = 400;
+    buildScenery(); spawnAhead(0);
+    state = "charge"; startChargeSound();
+    $("stamWrap").classList.add("show");
+    syncHud();
+    coach("長押しでパワーをためて…", 1600);
+  }
+
+  /* ---------- input ---------- */
+  function onDown(e) {
+    if (e && e.cancelable) e.preventDefault();
+    if (state === "charge") { /* charging already running visually; press just holds */ holding = true; }
+    else if (state === "fly") flap();
+    else if (state === "land") { /* ignore */ }
+  }
+  function onUp(e) {
+    if (e && e.cancelable) e.preventDefault();
+    if (state === "charge" && holding) launch();
+  }
+  let holding = false;
+  cv.addEventListener("pointerdown", onDown);
+  cv.addEventListener("pointerup", onUp);
+  cv.addEventListener("pointercancel", onUp);
+  window.addEventListener("keydown", e => {
+    if (e.code === "Space") { e.preventDefault();
+      if (state === "start") startGame();
+      else if (state === "charge") { if (!keyHeld) { keyHeld = true; holding = true; } }
+      else if (state === "fly") flap();
+      else if (state === "over") { show(""); init(); }
+    }
+  });
+  let keyHeld = false;
+  window.addEventListener("keyup", e => { if (e.code === "Space") { keyHeld = false; if (state === "charge" && holding) launch(); } });
+
+  let lastTouch = 0;
+  document.addEventListener("touchend", e => { const now = Date.now(); if (now - lastTouch < 350) e.preventDefault(); lastTouch = now; }, { passive: false });
+  document.addEventListener("gesturestart", e => e.preventDefault());
+  document.addEventListener("dblclick", e => e.preventDefault());
+
+  function launch() {
+    holding = false; stopChargeSound();
+    const p = charge; // 0..1
+    const speed = 10 + p * 24;
+    const ang = 0.72; // ~41deg
+    plane.vx = speed * Math.cos(ang);
+    plane.vy = -speed * Math.sin(ang);
+    plane.ang = -ang;
+    state = "fly";
+    sLaunch(p); vibe(p > 0.85 ? 40 : 18);
+    shake = 6 + p * 6;
+    burst(plane.x, plane.y, 14, "#ffffff");
+    if (p > 0.9) coach("ナイス発射!", 900);
+    else if (p < 0.4) coach("よわよわ発射…", 900);
+  }
+  function flap() {
+    if (stamina < FLAP_COST) { tone(160, 0.06, "square", 0.02); return; }
+    stamina -= FLAP_COST; flaps++;
+    plane.vy -= 4.2; plane.vx += 0.7;
+    sFlap(); vibe(8);
+    for (let i = 0; i < 5; i++) particles.push({ x: plane.x, y: plane.y + 6, vx: -Math.random() * 2 - 1, vy: Math.random() * 2, life: 0.5, col: "#fff", r: 2 });
+  }
+
+  /* ---------- screens ---------- */
+  function show(id) { ["start", "over"].forEach(s => $(s).classList.toggle("on", s === id)); }
+  function startGame() { show(""); $("muteBtn").classList.add("show"); init(); }
+  $("startBtn").addEventListener("pointerdown", e => { e.preventDefault(); startGame(); });
+  $("retryBtn").addEventListener("pointerdown", e => { e.preventDefault(); show(""); init(); });
+  $("shareBtn").addEventListener("pointerdown", e => { e.preventDefault(); doShare(); });
+  $("muteBtn").addEventListener("pointerdown", e => { e.preventDefault(); muted = !muted; $("muteBtn").textContent = muted ? "🔇" : "♪"; });
+
+  function doShare() {
+    const txt = `カミヒコーキで${dist}m 飛ばした!✈️ リング${ringsHit}個`;
+    const url = "https://nrtkumi.github.io/games/kamihikoki/";
+    if (navigator.share) navigator.share({ title: "カミヒコーキ", text: txt, url }).catch(() => {});
+    else { try { navigator.clipboard.writeText(txt + " " + url); $("shareBtn").textContent = "コピー!"; setTimeout(() => $("shareBtn").textContent = "記録を共有", 1400); } catch (e) {} }
+  }
+
+  let coachTimer = 0;
+  function coach(txt, ms) { const el = $("coach"); el.textContent = txt; el.classList.add("show"); coachTimer = ms / 1000; }
+
+  function syncHud() { $("dist").innerHTML = dist + '<small>m</small>'; $("hBest").textContent = best; }
+
+  function landed() {
+    state = "land"; landTimer = 0.9; sLand(); $("stamWrap").classList.remove("show");
+    burst(plane.x, plane.y, 18, "#cdb892");
+  }
+  function gameOver() {
+    state = "over"; $("muteBtn").classList.remove("show");
+    const nb = dist > best;
+    if (nb) { best = dist; store.save("kamihikoki_best", best); sRecord(); }
+    $("oDist").innerHTML = dist + '<small>m</small>';
+    $("oRings").textContent = ringsHit; $("oTherm").textContent = thermHit; $("oFlaps").textContent = flaps;
+    $("newrec").style.display = nb ? "block" : "none";
+    $("bestLine").textContent = `BEST ${best}m`;
+    show("over");
+  }
+
+  /* ---------- fx ---------- */
+  function burst(x, y, n, col) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, s = Math.random() * 4 + 1; particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 1, life: 0.8, col, r: Math.random() * 2.5 + 1 }); } }
+  function floatTxt(x, y, txt, col) { floats.push({ x, y, txt, life: 1, col: col || "#fff" }); }
+
+  /* ---------- update ---------- */
+  let last = performance.now();
+  function update(dt) {
+    t += dt;
+    if (coachTimer > 0) { coachTimer -= dt; if (coachTimer <= 0) $("coach").classList.remove("show"); }
+    if (shake > 0) shake = Math.max(0, shake - dt * 30);
+
+    // clouds drift (parallax handled in draw)
+    if (state === "charge") {
+      charge += chargeDir * dt * 1.25;
+      if (charge >= 1) { charge = 1; chargeDir = -1; }
+      if (charge <= 0) { charge = 0; chargeDir = 1; }
+      updateChargeSound(charge);
+    }
+
+    if (state === "fly") {
+      // physics
+      plane.vy += G;
+      // paper-plane glide: forward speed gives lift while descending, but capped
+      // below gravity so the plane always sinks slowly and eventually lands
+      if (plane.vy > 0) plane.vy -= Math.min(plane.vy, Math.min(plane.vx * 0.03, 0.345));
+      plane.vx *= 0.9955;  // bleed forward speed slowly -> long, skill-extendable glide
+      plane.vy *= 0.99;
+
+      // thermals
+      for (const th of thermals) {
+        if (plane.x > th.x - th.w / 2 && plane.x < th.x + th.w / 2 && plane.y < th.y && plane.y > th.y - th.h) {
+          plane.vy -= 0.55; plane.vx += 0.06;
+          if (th.used === 0) { th.used = 1; thermHit++; sTherm(); floatTxt(plane.x, plane.y - 20, "気流!", "#7cc26a"); stamina = Math.min(MAX_STAM, stamina + 22); }
+          if (Math.random() < 0.4) particles.push({ x: th.x + (Math.random() - .5) * th.w, y: plane.y, vx: 0, vy: -2, life: 0.6, col: "rgba(150,220,255,.7)", r: 2 });
+        }
+      }
+      // rings
+      for (const rg of rings) {
+        if (rg.hit) continue;
+        if (Math.abs(plane.x - rg.x) < rg.r && Math.abs(plane.y - rg.y) < rg.r) {
+          rg.hit = true; ringsHit++; plane.vx += 2.6; stamina = Math.min(MAX_STAM, stamina + 16);
+          sRing(); shake = 4; burst(rg.x, rg.y, 10, "#ffd24a"); floatTxt(rg.x, rg.y - 24, "+ブースト", "#ffb13a"); vibe(10);
+        }
+      }
+      plane.ang = Math.atan2(plane.vy, plane.vx);
+
+      plane.x += plane.vx; plane.y += plane.vy;
+      // stamina slow regen
+      stamina = Math.min(MAX_STAM, stamina + dt * 6);
+
+      // trail
+      trail.push({ x: plane.x, y: plane.y, life: 0.5 });
+      if (trail.length > 40) trail.shift();
+
+      // ground / bounce
+      if (plane.y >= GROUND()) {
+        plane.y = GROUND();
+        if (plane.vy > 2.2 && plane.vx > 2) {
+          plane.vy = -plane.vy * 0.42; plane.vx *= 0.74;
+          sBounce(plane.vx); shake = 5; burst(plane.x, GROUND(), 8, "#cdb892"); vibe(12);
+          floatTxt(plane.x, GROUND() - 16, "スキップ!", "#9a7b4f");
+        } else { landed(); }
+      }
+
+      maxX = Math.max(maxX, plane.x);
+      dist = Math.round((maxX - launchX) / PXM);
+      syncHud();
+      spawnAhead(plane.x);
+
+      // camera: follow plane, but clamp so the ground stays near 85% when flying low
+      camX += ((plane.x - W * 0.32) - camX) * Math.min(1, dt * 5);
+      const maxCamY = GROUND() - H * 0.85;
+      let tgtY = plane.y - H * 0.5;
+      if (tgtY > maxCamY) tgtY = maxCamY;
+      camY += (tgtY - camY) * Math.min(1, dt * 4);
+    }
+
+    if (state === "land") {
+      landTimer -= dt;
+      camX += ((plane.x - W * 0.32) - camX) * Math.min(1, dt * 5);
+      camY += ((GROUND() - H * 0.85) - camY) * Math.min(1, dt * 4);
+      if (landTimer <= 0) gameOver();
+    }
+
+    // particles / floats
+    for (const p of particles) { p.vy += dt * 6; p.x += p.vx; p.y += p.vy; p.life -= dt * 1.4; }
+    particles = particles.filter(p => p.life > 0);
+    for (const f of floats) { f.y -= dt * 30; f.life -= dt * 1.0; }
+    floats = floats.filter(f => f.life > 0);
+    for (const tr of trail) tr.life -= dt * 1.2;
+    trail = trail.filter(tr => tr.life > 0);
+
+    // stamina bar
+    $("stamFill").style.width = (stamina / MAX_STAM * 100) + "%";
+
+    // cull passed rings/thermals
+    if (rings.length > 200) rings = rings.filter(r => r.x > plane.x - 400);
+    if (thermals.length > 120) thermals = thermals.filter(th => th.x > plane.x - 400);
+  }
+
+  /* ---------- draw ---------- */
+  function wx(x) { return x - camX; }
+  function wy(y) { return y - camY; }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake);
+
+    // sky gradient (varies with altitude)
+    const alt = Math.max(0, (GROUND() - plane.y) / (H * 4));
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, `hsl(${200 - alt * 10} 80% ${92 - alt * 8}%)`);
+    g.addColorStop(0.6, `hsl(${198} 70% ${82 - alt * 6}%)`);
+    g.addColorStop(1, "#cdeecb");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    // sun
+    ctx.fillStyle = "rgba(255,210,74,.9)"; ctx.beginPath(); ctx.arc(W - 56, 56, 28, 0, 6.28); ctx.fill();
+    ctx.strokeStyle = "rgba(255,210,74,.4)"; ctx.lineWidth = 3;
+    for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28 + t * 0.2; ctx.beginPath(); ctx.moveTo(W - 56 + Math.cos(a) * 34, 56 + Math.sin(a) * 34); ctx.lineTo(W - 56 + Math.cos(a) * 44, 56 + Math.sin(a) * 44); ctx.stroke(); }
+
+    // clouds (parallax)
+    ctx.fillStyle = "rgba(255,255,255,.85)";
+    for (const c of clouds) {
+      const px = c.x - camX * 0.4;
+      let sx = ((px % (W + 600)) + (W + 600)) % (W + 600) - 300;
+      const py = c.y - camY * 0.3;
+      cloud(sx, py, 26 * c.s);
+    }
+
+    // ground band
+    const gy = wy(GROUND());
+    ctx.fillStyle = "#bfe6a8"; ctx.fillRect(0, gy, W, H - gy + 80);
+    ctx.fillStyle = "#9fd089"; ctx.fillRect(0, gy, W, 8);
+    // distance posts every 50m
+    ctx.fillStyle = "rgba(80,110,80,.5)"; ctx.font = '12px "Yusei Magic", sans-serif'; ctx.textAlign = "center";
+    const startM = Math.floor((camX / PXM) / 50) * 50;
+    for (let m = startM; m < startM + (W / PXM) + 100; m += 50) {
+      if (m <= 0) continue;
+      const x = wx(launchX + m * PXM);
+      if (x < -20 || x > W + 20) continue;
+      ctx.fillStyle = "#cfae6e"; ctx.fillRect(x - 2, gy - 24, 4, 24);
+      ctx.fillStyle = "rgba(70,90,70,.7)"; ctx.fillText(m + "m", x, gy - 28);
+    }
+    ctx.textAlign = "left";
+
+    // thermals
+    for (const th of thermals) {
+      const x = wx(th.x), yb = wy(th.y), yt = wy(th.y - th.h);
+      if (x < -60 || x > W + 60) continue;
+      const tg = ctx.createLinearGradient(0, yb, 0, yt);
+      tg.addColorStop(0, "rgba(150,220,255,.05)"); tg.addColorStop(1, "rgba(150,220,255,.32)");
+      ctx.fillStyle = tg; ctx.fillRect(x - th.w / 2, yt, th.w, th.h);
+      // swirl arrows
+      ctx.strokeStyle = "rgba(120,200,255,.5)"; ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) { const yy = yb - ((t * 60 + i * 50) % th.h); ctx.beginPath(); ctx.arc(x, yy, 8, 0.4, 2.4); ctx.stroke(); }
+    }
+
+    // rings
+    for (const rg of rings) {
+      const x = wx(rg.x), y = wy(rg.y);
+      if (x < -40 || x > W + 40) continue;
+      if (rg.hit) continue;
+      ctx.strokeStyle = "#ffd24a"; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(x, y, rg.r + Math.sin(t * 4 + rg.x) * 2, 0, 6.28); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, rg.r - 4, 0, 6.28); ctx.stroke();
+    }
+
+    // trail
+    ctx.strokeStyle = "rgba(255,255,255,.6)"; ctx.lineWidth = 2.5; ctx.beginPath();
+    let started = false;
+    for (const tr of trail) { const x = wx(tr.x), y = wy(tr.y); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y); }
+    ctx.stroke();
+
+    // birds
+    for (const b of birds) {
+      const x = b.x - camX * 0.5; let sx = ((x % (W + 800)) + (W + 800)) % (W + 800) - 400;
+      const y = b.y - camY * 0.3; const fl = Math.sin(t * 8 + b.ph) * 5;
+      ctx.strokeStyle = "rgba(70,90,110,.6)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx - 7, y); ctx.lineTo(sx, y - fl); ctx.lineTo(sx + 7, y); ctx.stroke();
+    }
+
+    // plane
+    drawPlane();
+
+    // particles
+    for (const p of particles) { ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(wx(p.x), wy(p.y), p.r, 0, 6.28); ctx.fill(); }
+    ctx.globalAlpha = 1;
+
+    // floats
+    for (const f of floats) { ctx.globalAlpha = Math.max(0, f.life); ctx.font = '700 16px "Mochiy Pop One", sans-serif'; ctx.textAlign = "center"; ctx.fillStyle = f.col; ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = 3; ctx.strokeText(f.txt, wx(f.x), wy(f.y)); ctx.fillText(f.txt, wx(f.x), wy(f.y)); }
+    ctx.globalAlpha = 1; ctx.textAlign = "left";
+
+    ctx.restore();
+
+    // charge gauge (screen-space, left edge)
+    if (state === "charge") drawGauge();
+  }
+
+  function cloud(x, y, r) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 6.28); ctx.arc(x + r, y + 4, r * 0.8, 0, 6.28); ctx.arc(x - r, y + 6, r * 0.7, 0, 6.28); ctx.arc(x + r * 0.4, y - r * 0.6, r * 0.7, 0, 6.28);
+    ctx.fill();
+  }
+
+  function drawPlane() {
+    const x = wx(plane.x), y = wy(plane.y);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(plane.ang);
+    // paper plane shape
+    ctx.fillStyle = "#fbfaf2"; ctx.strokeStyle = "#7e93a6"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-12, -9); ctx.lineTo(-6, 0); ctx.lineTo(-12, 9); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-6, 0); ctx.lineTo(-12, 9); ctx.stroke();
+    ctx.fillStyle = "rgba(120,150,180,.25)"; ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-6, 0); ctx.lineTo(-12, 9); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGauge() {
+    const gx = 24, gy0 = H * 0.28, gh = H * 0.44;
+    ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
+    roundRect(gx - 9, gy0 - 6, 26, gh + 12, 12); ctx.fill();
+    // target zone (top)
+    ctx.fillStyle = "rgba(124,194,106,.5)"; ctx.fillRect(gx - 7, gy0, 22, gh * 0.16);
+    // fill from bottom
+    const fy = gy0 + gh * (1 - charge);
+    const grd = ctx.createLinearGradient(0, gy0 + gh, 0, gy0);
+    grd.addColorStop(0, "#7cc26a"); grd.addColorStop(0.6, "#ffd24a"); grd.addColorStop(1, "#ff8fa3");
+    ctx.fillStyle = grd; ctx.fillRect(gx - 7, fy, 22, gy0 + gh - fy);
+    // marker
+    ctx.fillStyle = "#34506a"; ctx.fillRect(gx - 12, fy - 2, 32, 4);
+    ctx.font = '11px "Yusei Magic"'; ctx.fillStyle = "#34506a"; ctx.textAlign = "center";
+    ctx.fillText("POWER", gx + 4, gy0 + gh + 22); ctx.textAlign = "left";
+  }
+  function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+  /* ---------- loop ---------- */
+  function frame(now) { let dt = (now - last) / 1000; last = now; if (dt > 0.05) dt = 0.05; update(dt); draw(); requestAnimationFrame(frame); }
+
+  function boot() {
+    resize();
+    if (W < 10) { setTimeout(boot, 50); return; }
+    buildScenery();
+    $("hBest").textContent = best; $("bestLine").textContent = `BEST ${best}m`;
+    last = performance.now(); requestAnimationFrame(frame);
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

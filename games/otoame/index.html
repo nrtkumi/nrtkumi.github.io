@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>オトアメ 音雨 — 雨を奏でるリズムゲーム</title>
+<meta name="description" content="4つの水路に落ちてくる雨粒を、水面に着く瞬間にタップして弾く。タップした音だけがメロディになり、コンボがつながるほど雨は光の音色に変わっていく。テンポと密度が上がり続ける、降りやまない雨のリズムゲーム。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="オトアメ 音雨 — 雨を奏でるリズムゲーム">
+<meta property="og:description" content="落ちる雨粒を水面に着く瞬間にタップして弾く。タップした音がメロディになり、コンボで雨が光の音色に。降りやまない雨のリズムゲーム。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/otoame/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/otoame/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="オトアメ 音雨 — 雨を奏でるリズムゲーム">
+<meta name="twitter:description" content="落ちる雨粒を水面でタップして弾く。タップした音がメロディに。コンボで雨が光に変わるリズムゲーム。">
+<meta name="twitter:image" content="https://nrtkumi.github.io/games/otoame/assets/ogp.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --water: #0c2a33;
+    --water2: #103a44;
+    --drop: #bdf0ff;
+    --teal: #3fd0c8;
+    --gold: #f6d98a;
+    --pink: #ff9ec4;
+    --cream: #eafaff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  html, body { height: 100%; }
+  body {
+    background: #06161b; color: var(--cream);
+    font-family: "Zen Maru Gothic", sans-serif;
+    overflow: hidden; overscroll-behavior: none;
+    -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
+  }
+  #app {
+    position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: min(480px, 64vh); height: 100%;
+    background: linear-gradient(180deg, #0a2129 0%, #0c2a33 55%, #06161b 100%);
+    box-shadow: 0 0 60px rgba(0,0,0,.7); overflow: hidden;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+
+  #hud { position: absolute; top: calc(env(safe-area-inset-top) + 10px); left: 0; right: 0; padding: 0 16px; z-index: 6; pointer-events: none; display: flex; justify-content: space-between; align-items: flex-start; }
+  #score { font-family: "Shippori Mincho"; font-weight: 800; font-size: 38px; color: var(--cream); line-height: 1; text-shadow: 0 0 14px rgba(63,208,200,.5); }
+  #hRight { text-align: right; font-size: 12px; color: #9fc6cf; line-height: 1.7; }
+  #hRight b { font-family: "Shippori Mincho"; color: var(--teal); font-size: 16px; }
+  #comboBox { position: absolute; top: 16%; left: 50%; transform: translateX(-50%); z-index: 7; text-align: center; pointer-events: none; opacity: 0; }
+  #comboNum { font-family: "Shippori Mincho"; font-weight: 800; font-size: 56px; color: var(--gold); line-height: 1; text-shadow: 0 0 24px rgba(246,217,138,.6); }
+  #comboLbl { font-size: 13px; letter-spacing: 6px; color: var(--cream); }
+  #multBadge { position: absolute; top: calc(env(safe-area-inset-top) + 54px); left: 16px; z-index: 6; font-family: "Shippori Mincho"; font-weight: 800; font-size: 22px; color: var(--pink); text-shadow: 0 0 12px rgba(255,158,196,.6); opacity: 0; transition: opacity .2s; }
+  /* health */
+  #hpWrap { position: absolute; top: calc(env(safe-area-inset-top) + 8px); left: 50%; transform: translateX(-50%); width: 120px; z-index: 6; pointer-events: none; display: none; }
+  #hpWrap.show { display: block; }
+  #hpBar { height: 7px; background: rgba(255,255,255,.15); border-radius: 6px; overflow: hidden; }
+  #hpFill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--pink), var(--teal)); transition: width .15s; }
+
+  .screen { position: absolute; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; }
+  .screen.on { display: flex; }
+  .title { font-family: "Shippori Mincho"; font-weight: 800; font-size: 60px; color: var(--cream); letter-spacing: 4px; text-shadow: 0 0 30px rgba(63,208,200,.5); line-height: 1; }
+  .sub { font-family: "Shippori Mincho"; font-size: 17px; color: var(--teal); letter-spacing: 8px; margin: 4px 0 18px; }
+  .lead { font-size: 15px; color: #cfe9ee; line-height: 1.9; max-width: 330px; margin-bottom: 24px; }
+  .lead b { color: var(--gold); }
+  .btn { font-family: "Shippori Mincho"; font-weight: 800; font-size: 24px; color: #06222a; letter-spacing: 3px;
+    background: linear-gradient(180deg, #7fe6dd 0%, var(--teal) 100%); border: none; border-radius: 14px; padding: 15px 46px; cursor: pointer;
+    box-shadow: 0 6px 0 #1f7d77, 0 10px 22px rgba(0,0,0,.4); pointer-events: auto; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #1f7d77; }
+  .btn.sub2 { font-size: 17px; padding: 13px 22px; background: linear-gradient(180deg,#5b7f88,#3a5a62); color: #fff; box-shadow: 0 5px 0 #243c42; }
+  .hint { margin-top: 18px; font-size: 12px; color: #80a5ae; line-height: 1.7; }
+  #over { background: rgba(6,18,22,.86); backdrop-filter: blur(3px); }
+  .card { background: linear-gradient(180deg, rgba(16,58,68,.9), rgba(10,33,41,.9)); border: 1px solid rgba(63,208,200,.4); border-radius: 18px; padding: 20px 30px; box-shadow: 0 0 30px rgba(0,0,0,.5); }
+  .big { font-family: "Shippori Mincho"; font-weight: 800; font-size: 56px; color: var(--gold); line-height: 1; }
+  .grade { font-family: "Shippori Mincho"; font-weight: 800; font-size: 30px; margin-top: 4px; }
+  .sub-row { display: flex; gap: 22px; justify-content: center; margin-top: 12px; font-size: 13px; color: #a9ccd3; }
+  .sub-row b { display: block; font-family: "Shippori Mincho"; color: #fff; font-size: 17px; }
+  .newrec { color: var(--pink); font-weight: 900; margin-top: 8px; font-size: 14px; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .4; } }
+  .row2 { display: flex; gap: 12px; margin-top: 16px; }
+  #muteBtn { position: absolute; top: calc(env(safe-area-inset-top) + 10px); right: 16px; z-index: 8; background: rgba(0,0,0,.3); border: 1px solid rgba(63,208,200,.4); color: var(--teal); width: 36px; height: 36px; border-radius: 50%; font-size: 15px; cursor: pointer; display: none; }
+  #muteBtn.show { display: block; }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="hRight">BEST <b id="hBest">0</b></div>
+  </div>
+  <div id="hpWrap"><div id="hpBar"><div id="hpFill"></div></div></div>
+  <div id="multBadge">×1</div>
+  <div id="comboBox"><div id="comboNum">0</div><div id="comboLbl">COMBO</div></div>
+  <button id="muteBtn">♪</button>
+
+  <div id="start" class="screen on">
+    <div class="title">音雨</div>
+    <div class="sub">オトアメ</div>
+    <div class="lead">4つの水路に<b>雨粒</b>が落ちてくる。<br>水面のラインに<b>重なる瞬間</b>に、その列を<b>タップ</b>して弾く。<br>タップした音だけが<b>メロディ</b>になり、コンボが続くほど雨は<b>光の音色</b>に変わる。</div>
+    <button class="btn" id="startBtn">奏でる</button>
+    <div class="hint">列をタップ / キーは D F J K</div>
+  </div>
+
+  <div id="over" class="screen">
+    <div class="title" style="font-size:40px">雨やどり</div>
+    <div class="card">
+      <div class="big" id="oScore">0</div>
+      <div class="grade" id="oGrade">C</div>
+      <div class="sub-row">
+        <div>最高コンボ<b id="oCombo">0</b></div>
+        <div>PERFECT<b id="oPerfect">0</b></div>
+        <div>精度<b id="oAcc">0%</b></div>
+      </div>
+      <div class="newrec" id="newrec" style="display:none">★ 新記録! ★</div>
+    </div>
+    <div class="row2">
+      <button class="btn" id="retryBtn">もう一度</button>
+      <button class="btn sub2" id="shareBtn">記録を共有</button>
+    </div>
+    <div class="hint" id="bestLine">BEST 0</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const cv = $("cv"), ctx = cv.getContext("2d");
+  const app = $("app");
+
+  let W = 0, H = 0, dpr = 1;
+  function resize() {
+    const r = app.getBoundingClientRect(); W = r.width; H = r.height;
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+
+  /* ---------- audio ---------- */
+  let AC = null, muted = false, master = null;
+  function audio() {
+    if (!AC) {
+      try {
+        AC = new (window.AudioContext || window.webkitAudioContext)();
+        AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+        master = AC.createGain(); master.gain.value = 0.9; master.connect(AC.destination);
+      } catch (e) {}
+    }
+    if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  let silentEl = null;
+  function silentWavUrl() {
+    const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE"); str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); str(36, "data"); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  function unlockAudio() {
+    if (!silentEl) { silentEl = document.createElement("audio"); silentEl.setAttribute("playsinline", ""); silentEl.loop = true; silentEl.volume = 0.01; silentEl.src = silentWavUrl(); }
+    const p = silentEl.play(); if (p && p.catch) p.catch(() => {});
+    audio(); if (!AC) return;
+    const done = () => { if (AC.state === "running") ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true)); };
+    try { AC.resume().then(done); } catch (e) { done(); }
+  }
+  ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+  // pluck: a soft music-box-ish tone
+  function pluck(freq, vol, dur, type) {
+    if (muted || !audio()) return;
+    try {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || "triangle"; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, AC.currentTime);
+      g.gain.exponentialRampToValueAtTime(vol || 0.12, AC.currentTime + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + (dur || 0.5));
+      o.connect(g); g.connect(master); o.start(); o.stop(AC.currentTime + (dur || 0.5) + 0.02);
+      // sparkle harmonic
+      const o2 = AC.createOscillator(), g2 = AC.createGain();
+      o2.type = "sine"; o2.frequency.value = freq * 2;
+      g2.gain.setValueAtTime(0.0001, AC.currentTime); g2.gain.exponentialRampToValueAtTime((vol || 0.12) * 0.4, AC.currentTime + 0.01);
+      g2.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + (dur || 0.5) * 0.6);
+      o2.connect(g2); g2.connect(master); o2.start(); o2.stop(AC.currentTime + (dur || 0.5));
+    } catch (e) {}
+  }
+  function thud(freq, vol, dur) {
+    if (muted || !audio()) return;
+    try { const o = AC.createOscillator(), g = AC.createGain(); o.type = "sine"; o.frequency.setValueAtTime(freq, AC.currentTime); o.frequency.exponentialRampToValueAtTime(freq * 0.5, AC.currentTime + dur);
+      g.gain.value = vol; g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur); o.connect(g); g.connect(master); o.start(); o.stop(AC.currentTime + dur); } catch (e) {}
+  }
+  function noise(d, vol, lp, hp) {
+    if (muted || !audio()) return;
+    try { const n = Math.floor(AC.sampleRate * d), buf = AC.createBuffer(1, n, AC.sampleRate), data = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const src = AC.createBufferSource(); src.buffer = buf; let node = src;
+      if (lp) { const f = AC.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = lp; node.connect(f); node = f; }
+      if (hp) { const f2 = AC.createBiquadFilter(); f2.type = "highpass"; f2.frequency.value = hp; node.connect(f2); node = f2; }
+      const g = AC.createGain(); g.gain.value = vol || 0.05; node.connect(g); g.connect(master); src.start(); } catch (e) {}
+  }
+  function sMiss() { thud(120, 0.08, 0.18); noise(0.12, 0.04, 1200); }
+  function sGameOver() { [392, 330, 262, 196].forEach((f, i) => setTimeout(() => pluck(f, 0.1, 0.5, "sine"), i * 160)); }
+  function sRecord() { [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => pluck(f, 0.12, 0.5), i * 80)); }
+  const vibe = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+  /* ---------- store ---------- */
+  const store = { load(k, fb) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } }, save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+  let best = store.load("otoame_best", 0);
+
+  /* ---------- music ---------- */
+  // C major pentatonic across lanes (low->high), shifts up with combo "brightness"
+  const SCALE = [261.63, 311.13, 349.23, 392.00, 466.16, 523.25, 622.25, 698.46, 783.99, 932.33]; // pentatonic-ish ladder
+  const LANES = 4;
+  const LANE_NOTE = [0, 2, 4, 5]; // base degrees per lane
+  function laneFreq(lane, octShift) {
+    const deg = LANE_NOTE[lane] + (octShift || 0);
+    const i = ((deg % SCALE.length) + SCALE.length) % SCALE.length;
+    const oct = Math.floor(deg / SCALE.length);
+    return SCALE[i] * Math.pow(2, oct);
+  }
+
+  /* ---------- timing ---------- */
+  const BEAT = 0.5;            // 120 BPM
+  const SUBDIV = BEAT / 2;     // eighth notes
+  const TRAVEL = 1.45;         // seconds for a drop to fall from top to hit line
+  const HIT_PERFECT = 0.075;
+  const HIT_GOOD = 0.15;
+  const MISS_GRACE = 0.17;     // past hit line before counted miss
+
+  /* ---------- state ---------- */
+  let state = "start"; // start | play | over
+  let notes = [];      // {lane, targetT, hit, y, dead}
+  let spawnGridT = 0;
+  let T = 0;           // song time
+  let lastBeat = -1;
+  let score = 0, combo = 0, maxCombo = 0, perfects = 0, goods = 0, misses = 0, totalNotes = 0;
+  let hp = 100;
+  let laneFlash = [0, 0, 0, 0];
+  let laneHitFx = [0, 0, 0, 0]; // glow when hit
+  let ripples = [], particles = [], floats = [];
+  let rain = [];       // ambient bg rain streaks
+  let shake = 0, fever = 0, bgPulse = 0;
+  let octShift = 0;
+
+  function mult() { return Math.min(1 + Math.floor(combo / 10), 8); }
+
+  function buildRain() {
+    rain = [];
+    for (let i = 0; i < 60; i++) rain.push({ x: Math.random(), y: Math.random(), len: 8 + Math.random() * 16, sp: 0.5 + Math.random() * 0.8 });
+  }
+  buildRain();
+
+  function laneX(l) { const w = W / LANES; return w * (l + 0.5); }
+  function hitY() { return H * 0.8; }
+  function spawnTopY() { return -30; }
+
+  function init() {
+    notes = []; spawnGridT = 1.0; T = 0; lastBeat = -1;
+    score = 0; combo = 0; maxCombo = 0; perfects = 0; goods = 0; misses = 0; totalNotes = 0;
+    hp = 100; octShift = 0; fever = 0; bgPulse = 0; shake = 0;
+    laneFlash = [0, 0, 0, 0]; laneHitFx = [0, 0, 0, 0];
+    ripples = []; particles = []; floats = [];
+    state = "play"; $("hpWrap").classList.add("show");
+    syncHud();
+  }
+
+  /* ---------- spawning ---------- */
+  function spawn() {
+    const horizon = T + TRAVEL;
+    while (spawnGridT < horizon) {
+      const k = Math.round(spawnGridT / SUBDIV);
+      const downbeat = (k % 2 === 0);
+      const d = Math.min(T / 80, 1); // difficulty ramp over 80s
+      let prob = (downbeat ? 0.55 : 0.28) + d * 0.42;
+      if (Math.random() < prob) {
+        const lane = Math.floor(Math.random() * LANES);
+        notes.push({ lane, targetT: spawnGridT, hit: false, dead: false, missed: false });
+        totalNotes++;
+        // doubles at higher difficulty
+        if (downbeat && Math.random() < d * 0.3) {
+          let l2 = (lane + 1 + Math.floor(Math.random() * (LANES - 1))) % LANES;
+          notes.push({ lane: l2, targetT: spawnGridT, hit: false, dead: false, missed: false });
+          totalNotes++;
+        }
+      }
+      spawnGridT += SUBDIV;
+    }
+  }
+
+  /* ---------- backing groove ---------- */
+  function groove() {
+    const beatIdx = Math.floor(T / BEAT);
+    if (beatIdx !== lastBeat) {
+      lastBeat = beatIdx;
+      // soft kick + bass on each beat
+      thud(70, 0.06, 0.16);
+      if (beatIdx % 4 === 0) pluck(laneFreq(0, octShift) / 2, 0.05, 0.7, "sine"); // bass root
+      // hat-ish tick on offbeat handled implicitly by drops
+    }
+  }
+
+  /* ---------- input ---------- */
+  function laneFromX(x) { return Math.max(0, Math.min(LANES - 1, Math.floor(x / (W / LANES)))); }
+  function hitLane(lane) {
+    if (state !== "play") return;
+    laneFlash[lane] = 1;
+    // find nearest unhit note in this lane within window
+    let bestNote = null, bestDt = 1e9;
+    for (const n of notes) {
+      if (n.lane !== lane || n.hit || n.missed) continue;
+      const dt = Math.abs(n.targetT - T);
+      if (dt < bestDt) { bestDt = dt; bestNote = n; }
+    }
+    if (bestNote && bestDt <= HIT_GOOD) {
+      const perfect = bestDt <= HIT_PERFECT;
+      bestNote.hit = true;
+      combo++; maxCombo = Math.max(maxCombo, combo);
+      if (perfect) perfects++; else goods++;
+      const m = mult();
+      score += (perfect ? 100 : 55) * m;
+      hp = Math.min(100, hp + (perfect ? 3.5 : 2));
+      octShift = Math.min(Math.floor(combo / 12), 10);
+      pluck(laneFreq(lane, octShift + (perfect ? 0 : 0)), perfect ? 0.14 : 0.1, perfect ? 0.55 : 0.4);
+      laneHitFx[lane] = 1;
+      splash(lane, perfect);
+      if (perfect) { popCombo(); }
+      else floatTxt(laneX(lane), hitY() - 30, "GOOD", "#9fe0d8");
+      vibe(perfect ? 14 : 8);
+      if (combo > 0 && combo % 10 === 0) { bgPulse = 1; thud(110, 0.05, 0.25); }
+      syncHud();
+    } else {
+      // empty tap — tiny ripple, no penalty
+      ripples.push({ lane, x: laneX(lane), y: hitY(), r: 6, max: 26, life: 1, col: "rgba(180,230,240,.4)" });
+      pluck(laneFreq(lane, octShift), 0.04, 0.18, "sine");
+    }
+  }
+
+  cv.addEventListener("pointerdown", e => {
+    if (e.cancelable) e.preventDefault();
+    const rect = cv.getBoundingClientRect();
+    hitLane(laneFromX(e.clientX - rect.left));
+  });
+  const KEYMAP = { "KeyD": 0, "KeyF": 1, "KeyJ": 2, "KeyK": 3 };
+  const keyDown = {};
+  window.addEventListener("keydown", e => {
+    if (e.code in KEYMAP) { e.preventDefault(); if (!keyDown[e.code]) { keyDown[e.code] = true; hitLane(KEYMAP[e.code]); } }
+    else if (e.code === "Space") { e.preventDefault(); if (state === "start") startGame(); else if (state === "over") { show(""); init(); } }
+  });
+  window.addEventListener("keyup", e => { if (e.code in KEYMAP) keyDown[e.code] = false; });
+
+  let lastTouch = 0;
+  document.addEventListener("touchend", e => { const now = Date.now(); if (now - lastTouch < 350) e.preventDefault(); lastTouch = now; }, { passive: false });
+  document.addEventListener("gesturestart", e => e.preventDefault());
+  document.addEventListener("dblclick", e => e.preventDefault());
+
+  /* ---------- fx ---------- */
+  function splash(lane, perfect) {
+    const x = laneX(lane), y = hitY();
+    ripples.push({ lane, x, y, r: 8, max: perfect ? 60 : 40, life: 1, col: perfect ? "rgba(246,217,138,.7)" : "rgba(63,208,200,.6)" });
+    const n = perfect ? 16 : 9;
+    for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (Math.random() - .5) * 2.2, s = Math.random() * 5 + 2; particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.7, col: perfect ? "#f6d98a" : "#bdf0ff", r: Math.random() * 2.5 + 1.5 }); }
+    if (perfect) shake = Math.min(shake + 2, 8);
+  }
+  function popCombo() { $("comboBox").dataset.pop = "1"; comboPopV = 1; }
+  let comboPopV = 0;
+  function floatTxt(x, y, txt, col) { floats.push({ x, y, txt, life: 1, col: col || "#fff" }); }
+
+  /* ---------- screens ---------- */
+  function show(id) { ["start", "over"].forEach(s => $(s).classList.toggle("on", s === id)); }
+  function startGame() { show(""); $("muteBtn").classList.add("show"); init(); }
+  $("startBtn").addEventListener("pointerdown", e => { e.preventDefault(); startGame(); });
+  $("retryBtn").addEventListener("pointerdown", e => { e.preventDefault(); show(""); init(); });
+  $("shareBtn").addEventListener("pointerdown", e => { e.preventDefault(); doShare(); });
+  $("muteBtn").addEventListener("pointerdown", e => { e.preventDefault(); muted = !muted; $("muteBtn").textContent = muted ? "🔇" : "♪"; });
+
+  function gradeOf(acc, sc) {
+    if (acc >= 0.97 && sc > 8000) return ["神", "#f6d98a"];
+    if (acc >= 0.92) return ["S", "#f6d98a"];
+    if (acc >= 0.85) return ["A", "#3fd0c8"];
+    if (acc >= 0.72) return ["B", "#9fe0d8"];
+    if (acc >= 0.55) return ["C", "#cfe9ee"];
+    return ["D", "#9fc6cf"];
+  }
+  function doShare() {
+    const txt = `オトアメで${score}点(最高${maxCombo}コンボ)を奏でた☔️🎵`;
+    const url = "https://nrtkumi.github.io/games/otoame/";
+    if (navigator.share) navigator.share({ title: "オトアメ 音雨", text: txt, url }).catch(() => {});
+    else { try { navigator.clipboard.writeText(txt + " " + url); $("shareBtn").textContent = "コピー!"; setTimeout(() => $("shareBtn").textContent = "記録を共有", 1400); } catch (e) {} }
+  }
+
+  function syncHud() {
+    $("score").textContent = score; $("hBest").textContent = best;
+    $("hpFill").style.width = hp + "%";
+    const m = mult();
+    const mb = $("multBadge");
+    if (m > 1) { mb.style.opacity = 1; mb.textContent = "×" + m; mb.style.color = m >= 4 ? "#f6d98a" : "#ff9ec4"; } else mb.style.opacity = 0;
+  }
+
+  function gameOver() {
+    state = "over"; $("muteBtn").classList.remove("show"); $("hpWrap").classList.remove("show");
+    const judged = perfects + goods + misses;
+    const acc = judged > 0 ? (perfects + goods * 0.5) / judged : 0;
+    const nb = score > best;
+    if (nb) { best = score; store.save("otoame_best", best); }
+    setTimeout(() => nb ? sRecord() : sGameOver(), 60);
+    $("oScore").textContent = score;
+    const [g, gc] = gradeOf(acc, score);
+    const ge = $("oGrade"); ge.textContent = g; ge.style.color = gc;
+    $("oCombo").textContent = maxCombo; $("oPerfect").textContent = perfects;
+    $("oAcc").textContent = Math.round(acc * 100) + "%";
+    $("newrec").style.display = nb ? "block" : "none";
+    $("bestLine").textContent = `BEST ${best}`;
+    show("over");
+  }
+
+  /* ---------- update ---------- */
+  let last = performance.now();
+  function update(dt) {
+    // ambient rain always
+    for (const r of rain) { r.y += r.sp * dt * (state === "play" ? 1.6 : 1); if (r.y > 1.1) { r.y = -0.1; r.x = Math.random(); } }
+
+    if (shake > 0) shake = Math.max(0, shake - dt * 26);
+    for (let i = 0; i < LANES; i++) { if (laneFlash[i] > 0) laneFlash[i] = Math.max(0, laneFlash[i] - dt * 4); if (laneHitFx[i] > 0) laneHitFx[i] = Math.max(0, laneHitFx[i] - dt * 3); }
+    if (bgPulse > 0) bgPulse = Math.max(0, bgPulse - dt * 1.6);
+    if (comboPopV > 0) comboPopV = Math.max(0, comboPopV - dt * 1.2);
+    fever += ((mult() >= 4 ? 1 : 0) - fever) * Math.min(1, dt * 4);
+
+    for (const rp of ripples) { rp.r += (rp.max - rp.r) * Math.min(1, dt * 6); rp.life -= dt * 1.6; }
+    ripples = ripples.filter(r => r.life > 0);
+    for (const p of particles) { p.vy += dt * 16; p.x += p.vx; p.y += p.vy; p.life -= dt * 1.5; }
+    particles = particles.filter(p => p.life > 0);
+    for (const f of floats) { f.y -= dt * 28; f.life -= dt * 1.2; }
+    floats = floats.filter(f => f.life > 0);
+
+    if (state === "play") {
+      T += dt;
+      spawn(); groove();
+      // update notes & detect misses
+      for (const n of notes) {
+        if (n.hit) continue;
+        if (!n.missed && T - n.targetT > MISS_GRACE) {
+          n.missed = true; misses++; combo = 0; octShift = 0;
+          hp -= 16; sMiss(); laneFlash[n.lane] = 1; shake = Math.min(shake + 3, 9); vibe([10, 30]);
+          ripples.push({ lane: n.lane, x: laneX(n.lane), y: hitY(), r: 8, max: 34, life: 1, col: "rgba(255,120,140,.5)" });
+          floatTxt(laneX(n.lane), hitY() - 24, "MISS", "#ff8fa3");
+          syncHud();
+          if (hp <= 0) { hp = 0; gameOver(); break; }
+        }
+      }
+      // cull dead notes
+      notes = notes.filter(n => !(n.hit && true) ? (T - n.targetT < 0.6) : (T - n.targetT < 0.3));
+    }
+
+    // combo dom
+    const cb = $("comboBox");
+    if (combo >= 5) {
+      cb.style.opacity = Math.min(1, 0.5 + comboPopV);
+      $("comboNum").textContent = combo;
+      const sc = 1 + comboPopV * 0.3;
+      cb.style.transform = `translateX(-50%) scale(${sc})`;
+    } else cb.style.opacity = 0;
+  }
+
+  /* ---------- draw ---------- */
+  function noteY(n) {
+    // progress 0 at spawn (T = targetT - TRAVEL), 1 at hit line (T = targetT)
+    const prog = 1 - (n.targetT - T) / TRAVEL;
+    return spawnTopY() + prog * (hitY() - spawnTopY());
+  }
+
+  function draw() {
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake);
+
+    // bg
+    const fv = fever;
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, `hsl(${192 + fv * 20} ${45 + fv * 20}% ${12 + bgPulse * 5 + fv * 4}%)`);
+    g.addColorStop(0.6, `hsl(${190} 50% ${16 + bgPulse * 4}%)`);
+    g.addColorStop(1, "#06161b");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    // ambient rain streaks
+    ctx.strokeStyle = `rgba(150,210,225,${0.12 + fv * 0.08})`; ctx.lineWidth = 1;
+    for (const r of rain) { const x = r.x * W, y = r.y * H; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 2, y + r.len); ctx.stroke(); }
+
+    // lanes
+    const lw = W / LANES;
+    for (let i = 0; i < LANES; i++) {
+      const x = i * lw;
+      // lane separators
+      ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.04)";
+      ctx.fillRect(x, 0, lw, H);
+      if (laneFlash[i] > 0) { ctx.fillStyle = `rgba(63,208,200,${laneFlash[i] * 0.18})`; ctx.fillRect(x, 0, lw, H); }
+      // lane glow column on hit
+      if (laneHitFx[i] > 0) {
+        const lg = ctx.createLinearGradient(0, 0, 0, hitY());
+        lg.addColorStop(0, `rgba(246,217,138,0)`); lg.addColorStop(1, `rgba(246,217,138,${laneHitFx[i] * 0.22})`);
+        ctx.fillStyle = lg; ctx.fillRect(x, 0, lw, hitY());
+      }
+    }
+    for (let i = 1; i < LANES; i++) { ctx.strokeStyle = "rgba(255,255,255,.06)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(i * lw, 0); ctx.lineTo(i * lw, H); ctx.stroke(); }
+
+    // water surface (hit line)
+    const hy = hitY();
+    const wg = ctx.createLinearGradient(0, hy - 4, 0, H);
+    wg.addColorStop(0, "rgba(63,208,200,.35)"); wg.addColorStop(0.15, "rgba(16,58,68,.85)"); wg.addColorStop(1, "rgba(6,22,27,.95)");
+    ctx.fillStyle = wg; ctx.fillRect(0, hy, W, H - hy);
+    // shimmering surface line
+    ctx.strokeStyle = `rgba(189,240,255,${0.5 + fv * 0.3})`; ctx.lineWidth = 2; ctx.beginPath();
+    for (let x = 0; x <= W; x += 6) { const yy = hy + Math.sin(x * 0.05 + T * 4) * 2; x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy); }
+    ctx.stroke();
+
+    // ripples (on surface)
+    for (const rp of ripples) {
+      ctx.strokeStyle = rp.col.replace(/[\d.]+\)$/, (Math.max(0, rp.life) * 0.7) + ")");
+      ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(rp.x, hy, rp.r, rp.r * 0.4, 0, 0, 6.28); ctx.stroke();
+    }
+
+    // notes (drops)
+    for (const n of notes) {
+      if (n.hit) continue;
+      const x = laneX(n.lane), y = noteY(n);
+      if (y < -30 || y > hy + 30) continue;
+      const near = Math.abs(n.targetT - T) < 0.12;
+      // tail
+      ctx.strokeStyle = "rgba(150,220,235,.3)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - 18); ctx.lineTo(x, y); ctx.stroke();
+      // drop body
+      ctx.save(); ctx.translate(x, y);
+      const r = 13;
+      ctx.fillStyle = n.missed ? "rgba(255,140,160,.5)" : (near ? "#eafdff" : "#bdf0ff");
+      if (near && !n.missed) { ctx.shadowColor = "#bdf0ff"; ctx.shadowBlur = 16; }
+      ctx.beginPath();
+      // teardrop
+      ctx.moveTo(0, -r * 1.3); ctx.bezierCurveTo(r, -r * 0.2, r, r * 0.8, 0, r); ctx.bezierCurveTo(-r, r * 0.8, -r, -r * 0.2, 0, -r * 1.3);
+      ctx.fill(); ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.beginPath(); ctx.ellipse(-3, -2, 3, 4, 0, 0, 6.28); ctx.fill();
+      ctx.restore();
+    }
+
+    // hit-line guide markers per lane
+    for (let i = 0; i < LANES; i++) {
+      const x = laneX(i);
+      ctx.strokeStyle = "rgba(189,240,255,.25)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, hy, 16, 0, 6.28); ctx.stroke();
+    }
+
+    // particles (splash droplets)
+    for (const p of particles) { ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.28); ctx.fill(); }
+    ctx.globalAlpha = 1;
+
+    // floats
+    for (const f of floats) { ctx.globalAlpha = Math.max(0, f.life); ctx.font = '800 16px "Shippori Mincho", serif'; ctx.textAlign = "center"; ctx.fillStyle = f.col; ctx.shadowColor = f.col; ctx.shadowBlur = 8; ctx.fillText(f.txt, f.x, f.y); ctx.shadowBlur = 0; }
+    ctx.globalAlpha = 1; ctx.textAlign = "left";
+
+    ctx.restore();
+  }
+
+  /* ---------- loop ---------- */
+  function frame(now) { let dt = (now - last) / 1000; last = now; if (dt > 0.05) dt = 0.05; update(dt); draw(); requestAnimationFrame(frame); }
+
+  function boot() {
+    resize();
+    if (W < 10) { setTimeout(boot, 50); return; }
+    buildRain();
+    $("hBest").textContent = best; $("bestLine").textContent = `BEST ${best}`;
+    last = performance.now(); requestAnimationFrame(frame);
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
