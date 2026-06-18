@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>ナギサパーク — A Day at Nagisa</title>
+<meta name="description" content="閉園までの限られた一日で、変わりゆく待ち時間を読み、テーマポートを巡って思い出を集める。乗り継ぐほど高まる連鎖倍率を、疲れてバストする前に休憩で確定。夜のハーバーショーで一気に放出するルート最適化×運試しゲーム。">
+<meta property="og:title" content="ナギサパーク — A Day at Nagisa">
+<meta property="og:description" content="海辺のテーマパークの、忘れられない一日。待ち時間を読み、連鎖倍率を高め、夜のショーで放出するルート最適化×運試しローグライト。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/nagisa/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/nagisa/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2315555c'/%3E%3Cg fill='none' stroke='%23e0b15c' stroke-width='3'%3E%3Ccircle cx='32' cy='32' r='20'/%3E%3C/g%3E%3Cpath d='M32 12 L37 32 L32 52 L27 32 Z' fill='%23d4553d'/%3E%3Cpath d='M12 32 L32 27 L52 32 L32 37 Z' fill='%23f1e3c6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1e3c6; --paper2:#e7d4ad; --ink:#2a2018; --ink2:#5b4a36;
+    --sea:#15555c; --sea2:#0d3c43; --seaLine:#2c747a;
+    --brass:#c8943a; --brass2:#e6c074; --coral:#d4553d; --gold:#e0b15c;
+    --good:#3f8a5a; --bad:#c0473a;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; touch-action:manipulation; }
+  html,body{ height:100%; }
+  body{
+    background:#10242a;
+    color:var(--ink);
+    font-family:"Zen Kaku Gothic New",system-ui,sans-serif;
+    overflow:hidden; overscroll-behavior:none; user-select:none;
+    display:flex; justify-content:center; align-items:stretch;
+  }
+  #app{
+    position:relative; width:100%; max-width:min(460px, 100vw);
+    height:100dvh; height:100svh;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #1d6068 0%, var(--sea) 38%, var(--sea2) 100%);
+    box-shadow:0 0 48px rgba(0,0,0,.6);
+    overflow:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    display:flex; flex-direction:column;
+  }
+  /* ---------- HUD ---------- */
+  #hud{
+    position:relative; z-index:5;
+    background:linear-gradient(180deg,#f3e7cb,#e7d4ad);
+    color:var(--ink);
+    border-bottom:3px solid var(--brass);
+    box-shadow:0 3px 10px rgba(0,0,0,.35);
+    padding:7px 10px 8px;
+    flex:0 0 auto;
+  }
+  #hud .row1{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #clock{ font-family:"Cinzel",serif; font-weight:700; font-size:21px; letter-spacing:.5px; color:var(--sea2); display:flex; align-items:baseline; gap:6px; }
+  #clock .phase{ font-family:"Zen Kaku Gothic New"; font-size:11px; font-weight:700; color:var(--ink2); letter-spacing:0; }
+  #purse{ display:flex; gap:10px; font-size:12px; font-weight:700; color:var(--ink2); align-items:center; }
+  #purse b{ color:var(--coral); font-family:"Cinzel"; font-size:14px; }
+  #scoreLine{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:5px; }
+  .mem{ display:flex; align-items:baseline; gap:4px; }
+  .mem .lbl{ font-size:10px; color:var(--ink2); font-weight:700; }
+  .mem .v{ font-family:"Cinzel"; font-weight:700; font-size:18px; color:var(--sea2); }
+  .mem.pend .v{ color:var(--coral); }
+  #noriBox{ display:flex; align-items:center; gap:5px; }
+  #noriBox .x{ font-family:"Cinzel"; font-weight:700; font-size:19px; color:var(--brass); text-shadow:0 1px 0 #fff6df; transition:transform .12s; }
+  #noriBox .x.pop{ transform:scale(1.35); }
+  #staWrap{ margin-top:6px; display:flex; align-items:center; gap:7px; }
+  #staWrap .ico{ font-size:13px; }
+  #staBar{ flex:1; height:9px; background:#cdb88c; border-radius:5px; overflow:hidden; box-shadow:inset 0 1px 2px rgba(0,0,0,.3); }
+  #staFill{ height:100%; width:100%; background:linear-gradient(90deg,#e0b15c,#3f8a5a); transition:width .25s, background .25s; }
+  #staTxt{ font-size:10px; font-weight:700; color:var(--ink2); font-family:"Cinzel"; min-width:30px; text-align:right; }
+
+  /* ---------- map ---------- */
+  #mapWrap{ position:relative; flex:1 1 auto; min-height:0; }
+  #map{ display:block; width:100%; height:100%; touch-action:none; }
+  #hint{ position:absolute; left:50%; transform:translateX(-50%); bottom:10px; z-index:4;
+    background:rgba(20,40,46,.78); color:#f1e3c6; font-size:11.5px; font-weight:500;
+    padding:6px 14px; border-radius:20px; border:1px solid var(--seaLine); pointer-events:none;
+    backdrop-filter:blur(2px); white-space:nowrap; transition:opacity .3s; }
+
+  /* ---------- floating event toast ---------- */
+  #toast{ position:absolute; left:50%; top:14px; transform:translateX(-50%) translateY(-8px); z-index:30;
+    background:rgba(42,32,24,.92); color:#f3e7cb; padding:8px 16px; border-radius:10px;
+    border:1px solid var(--brass); font-size:13px; font-weight:700; opacity:0; pointer-events:none;
+    transition:opacity .3s, transform .3s; max-width:88%; text-align:center; box-shadow:0 6px 18px rgba(0,0,0,.4); }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  #toast.bad{ border-color:var(--bad); }
+  #toast.big{ border-color:var(--coral); font-size:15px; }
+
+  /* ---------- bottom panel ---------- */
+  #panel{ position:absolute; left:0; right:0; bottom:0; z-index:20;
+    background:linear-gradient(180deg,#f3e7cb,#e9d7b0);
+    border-top:3px solid var(--brass);
+    border-radius:18px 18px 0 0;
+    box-shadow:0 -8px 26px rgba(0,0,0,.45);
+    transform:translateY(110%); transition:transform .26s cubic-bezier(.2,.8,.2,1);
+    max-height:72%; display:flex; flex-direction:column;
+    padding:0 0 calc(10px + env(safe-area-inset-bottom));
+  }
+  #panel.open{ transform:translateY(0); }
+  #panelHead{ display:flex; align-items:center; gap:9px; padding:12px 14px 8px; }
+  #panelHead .dot{ width:14px; height:14px; border-radius:50%; box-shadow:0 0 0 3px rgba(0,0,0,.08); flex:0 0 auto; }
+  #panelHead .tt{ flex:1; }
+  #panelHead .nm{ font-family:"Shippori Mincho B1",serif; font-weight:800; font-size:18px; color:var(--ink); line-height:1.1; }
+  #panelHead .th{ font-size:11px; color:var(--ink2); font-weight:700; letter-spacing:1px; }
+  #panelHead .cls{ font-size:22px; color:var(--ink2); width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(0,0,0,.06); }
+  #acts{ overflow-y:auto; padding:2px 12px 6px; -webkit-overflow-scrolling:touch; }
+  .act{ width:100%; text-align:left; background:#fbf3df; border:1.5px solid #d9c089; border-radius:12px;
+    padding:10px 12px; margin-bottom:9px; display:flex; align-items:center; gap:11px; color:var(--ink);
+    box-shadow:0 2px 0 #d9c089; }
+  .act:active{ transform:translateY(1px); box-shadow:0 1px 0 #d9c089; }
+  .act[disabled]{ opacity:.45; filter:grayscale(.4); box-shadow:none; }
+  .act .ai{ font-size:24px; width:30px; text-align:center; flex:0 0 auto; }
+  .act .ab{ flex:1; min-width:0; }
+  .act .an{ font-weight:700; font-size:14.5px; line-height:1.2; }
+  .act .as{ font-size:11px; color:var(--ink2); margin-top:2px; line-height:1.25; }
+  .act .ar{ flex:0 0 auto; text-align:right; }
+  .act .gain{ font-family:"Cinzel"; font-weight:700; font-size:16px; color:var(--coral); }
+  .act .cost{ font-size:10.5px; color:var(--ink2); margin-top:2px; }
+  .act.travel{ background:var(--sea); border-color:var(--sea2); color:#f1e3c6; box-shadow:0 2px 0 var(--sea2); }
+  .act.travel .as,.act.travel .cost{ color:#bfe0e2; }
+  .act.show{ background:linear-gradient(100deg,#d4553d,#e0b15c); border-color:#b5432f; color:#fff;
+    box-shadow:0 2px 0 #a93a28; }
+  .act.show .as{ color:#fff3e6; }
+  .wbadge{ font-family:"Cinzel"; font-weight:700; }
+
+  /* ---------- overlays (title / result / zukan) ---------- */
+  .screen{ position:absolute; inset:0; z-index:40; display:none; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; padding:26px 22px calc(26px + env(safe-area-inset-bottom));
+    overflow-y:auto; }
+  .screen.on{ display:flex; }
+  #title{ background:
+      radial-gradient(120% 70% at 50% 8%, rgba(224,177,92,.16), transparent 60%),
+      linear-gradient(180deg, #11353c 0%, #0c2a30 100%); color:#f1e3c6; }
+  .logo{ font-family:"Shippori Mincho B1",serif; font-weight:800; font-size:clamp(34px,11vw,50px);
+    letter-spacing:3px; color:#f3e7cb; text-shadow:0 2px 0 #b5432f, 0 0 26px rgba(224,177,92,.4); line-height:1.05; }
+  .logo .sea{ color:var(--gold); }
+  .sub{ font-family:"Cinzel",serif; letter-spacing:5px; font-size:12px; color:var(--brass2); margin-top:8px; }
+  .tagline{ font-size:12.5px; color:#cfe2e2; margin-top:14px; line-height:1.7; max-width:330px; }
+  .compassDeco{ font-size:30px; color:var(--brass); margin:14px 0 4px; opacity:.85; }
+  .buddyPick{ margin-top:8px; width:100%; max-width:360px; }
+  .buddyPick .h{ font-size:12px; color:var(--brass2); letter-spacing:2px; margin-bottom:9px; font-weight:700; }
+  .bgrid{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .buddy{ background:rgba(243,231,203,.07); border:1.5px solid var(--seaLine); border-radius:13px; padding:10px 9px; color:#f1e3c6; text-align:left; position:relative; }
+  .buddy.sel{ border-color:var(--gold); background:rgba(224,177,92,.16); box-shadow:0 0 0 2px rgba(224,177,92,.3); }
+  .buddy.lock{ opacity:.5; }
+  .buddy .be{ font-size:30px; }
+  .buddy .bn{ font-weight:700; font-size:14px; margin-top:2px; }
+  .buddy .bd{ font-size:10.5px; color:#bcd; line-height:1.35; margin-top:3px; }
+  .buddy .lk{ position:absolute; top:7px; right:9px; font-size:11px; color:var(--brass2); }
+  .btn{ font-family:"Shippori Mincho B1",serif; font-weight:800; font-size:18px; letter-spacing:2px;
+    background:linear-gradient(180deg,var(--coral),#b5432f); color:#fff; border:none; border-radius:30px;
+    padding:14px 44px; margin-top:18px; box-shadow:0 5px 0 #8f3122, 0 8px 18px rgba(0,0,0,.35); }
+  .btn:active{ transform:translateY(3px); box-shadow:0 2px 0 #8f3122; }
+  .linklike{ margin-top:14px; font-size:12px; color:var(--brass2); text-decoration:underline; letter-spacing:1px; }
+  #best{ margin-top:10px; font-size:12px; color:#cfe2e2; font-family:"Cinzel"; }
+
+  /* result */
+  #result{ background:linear-gradient(180deg,#11353c,#0c2a30); color:#f1e3c6; }
+  #result .rttl{ font-family:"Shippori Mincho B1",serif; font-weight:800; font-size:24px; letter-spacing:2px; color:var(--gold); }
+  #result .big{ font-family:"Cinzel"; font-weight:700; font-size:62px; color:#f3e7cb; line-height:1; margin:8px 0 2px; text-shadow:0 0 24px rgba(224,177,92,.45); }
+  #result .rsub{ font-size:13px; color:#cfe2e2; }
+  #result .rrank{ font-family:"Shippori Mincho B1"; font-size:18px; font-weight:800; margin-top:12px; color:var(--coral); }
+  #result .rstats{ margin-top:14px; font-size:12px; color:#bcd; line-height:1.9; }
+  #result .nb{ color:var(--gold); font-weight:700; }
+
+  /* zukan */
+  #zukan{ background:linear-gradient(180deg,#11353c,#0c2a30); color:#f1e3c6; justify-content:flex-start; }
+  #zukan h2{ font-family:"Shippori Mincho B1"; font-size:22px; letter-spacing:2px; margin-top:6px; color:var(--gold); }
+  #zukan .zs{ font-size:11px; color:#bcd; margin:4px 0 14px; letter-spacing:1px; }
+  .zlist{ width:100%; max-width:360px; text-align:left; }
+  .zhd{ font-size:12px; color:var(--brass2); letter-spacing:2px; margin:10px 0 7px; font-weight:700; border-bottom:1px solid var(--seaLine); padding-bottom:4px; }
+  .zrow{ display:flex; align-items:center; gap:10px; padding:6px 2px; font-size:13px; }
+  .zrow .ze{ font-size:22px; width:28px; text-align:center; }
+  .zrow.miss{ opacity:.4; }
+  .zrow .zd{ font-size:10.5px; color:#bcd; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- HUD -->
+  <div id="hud">
+    <div class="row1">
+      <div id="clock"><span id="clockT">9:00</span><span class="phase" id="phase">開園</span></div>
+      <div id="purse">
+        <span>👛 <b id="money">¥2000</b></span>
+        <span>🎟️ <b id="pass" style="color:var(--sea2)">2</b></span>
+      </div>
+    </div>
+    <div id="scoreLine">
+      <div class="mem"><span class="lbl">思い出</span><span class="v" id="score">0</span></div>
+      <div class="mem pend"><span class="lbl">未確定</span><span class="v" id="pend">0</span></div>
+      <div id="noriBox"><span style="font-size:10px;color:var(--ink2);font-weight:700">ノリ</span><span class="x" id="nori">×1.0</span></div>
+    </div>
+    <div id="staWrap">
+      <span class="ico">⚡</span>
+      <div id="staBar"><div id="staFill"></div></div>
+      <span id="staTxt">100</span>
+    </div>
+  </div>
+
+  <!-- map -->
+  <div id="mapWrap">
+    <canvas id="map"></canvas>
+    <div id="hint">ポートをタップして移動・アトラクションへ</div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- bottom panel -->
+  <div id="panel">
+    <div id="panelHead">
+      <span class="dot" id="pDot"></span>
+      <div class="tt"><div class="nm" id="pName">—</div><div class="th" id="pTheme">—</div></div>
+      <div class="cls" id="pClose">×</div>
+    </div>
+    <div id="acts"></div>
+  </div>
+
+  <!-- title -->
+  <div class="screen on" id="title">
+    <div class="logo">ナギサ<span class="sea">パーク</span></div>
+    <div class="sub">A DAY AT NAGISA</div>
+    <div class="compassDeco">✦ ❖ ✦</div>
+    <div class="tagline">海辺のテーマパークの、忘れられない一日。<br>待ち時間を読み、乗り継いで<b style="color:var(--gold)">ノリ</b>を高め、<br>夜の<b style="color:var(--coral)">ハーバーショー</b>で一気に放て。</div>
+    <div class="buddyPick">
+      <div class="h">▼ 相棒をえらぶ</div>
+      <div class="bgrid" id="bgrid"></div>
+    </div>
+    <button class="btn" id="startBtn">入園する</button>
+    <div id="best">ベスト —</div>
+    <div class="linklike" id="toZukan">▷ コレクション図鑑</div>
+  </div>
+
+  <!-- result -->
+  <div class="screen" id="result">
+    <div class="rttl">閉園</div>
+    <div class="big" id="rScore">0</div>
+    <div class="rsub">の思い出をつくった</div>
+    <div class="rrank" id="rRank">—</div>
+    <div class="rstats" id="rStats"></div>
+    <button class="btn" id="againBtn">もう一日</button>
+    <div class="linklike" id="rZukan">▷ コレクション図鑑</div>
+  </div>
+
+  <!-- zukan -->
+  <div class="screen" id="zukan">
+    <h2>コレクション図鑑</h2>
+    <div class="zs" id="zsumm">—</div>
+    <div class="zlist" id="zlist"></div>
+    <button class="btn" id="zBack" style="font-size:15px;padding:11px 38px">もどる</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   ナギサパーク — A Day at Nagisa
+   単一HTML / ターン制ルート最適化 × push-your-luck
+   ============================================================ */
+
+/* ---------- safe storage ---------- */
+const store = {
+  load(k, fb){ try{ const r = localStorage.getItem(k); return r==null?fb:JSON.parse(r); }catch(e){ return fb; } },
+  save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const SK = { best:"nagisa_best", flav:"nagisa_flavors", buddy:"nagisa_buddies", plays:"nagisa_plays" };
+
+/* ---------- audio (iOS消音スイッチ対策込み, hakai方式) ---------- */
+let AC = null;
+function audio(){
+  if(!AC){
+    try{
+      AC = new (window.AudioContext||window.webkitAudioContext)();
+      AC.onstatechange = ()=>{ if(AC.state!=="running" && !document.hidden){ try{AC.resume();}catch(e){} } };
+    }catch(e){}
+  }
+  if(AC && AC.state!=="running"){ try{AC.resume();}catch(e){} }
+  return AC;
+}
+let silentEl=null;
+function silentWavUrl(){
+  const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);
+  v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(let i=0;i<n;i++) v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){ silentEl=document.createElement("audio"); silentEl.setAttribute("playsinline","");
+    silentEl.loop=true; silentEl.volume=0.01; silentEl.src=silentWavUrl(); }
+  const p=silentEl.play(); if(p&&p.catch) p.catch(()=>{});
+  audio(); if(!AC) return;
+  const done=()=>{ if(AC.state==="running"){ ["pointerdown","pointerup","touchend","click"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true)); } };
+  try{ AC.resume().then(done); }catch(e){ done(); }
+}
+["pointerdown","pointerup","touchend","click"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) audio(); });
+
+/* ---------- sound synth ---------- */
+function tone(freq, dur, type, vol, slideTo, delay){
+  const ac=audio(); if(!ac) return;
+  const t0=ac.currentTime+(delay||0);
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.type=type||"sine"; o.frequency.setValueAtTime(freq,t0);
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(40,slideTo), t0+dur);
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.exponentialRampToValueAtTime(vol||0.18, t0+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0+dur+0.02);
+}
+const SFX={
+  tap(){ tone(520,0.06,"triangle",0.10); },
+  travel(){ tone(300,0.18,"sine",0.12,560); },
+  ride(n){ const base=420+Math.min(n,8)*55; tone(base,0.14,"triangle",0.16,base*1.5); tone(base*1.5,0.16,"sine",0.10,base*2,0.05); },
+  cash(){ tone(640,0.1,"square",0.12); tone(860,0.12,"square",0.11,null,0.08); tone(1180,0.16,"square",0.10,null,0.16); },
+  bust(){ tone(220,0.32,"sawtooth",0.18,70); },
+  pass(){ tone(900,0.08,"triangle",0.12,1300); },
+  show(){ const ac=audio(); if(!ac)return; [523,659,784,1046,1318].forEach((f,i)=>tone(f,0.5,"triangle",0.14,null,i*0.12));
+    tone(196,0.9,"sawtooth",0.10,90,0.1); },
+};
+
+/* ============================================================
+   GAME DATA
+   ============================================================ */
+// ポート(リング0..5)+ 中央の火山島(index 6)
+const PORTS = [
+  { id:0, name:"港町ベイ",      theme:"クラシック",   col:"#d4553d", emo:"⛵", flavor:"トマト&バジル", flavEmo:"🍅" },
+  { id:1, name:"砂漠の市場",    theme:"アラビアン",   col:"#d99a2b", emo:"🕌", flavor:"ハニーキャラメル", flavEmo:"🍯" },
+  { id:2, name:"未来の波止場",  theme:"フューチャー", col:"#4a8fb0", emo:"🛸", flavor:"ソルト&ラムネ", flavEmo:"🧪" },
+  { id:3, name:"密林の遺跡",    theme:"ジャングル",   col:"#5a9150", emo:"🗿", flavor:"スパイシーカレー", flavEmo:"🍛" },
+  { id:4, name:"海底ラグーン",  theme:"マリン",       col:"#2aa7b0", emo:"🐚", flavor:"シーソルト", flavEmo:"🧂" },
+  { id:5, name:"灯台の波止場",  theme:"ノスタルジー", col:"#c08a4a", emo:"🗽", flavor:"メープルバター", flavEmo:"🧇" },
+  { id:6, name:"霧の火山島",    theme:"アドベンチャー",col:"#9a5640", emo:"🌋", flavor:"ブラックペッパー", flavEmo:"🌶️" },
+];
+// 各ポートのアトラクション。type: ride(大/小) / food / view。 pop=人気(基礎思い出), bw=基準待ち, sc=元気消費, dur=所要分
+function rides(){
+  return [
+    // port0 港町ベイ
+    {p:0,t:"ride",n:"潮風のゴンドラ周遊",     emo:"🚤", pop:18, bw:25, sc:9,  dur:12, s:"運河をゆったり巡る"},
+    {p:0,t:"ride",n:"大時計塔のクライマー",   emo:"🗼", pop:34, bw:55, sc:14, dur:8,  s:"塔の頂から港を一望"},
+    // port1 砂漠の市場
+    {p:1,t:"ride",n:"空飛ぶ絨毯の旋回",       emo:"🧞", pop:20, bw:30, sc:10, dur:6,  s:"市場の上をくるくる"},
+    {p:1,t:"ride",n:"幻の宮殿大冒険",         emo:"🏺", pop:40, bw:65, sc:16, dur:10, s:"暗闇の宮殿を駆ける"},
+    // port2 未来の波止場
+    {p:2,t:"ride",n:"反重力スクーター",       emo:"🛹", pop:22, bw:35, sc:11, dur:5,  s:"未来都市を滑走"},
+    {p:2,t:"ride",n:"タイムトンネル超特急",   emo:"🚄", pop:44, bw:70, sc:17, dur:7,  s:"光速で時を駆ける絶叫"},
+    // port3 密林の遺跡
+    {p:3,t:"ride",n:"古代石像のトロッコ",     emo:"⛏️", pop:24, bw:40, sc:12, dur:6,  s:"遺跡をトロッコで疾走"},
+    {p:3,t:"ride",n:"濁流のラフティング",     emo:"🛶", pop:38, bw:60, sc:15, dur:9,  s:"激流を下る水しぶき"},
+    // port4 海底ラグーン
+    {p:4,t:"ride",n:"くるくる貝殻カップ",     emo:"🐚", pop:16, bw:20, sc:8,  dur:5,  s:"子どもに人気の回転"},
+    {p:4,t:"ride",n:"深海クジラの大水槽",     emo:"🐋", pop:30, bw:45, sc:11, dur:8,  s:"幻想的な海底の旅"},
+    // port5 灯台の波止場
+    {p:5,t:"ride",n:"レトロ観覧車",           emo:"🎡", pop:26, bw:35, sc:9,  dur:10, s:"港を見渡す大観覧車"},
+    {p:5,t:"ride",n:"暴走トロリー逆走",       emo:"🚃", pop:36, bw:58, sc:15, dur:7,  s:"古い街並みを爆走"},
+    // port6 火山島
+    {p:6,t:"ride",n:"地底洞窟マグマライド",   emo:"🔥", pop:30, bw:48, sc:13, dur:8,  s:"火山の地底をめぐる"},
+    {p:6,t:"ride",n:"頂上噴火コースター",     emo:"🌋", pop:50, bw:80, sc:19, dur:9,  s:"園内最大の超絶叫"},
+  ];
+}
+
+const BUDDIES = [
+  { id:"rakko", emo:"🦦", n:"ラッコ", d:"最大元気+20。休憩の回復+60%", unlock:0,
+    apply(g){ g.staMax=120; g.sta=120; g.restMul=1.6; } },
+  { id:"umineko", emo:"🦅", n:"ウミネコ", d:"移動の時間と元気-35%", unlock:0,
+    apply(g){ g.moveMul=0.65; } },
+  { id:"penguin", emo:"🐧", n:"ペンギン", d:"連鎖の伸び+0.2 / バスト率-10%", unlock:1000,
+    apply(g){ g.noriBonus=0.2; g.bustReduce=0.10; } },
+  { id:"tako", emo:"🐙", n:"コダコ", d:"全アトラクションの待ち時間-25%", unlock:1500,
+    apply(g){ g.waitMul=0.75; } },
+];
+
+/* ---------- day phases (minutes from 9:00, total 720 = 21:00) ---------- */
+const OPEN=540, CLOSE=540+720; // 9:00..21:00 in real minutes for clock display
+function phaseOf(min){ // min: elapsed 0..720
+  if(min<150) return {nm:"朝",crowd:0.62};
+  if(min<330) return {nm:"昼",crowd:1.32};
+  if(min<510) return {nm:"午後",crowd:1.0};
+  if(min<600) return {nm:"夕方",crowd:0.78};
+  return {nm:"夜",crowd:0.6};
+}
+const SHOW_OPEN=600; // 夜のショーが開く経過分
+
+/* ============================================================
+   STATE  (全てここで初期化 → 初回フレーム例外を防ぐ)
+   ============================================================ */
+const G = {
+  scene:"title",         // title | play | result | zukan
+  buddy:"rakko",
+  min:0,                 // elapsed minutes since open
+  sta:100, staMax:100,
+  money:2000, pass:2,
+  score:0, pending:0,
+  nori:1.0, lastTheme:-1, rideCount:0, sessionRides:0,
+  loc:0,                 // current port index (0..6)
+  selected:0,            // selected port for panel
+  waits:[],              // per-ride current wait (index matches G.attr ride list)
+  attr:[],               // attractions data (filled at newRun)
+  flavors:{},            // collected popcorn flavors {portId:true}
+  // buddy modifiers (reset each run)
+  restMul:1.0, moveMul:1.0, noriBonus:0, bustReduce:0, waitMul:1.0,
+  busted:false, showWatched:false, dayOver:false,
+  // stats
+  stRides:0, stBusts:0, stShowBonus:0, stMaxNori:1.0,
+};
+
+/* ---------- node geometry (computed each resize) ---------- */
+let NODES = []; // {x,y,r} screen coords for port 0..6
+const cv = document.getElementById("map");
+const ctx = cv.getContext("2d");
+let CW=0, CH=0, DPR=1;
+function resize(){
+  const r = cv.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio||1, 2.5);
+  CW = r.width; CH = r.height;
+  cv.width = Math.round(CW*DPR); cv.height = Math.round(CH*DPR);
+  layoutNodes();
+}
+function layoutNodes(){
+  NODES = [];
+  const cx=CW/2, cy=CH/2;
+  const rad = Math.min(CW,CH)*0.37;
+  const nodeR = Math.max(20, Math.min(CW,CH)*0.075);
+  for(let i=0;i<6;i++){
+    const ang = -Math.PI/2 + i*(Math.PI*2/6); // start top, clockwise
+    NODES.push({ x:cx+Math.cos(ang)*rad, y:cy+Math.sin(ang)*rad, r:nodeR });
+  }
+  NODES.push({ x:cx, y:cy, r:nodeR*1.12 }); // center volcano (idx6)
+}
+window.addEventListener("resize", resize);
+
+/* ============================================================
+   RENDER LOOP (タイトルから常時回る。描画のみ)
+   ============================================================ */
+let animT=0;
+function draw(ts){
+  animT = ts||0;
+  ctx.setTransform(DPR,0,0,DPR,0,0); // 毎フレーム再設定(iOSコンテキスト喪失対策)
+  ctx.clearRect(0,0,CW,CH);
+  drawSea();
+  drawRoutes();
+  for(let i=0;i<7;i++) drawNode(i);
+  drawGuest();
+  requestAnimationFrame(draw);
+}
+function drawSea(){
+  // engraved wave hatching
+  ctx.save();
+  ctx.strokeStyle="rgba(255,255,255,0.05)";
+  ctx.lineWidth=1;
+  const t=animT*0.0006;
+  for(let y=14; y<CH; y+=15){
+    ctx.beginPath();
+    for(let x=0;x<=CW;x+=8){
+      const yy = y + Math.sin(x*0.05 + y*0.3 + t)*2.0;
+      x===0?ctx.moveTo(x,yy):ctx.lineTo(x,yy);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function ringDist(a,b){ if(a===6||b===6) return 1; const d=Math.abs(a-b); return Math.min(d,6-d); }
+function drawRoutes(){
+  ctx.save();
+  ctx.setLineDash([2,6]); ctx.lineWidth=2; ctx.lineCap="round";
+  ctx.strokeStyle="rgba(241,227,198,0.32)";
+  // ring
+  for(let i=0;i<6;i++){
+    const a=NODES[i], b=NODES[(i+1)%6];
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  }
+  // spokes to center
+  for(let i=0;i<6;i++){
+    const a=NODES[i], c=NODES[6];
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(c.x,c.y); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawNode(i){
+  const N=NODES[i], P=PORTS[i];
+  const isLoc = (G.scene==="play" && G.loc===i);
+  const isSel = (G.selected===i);
+  ctx.save();
+  // island base
+  ctx.beginPath(); ctx.arc(N.x, N.y, N.r, 0, Math.PI*2);
+  const g=ctx.createRadialGradient(N.x-N.r*0.3,N.y-N.r*0.3,2,N.x,N.y,N.r);
+  g.addColorStop(0,"#f3e7cb"); g.addColorStop(1,"#d8c193");
+  ctx.fillStyle=g; ctx.fill();
+  // colored ring
+  ctx.lineWidth = i===6?4:3;
+  ctx.strokeStyle = P.col; ctx.stroke();
+  // current-location pulse
+  if(isLoc){
+    const pr = N.r + 4 + Math.sin(animT*0.005)*3;
+    ctx.beginPath(); ctx.arc(N.x,N.y,pr,0,Math.PI*2);
+    ctx.strokeStyle="rgba(224,177,92,0.9)"; ctx.lineWidth=2.5; ctx.stroke();
+  } else if(isSel && G.scene==="play"){
+    ctx.beginPath(); ctx.arc(N.x,N.y,N.r+4,0,Math.PI*2);
+    ctx.strokeStyle="rgba(255,255,255,0.55)"; ctx.lineWidth=2; ctx.stroke();
+  }
+  // emoji
+  ctx.font = (N.r*1.0)+"px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  if(i===6){ // volcano glow at night / show
+    const glow = G.scene==="play" && G.min>=SHOW_OPEN ? (0.4+0.4*Math.sin(animT*0.006)) : 0.12;
+    ctx.shadowColor="rgba(212,85,61,"+glow+")"; ctx.shadowBlur=18;
+  }
+  ctx.fillText(P.emo, N.x, N.y+1);
+  ctx.shadowBlur=0;
+  // name label
+  ctx.font="bold 10.5px 'Zen Kaku Gothic New',sans-serif";
+  ctx.fillStyle="rgba(20,40,46,0.0)";
+  const ly = N.y + N.r + 11;
+  ctx.fillStyle="rgba(12,30,34,0.72)";
+  const tw = ctx.measureText(P.name).width;
+  roundRect(N.x-tw/2-6, ly-9, tw+12, 16, 7); ctx.fill();
+  ctx.fillStyle="#f3e7cb"; ctx.fillText(P.name, N.x, ly);
+  // wait badge for headline ride (only in play)
+  if(G.scene==="play"){
+    const hw = headlineWait(i);
+    if(hw!=null){
+      const by=N.y-N.r-9;
+      ctx.font="bold 11px 'Cinzel',serif";
+      const wt = hw+"分";
+      const ww=ctx.measureText(wt).width+12;
+      ctx.fillStyle = hw>=60? "rgba(192,71,58,0.95)" : hw>=35? "rgba(216,154,43,0.95)":"rgba(63,138,90,0.95)";
+      roundRect(N.x-ww/2, by-9, ww, 17, 8); ctx.fill();
+      ctx.fillStyle="#fff"; ctx.textBaseline="middle"; ctx.fillText(wt, N.x, by);
+    }
+  }
+  ctx.restore();
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawGuest(){
+  if(G.scene!=="play") return;
+  const N=NODES[G.loc]; if(!N) return;
+  const x=N.x, y=N.y - N.r - 1;
+}
+function headlineWait(portIdx){
+  // 大型(pop最大)の現在待ち
+  let best=-1, bi=-1;
+  G.attr.forEach((a,idx)=>{ if(a.p===portIdx && a.t==="ride" && a.pop>best){ best=a.pop; bi=idx; } });
+  return bi>=0 ? G.waits[bi] : null;
+}
+
+/* ============================================================
+   GAME FLOW
+   ============================================================ */
+function newRun(){
+  G.scene="play"; G.dayOver=false; G.showWatched=false;
+  G.min=0; G.money=2000; G.pass=2; G.score=0; G.pending=0;
+  G.nori=1.0; G.lastTheme=-1; G.rideCount=0; G.sessionRides=0;
+  G.loc=0; G.selected=0; G.busted=false;
+  G.staMax=100; G.sta=100; G.restMul=1.0; G.moveMul=1.0; G.noriBonus=0; G.bustReduce=0; G.waitMul=1.0;
+  G.stRides=0; G.stBusts=0; G.stShowBonus=0; G.stMaxNori=1.0;
+  G.flavors = store.load(SK.flav, {});
+  // buddy
+  const b = BUDDIES.find(x=>x.id===G.buddy) || BUDDIES[0];
+  b.apply(G);
+  // attractions
+  G.attr = rides();
+  G.waits = G.attr.map(()=> 0);
+  retickWaits(true);
+  hideScreen("title"); hideScreen("result"); hideScreen("zukan");
+  closePanel();
+  updateHUD();
+  toast("開園!9:00 — よい一日を ☀️");
+}
+
+function retickWaits(init){
+  const ph = phaseOf(G.min);
+  G.attr.forEach((a,idx)=>{
+    if(a.t!=="ride"){ G.waits[idx]=0; return; }
+    // base * crowd * jitter, popularity already baked into bw
+    const jitter = 0.7 + rng()*0.6; // 0.7..1.3, re-rolled each action -> dynamic
+    let w = a.bw * ph.crowd * jitter * G.waitMul;
+    w = Math.round(w/5)*5;
+    G.waits[idx] = Math.max(5, w);
+  });
+}
+// light deterministic-ish RNG wrapper (Math.random ok in browser; sim overrides)
+let rng = Math.random;
+
+function advanceTime(mins){
+  G.min += mins;
+  retickWaits();
+  if(G.min >= 720 && !G.dayOver){ endDay(false); }
+}
+
+function travelCost(from,to){
+  if(from===to) return {min:0,sta:0};
+  const d = ringDist(from,to);
+  let mn = from===6||to===6 ? 14 : (d===1?10 : d===2?18 : 26);
+  let st = from===6||to===6 ? 6 : (d===1?4 : d===2?7 : 10);
+  mn = Math.round(mn*G.moveMul); st = Math.round(st*G.moveMul);
+  return {min:mn, sta:st};
+}
+
+function travelTo(port){
+  if(G.dayOver) return;
+  const c = travelCost(G.loc, port);
+  if(G.min + c.min > 720){ toast("もう時間がない…","bad"); return; }
+  G.loc = port; G.selected = port;
+  G.sta = Math.max(0, G.sta - c.sta);
+  SFX.travel();
+  advanceTime(c.min);
+  if(!G.dayOver){ updateHUD(); openPanel(port); }
+}
+
+function staFactor(){
+  const f = G.sta/G.staMax;
+  if(f>=0.6) return 1.2;
+  if(f>=0.3) return 1.0;
+  if(f>=0.12) return 0.65;
+  return 0.4;
+}
+function bustChance(staVal){
+  const sta = (staVal==null?G.sta:staVal);
+  const f = sta/G.staMax;
+  if(f>=0.45) return 0;            // 元気なら絶対バストしない(安心して連鎖を伸ばせる)
+  // 疲れて押し込むほど危険。長い連鎖(×3超)もわずかにリスク上昇
+  let c = (0.45-f)*1.25 + Math.max(0,(G.nori-3))*0.03;
+  c -= G.bustReduce;
+  return Math.max(0, Math.min(0.8, c));
+}
+
+function doRide(idx){
+  if(G.dayOver) return;
+  const a=G.attr[idx]; const w=G.waits[idx];
+  const total = w + a.dur;
+  if(G.min + total > 720){ toast("閉園に間に合わない…","bad"); return; }
+  if(G.sta < 4){ toast("元気がない。休憩しよう","bad"); return; }
+  // commit time
+  G.sta = Math.max(0, G.sta - a.sc);
+  // bust roll (疲労状態で判定)
+  const bc = bustChance(G.sta);
+  const bust = rng() < bc;
+  advanceTime(total);
+  if(G.dayOver){ return; }
+  if(bust){
+    G.stBusts++; G.busted=true;
+    const lost = Math.round(G.pending);
+    G.pending = 0; G.nori = 1.0; G.lastTheme=-1;
+    G.sta = Math.max(0, G.sta-8);
+    SFX.bust();
+    flashNori();
+    toast("😵 疲れでぐったり…未確定 "+lost+" を落とした！","bad");
+    updateHUD(); refreshPanel();
+    return;
+  }
+  // success: add to pending with nori
+  G.stRides++; G.sessionRides++; G.rideCount++;
+  const gain = Math.round(a.pop * G.nori * staFactor());
+  G.pending += gain;
+  // grow nori
+  const sameTheme = (a.p===G.lastTheme);
+  let grow = (sameTheme?0.5:0.25) + G.noriBonus;
+  G.nori = Math.round((G.nori+grow)*10)/10;
+  G.lastTheme = a.p;
+  if(G.nori>G.stMaxNori) G.stMaxNori=G.nori;
+  SFX.ride(G.sessionRides);
+  flashNori();
+  toast((sameTheme?"🔥 テーマ連鎖! ":"")+"+"+gain+" 未確定 (×"+G.nori.toFixed(1)+"へ)");
+  updateHUD(); refreshPanel();
+}
+
+function usePass(idx){
+  if(G.pass<=0){ toast("優先パスがない","bad"); return; }
+  G.pass--; G.waits[idx]=0; SFX.pass();
+  toast("🎟️ 優先パス使用!待ち0分"); updateHUD(); refreshPanel();
+}
+
+function doFood(port){
+  if(G.dayOver) return;
+  const cost=700, t=25;
+  if(G.money<cost){ toast("おさいふが足りない","bad"); return; }
+  if(G.min + t > 720){ toast("もう閉園時間…","bad"); return; }
+  G.money-=cost;
+  G.sta = Math.min(G.staMax, G.sta + Math.round(35*G.restMul));
+  // cash out pending
+  cashOut("🍿");
+  // collect flavor
+  const P=PORTS[port]; let bonus=0;
+  if(!G.flavors[port]){ G.flavors[port]=true; store.save(SK.flav,G.flavors); bonus=120; G.score+=bonus; }
+  SFX.cash();
+  advanceTime(t);
+  if(G.dayOver) return;
+  toast((bonus?("✨新フレーバー「"+P.flavor+"」+"+bonus+"! "):"")+P.flavEmo+" "+P.flavor+"で休憩。確定&元気回復");
+  updateHUD(); refreshPanel();
+}
+function doRest(port){
+  if(G.dayOver) return;
+  const t=15;
+  if(G.min + t > 720){ toast("もう閉園時間…","bad"); return; }
+  G.sta = Math.min(G.staMax, G.sta + Math.round(18*G.restMul));
+  cashOut("🌅");
+  SFX.cash();
+  advanceTime(t);
+  if(G.dayOver) return;
+  toast("🌅 景色を眺めてひと休み。確定&元気回復");
+  updateHUD(); refreshPanel();
+}
+function cashOut(emo){
+  if(G.pending>0){ G.score += Math.round(G.pending); }
+  G.pending=0; G.nori=1.0; G.lastTheme=-1;
+}
+
+function doShow(){
+  if(G.dayOver || G.showWatched) return;
+  // finale: pending * showMult, plus spectacle base
+  // 大きな連鎖を作って未確定を温存したプレイほど報われる(倍率主体・固定値は控えめ)
+  const showMult = 1.5 + Math.min(2.0, (G.stMaxNori-1)*0.18);
+  const released = Math.round(G.pending * showMult);
+  const spectacle = 150 + G.stRides*15;
+  G.score += released + spectacle;
+  G.stShowBonus = released + spectacle;
+  G.pending=0; G.nori=1.0;
+  G.showWatched=true;
+  SFX.show();
+  toast("🎆 ハーバーショー!未確定×"+showMult.toFixed(1)+" = "+released+" +演出"+spectacle,"big");
+  updateHUD();
+  setTimeout(()=> endDay(true), 2100);
+}
+
+function endDay(viaShow){
+  if(G.dayOver) return;
+  G.dayOver=true;
+  // 未確定が残っていればショー未鑑賞ならx1で確定
+  if(!viaShow && G.pending>0){ G.score+=Math.round(G.pending); G.pending=0; }
+  closePanel();
+  // persist best & unlocks
+  const best = store.load(SK.best,0);
+  if(G.score>best) store.save(SK.best, G.score);
+  let plays = store.load(SK.plays,0)+1; store.save(SK.plays,plays);
+  // buddy unlocks by best
+  const nb = Math.max(G.score, best);
+  const owned = store.load(SK.buddy, ["rakko","umineko"]);
+  BUDDIES.forEach(b=>{ if(b.unlock>0 && nb>=b.unlock && !owned.includes(b.id)) owned.push(b.id); });
+  store.save(SK.buddy, owned);
+  showResult(viaShow, best);
+}
+
+/* ============================================================
+   UI: HUD / PANEL
+   ============================================================ */
+const $=id=>document.getElementById(id);
+function fmtClock(min){
+  const tot = OPEN+min; const h=Math.floor(tot/60), m=tot%60;
+  return h+":"+String(m).padStart(2,"0");
+}
+function updateHUD(){
+  $("clockT").textContent = fmtClock(G.min);
+  $("phase").textContent = (G.min>=SHOW_OPEN?"夜・ショー":phaseOf(G.min).nm);
+  $("money").textContent = "¥"+G.money;
+  $("pass").textContent = G.pass;
+  $("score").textContent = G.score;
+  $("pend").textContent = G.pending;
+  $("nori").textContent = "×"+G.nori.toFixed(1);
+  const f = Math.max(0,G.sta)/G.staMax;
+  $("staFill").style.width = Math.round(f*100)+"%";
+  $("staFill").style.background = f>0.5?"linear-gradient(90deg,#e0b15c,#3f8a5a)":f>0.25?"linear-gradient(90deg,#e0b15c,#d99a2b)":"linear-gradient(90deg,#c0473a,#d4553d)";
+  $("staTxt").textContent = Math.round(G.sta);
+}
+let noriTimer=null;
+function flashNori(){ const e=$("nori"); e.classList.add("pop"); clearTimeout(noriTimer); noriTimer=setTimeout(()=>e.classList.remove("pop"),130); }
+
+let toastTimer=null;
+function toast(msg, cls){
+  const e=$("toast"); e.textContent=msg; e.className="show"+(cls?(" "+cls):"");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>e.classList.remove("show"), cls==="big"?2600:1900);
+}
+
+function openPanel(port){
+  G.selected=port; const P=PORTS[port];
+  $("pName").textContent=P.name;
+  $("pTheme").textContent="✦ "+P.theme+" ✦ "+P.flavEmo+P.flavor;
+  $("pDot").style.background=P.col;
+  $("panel").classList.add("open");
+  refreshPanel();
+}
+function closePanel(){ $("panel").classList.remove("open"); }
+function refreshPanel(){
+  if(!$("panel").classList.contains("open")) return;
+  const port=G.selected; const acts=$("acts"); acts.innerHTML="";
+  const here = (G.loc===port);
+  if(!here){
+    const c=travelCost(G.loc,port);
+    const tooLate = G.min+c.min>720;
+    acts.appendChild(actEl({
+      cls:"travel", emo:PORTS[port].emo, n:"▶ ここへ移動する",
+      s:"徒歩で向かう", costTxt:"⏱"+c.min+"分 / ⚡-"+c.sta,
+      disabled:tooLate||G.dayOver, onTap:()=>travelTo(port)
+    }));
+    return;
+  }
+  // night show available at volcano(6) once evening
+  if(port===6 && G.min>=SHOW_OPEN && !G.showWatched && !G.dayOver){
+    const mult=(1.5 + Math.min(2.0,(G.stMaxNori-1)*0.18)).toFixed(1);
+    acts.appendChild(actEl({
+      cls:"show", emo:"🎆", n:"ハーバーショーを観る",
+      s:"未確定の思い出を ×"+mult+" で放出してフィナーレ", gain:"FINALE",
+      costTxt:"※観ると一日が終わる", onTap:()=>doShow()
+    }));
+  }
+  // rides
+  G.attr.forEach((a,idx)=>{
+    if(a.p!==port) return;
+    if(a.t!=="ride") return;
+    const w=G.waits[idx]; const total=w+a.dur;
+    const tooLate=G.min+total>720; const noSta=G.sta<4;
+    const gain=Math.round(a.pop*G.nori*staFactor());
+    const same=(a.p===G.lastTheme);
+    const risk=Math.round(bustChance(Math.max(0,G.sta-a.sc))*100);
+    const riskTxt = risk>0 ? " / <span style='color:#c0473a'>⚠バスト"+risk+"%</span>" : "";
+    acts.appendChild(actEl({
+      emo:a.emo, n:a.n, s:a.s+(same?" 🔥連鎖中":""),
+      gain:"+"+gain, wait:w,
+      costTxt:"⏱待"+w+"+乗"+a.dur+"分 / ⚡-"+a.sc+riskTxt,
+      disabled:tooLate||noSta||G.dayOver,
+      onTap:()=>doRide(idx),
+      pass:(w>0&&G.pass>0&&!G.dayOver)? ()=>usePass(idx):null
+    }));
+  });
+  // food
+  acts.appendChild(actEl({
+    emo:PORTS[port].flavEmo, n:PORTS[port].flavor+"のポップコーン",
+    s:(G.flavors[port]?"":"✨初!図鑑+ボーナス ")+"確定&元気+"+Math.round(35*G.restMul),
+    costTxt:"💰¥700 / ⏱25分", disabled:G.money<700||G.dayOver, onTap:()=>doFood(port)
+  }));
+  // rest
+  acts.appendChild(actEl({
+    emo:"🌅", n:"景色を眺めて休憩", s:"無料で確定&元気+"+Math.round(18*G.restMul),
+    costTxt:"⏱15分", disabled:G.dayOver, onTap:()=>doRest(port)
+  }));
+}
+function actEl(o){
+  const b=document.createElement("button");
+  b.className="act"+(o.cls?(" "+o.cls):"");
+  if(o.disabled) b.setAttribute("disabled","");
+  let right="";
+  if(o.gain) right+='<div class="gain">'+o.gain+'</div>';
+  if(o.costTxt) right+='<div class="cost">'+o.costTxt+'</div>';
+  b.innerHTML='<div class="ai">'+o.emo+'</div>'+
+    '<div class="ab"><div class="an">'+o.n+'</div><div class="as">'+(o.s||"")+'</div></div>'+
+    '<div class="ar">'+right+'</div>';
+  if(!o.disabled){
+    b.addEventListener("pointerup",(e)=>{ e.preventDefault(); SFX.tap(); o.onTap(); });
+  }
+  // pass sub-button
+  if(o.pass){
+    const pb=document.createElement("button");
+    pb.className="act"; pb.style.cssText="margin:-4px 0 9px auto;width:auto;padding:5px 12px;font-size:11px;background:#e7d4ad;border-color:#c8943a;box-shadow:0 2px 0 #c8943a;display:inline-flex";
+    pb.innerHTML='🎟️ 優先パスで待ち0に';
+    pb.addEventListener("pointerup",(e)=>{ e.preventDefault(); SFX.tap(); o.pass(); });
+    const wrap=document.createElement("div");
+    wrap.appendChild(b); wrap.appendChild(pb);
+    return wrap;
+  }
+  return b;
+}
+
+/* ---------- result ---------- */
+function rankOf(s){
+  if(s>=2400) return "🏆 伝説のゲスト";
+  if(s>=1850) return "👑 パークの主";
+  if(s>=1450) return "🌟 大満喫マスター";
+  if(s>=1150) return "🎡 満喫ゲスト";
+  if(s>=850)  return "😊 上々の一日";
+  if(s>=600)  return "🙂 まずまずの一日";
+  return "🌱 また来てね";
+}
+function showResult(viaShow, prevBest){
+  $("rScore").textContent=G.score;
+  $("rRank").textContent=rankOf(G.score);
+  const newBest = G.score>prevBest;
+  $("rStats").innerHTML =
+    "乗ったアトラクション <span class='nb'>"+G.stRides+"</span> 回<br>"+
+    "最高ノリ <span class='nb'>×"+G.stMaxNori.toFixed(1)+"</span> ／ バスト "+G.stBusts+" 回<br>"+
+    (G.showWatched? "ショー放出 <span class='nb'>+"+G.stShowBonus+"</span><br>" : "<span style='color:#d4553d'>※ショーを見逃した…</span><br>")+
+    (newBest? "<span class='nb'>★ 自己ベスト更新!</span>" : "ベスト "+Math.max(prevBest,G.score));
+  showScreen("result");
+}
+
+/* ---------- screens ---------- */
+function showScreen(id){ $(id).classList.add("on"); G.scene=id; }
+function hideScreen(id){ $(id).classList.remove("on"); }
+
+/* ---------- title / buddy select ---------- */
+function buildBuddyGrid(){
+  const owned = store.load(SK.buddy, ["rakko","umineko"]);
+  const grid=$("bgrid"); grid.innerHTML="";
+  BUDDIES.forEach(b=>{
+    const unlocked = owned.includes(b.id) || b.unlock===0;
+    const d=document.createElement("div");
+    d.className="buddy"+(G.buddy===b.id?" sel":"")+(unlocked?"":" lock");
+    d.innerHTML='<div class="be">'+b.emo+'</div><div class="bn">'+b.n+'</div><div class="bd">'+b.d+'</div>'+
+      (unlocked?'':'<div class="lk">🔒'+b.unlock+'</div>');
+    if(unlocked){
+      d.addEventListener("pointerup",(e)=>{ e.preventDefault(); SFX.tap(); G.buddy=b.id; buildBuddyGrid(); });
+    }
+    grid.appendChild(d);
+  });
+  $("best").textContent="ベスト "+store.load(SK.best,0);
+}
+
+/* ---------- zukan ---------- */
+function buildZukan(){
+  const flav=store.load(SK.flav,{}); const owned=store.load(SK.buddy,["rakko","umineko"]);
+  const got=Object.keys(flav).length;
+  $("zsumm").textContent="フレーバー "+got+"/7 ・ 相棒 "+owned.length+"/"+BUDDIES.length+" ・ ベスト "+store.load(SK.best,0);
+  const L=$("zlist"); L.innerHTML="";
+  let h=document.createElement("div"); h.className="zhd"; h.textContent="🍿 ポップコーン・フレーバー"; L.appendChild(h);
+  PORTS.forEach(p=>{
+    const has=flav[p.id];
+    const r=document.createElement("div"); r.className="zrow"+(has?"":" miss");
+    r.innerHTML='<span class="ze">'+(has?p.flavEmo:"❔")+'</span><div><div>'+(has?p.flavor:"???")+'</div><div class="zd">'+p.name+'</div></div>';
+    L.appendChild(r);
+  });
+  h=document.createElement("div"); h.className="zhd"; h.textContent="🐾 相棒"; L.appendChild(h);
+  BUDDIES.forEach(b=>{
+    const has=owned.includes(b.id)||b.unlock===0;
+    const r=document.createElement("div"); r.className="zrow"+(has?"":" miss");
+    r.innerHTML='<span class="ze">'+(has?b.emo:"🔒")+'</span><div><div>'+(has?b.n:"??? (ベスト"+b.unlock+"で解放)")+'</div><div class="zd">'+(has?b.d:"")+'</div></div>';
+    L.appendChild(r);
+  });
+}
+
+/* ============================================================
+   INPUT
+   ============================================================ */
+cv.addEventListener("pointerdown",(e)=>{
+  if(G.scene!=="play"||G.dayOver) return;
+  const r=cv.getBoundingClientRect();
+  const x=e.clientX-r.left, y=e.clientY-r.top;
+  for(let i=0;i<7;i++){
+    const N=NODES[i];
+    if(Math.hypot(x-N.x,y-N.y) <= N.r+8){
+      SFX.tap();
+      openPanel(i);
+      return;
+    }
+  }
+});
+
+$("pClose").addEventListener("pointerup",(e)=>{ e.preventDefault(); SFX.tap(); closePanel(); });
+$("startBtn").addEventListener("pointerup",(e)=>{ e.preventDefault(); SFX.tap(); newRun(); });
+$("againBtn").addEventListener("pointerup",(e)=>{ e.preventDefault(); SFX.tap(); hideScreen("result"); showScreen("title"); G.scene="title"; buildBuddyGrid(); });
+$("toZukan").addEventListener("pointerup",(e)=>{ e.preventDefault(); SFX.tap(); buildZukan(); showScreen("zukan"); });
+$("rZukan").addEventListener("pointerup",(e)=>{ e.preventDefault(); SFX.tap(); buildZukan(); showScreen("zukan"); });
+$("zBack").addEventListener("pointerup",(e)=>{ e.preventDefault(); SFX.tap(); hideScreen("zukan");
+  if(G.dayOver) showScreen("result"); else { showScreen("title"); buildBuddyGrid(); } });
+
+/* prevent double-tap zoom (iOS) */
+let lastTouchEnd=0;
+document.addEventListener("touchend",(e)=>{ const now=performance.now(); if(now-lastTouchEnd<350) e.preventDefault(); lastTouchEnd=now; }, {passive:false});
+["dblclick","gesturestart"].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function boot(){
+  resize();
+  buildBuddyGrid();
+  G.attr=rides(); G.waits=G.attr.map(()=>0); // for any pre-play draw safety
+  requestAnimationFrame(draw);
+}
+boot();
+
+/* expose for headless/sim testing */
+window.__NAGISA__ = { G, PORTS, BUDDIES, newRun, doRide, doFood, doRest, doShow, travelTo, usePass,
+  travelCost, ringDist, bustChance, headlineWait, phaseOf, setRng:(f)=>{rng=f;}, advanceTime, endDay };
+</script>
+</body>
+</html>
