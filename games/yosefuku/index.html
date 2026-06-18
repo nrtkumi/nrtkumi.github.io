@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>寄せ福 — YOSEFUKU</title>
+<meta name="description" content="縁起物の御札を回し、隣り合う札のシナジーで福銭を稼ぐ和風スロット・ローグライト。回した後に行や列を『寄せて』福を最大化する一手が肝。お供えのノルマを越え、御札を集めて、どこまで福を呼べるか。">
+<meta property="og:title" content="寄せ福 — YOSEFUKU">
+<meta property="og:description" content="縁起物を回して、寄せて、福を呼べ。隣接シナジー×スライドの一手で稼ぐ和風スロット・ローグライト。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/yosefuku/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/yosefuku/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%238c1d18'/%3E%3Crect x='20' y='8' width='24' height='48' rx='4' fill='%23f3e8cf'/%3E%3Cpath d='M32 8 L38 18 L26 18 Z' fill='%23c9a23f'/%3E%3Ctext x='32' y='42' font-size='26' text-anchor='middle' fill='%238c1d18' font-family='serif' font-weight='700'%3E福%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Shippori+Mincho+B1:wght@600;800&family=Reggae+One&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --lacq:#7c1815;      /* 朱漆 */
+    --lacq2:#5a100e;
+    --lacq-d:#3c0a09;
+    --gold:#c9a23f;
+    --gold2:#e9cf7e;
+    --paper:#f3e8cf;
+    --paper2:#e7d7b3;
+    --ink:#2a211b;
+    --ink2:#5b4a38;
+    --good:#2f7d4f;
+    --bad:#b23a2e;
+    --green:#2f7d4f;
+    --blue:#2c5a8c;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0;
+     -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none;
+     touch-action:manipulation; }
+  html,body{ height:100%; }
+  body{
+    background:#1c0c0b;
+    color:var(--paper);
+    font-family:"Shippori Mincho B1",serif;
+    overflow:hidden; overscroll-behavior:none; user-select:none;
+    display:flex; justify-content:center; align-items:stretch;
+  }
+  #app{
+    position:relative; width:100%; max-width:min(460px,100vw);
+    height:100dvh; height:100svh;
+    background:
+      radial-gradient(130% 70% at 50% -8%, #9a2420 0%, var(--lacq) 40%, var(--lacq2) 100%);
+    box-shadow:0 0 60px rgba(0,0,0,.7);
+    overflow:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    display:flex; flex-direction:column;
+  }
+  /* 和柄 (麻の葉) のうっすら背景 */
+  #app::before{
+    content:""; position:absolute; inset:0; pointer-events:none; opacity:.06;
+    background-image:
+      linear-gradient(60deg, transparent 47%, var(--gold2) 48%, var(--gold2) 52%, transparent 53%),
+      linear-gradient(-60deg, transparent 47%, var(--gold2) 48%, var(--gold2) 52%, transparent 53%),
+      linear-gradient(0deg, transparent 47%, var(--gold2) 48%, var(--gold2) 52%, transparent 53%);
+    background-size:34px 60px;
+  }
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:relative; z-index:5; flex:0 0 auto;
+    padding:8px 12px 6px;
+    border-bottom:2px solid var(--gold);
+    background:linear-gradient(180deg, rgba(60,10,9,.55), rgba(60,10,9,.15));
+  }
+  .hudRow{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #matsuri{ font-family:"Reggae One",serif; font-size:18px; color:var(--gold2);
+            text-shadow:0 1px 0 #000; letter-spacing:.5px; display:flex; align-items:baseline; gap:6px;}
+  #matsuri b{ font-size:24px; color:#fff; }
+  #wallet{ text-align:right; }
+  #wallet .lbl{ font-size:10px; color:var(--gold2); letter-spacing:1px; }
+  #wallet .val{ font-family:"Reggae One"; font-size:22px; color:#fff;
+                text-shadow:0 1px 0 #000; line-height:1; }
+  #wallet .val small{ font-size:12px; color:var(--gold2); }
+  #questLine{ margin-top:6px; display:flex; align-items:center; gap:8px; }
+  #questBar{ flex:1; height:14px; border-radius:7px; background:rgba(0,0,0,.35);
+             border:1px solid var(--gold); overflow:hidden; position:relative; }
+  #questFill{ position:absolute; inset:0; width:0%;
+              background:linear-gradient(90deg, var(--gold), var(--gold2));
+              transition:width .35s cubic-bezier(.2,.8,.2,1); }
+  #questText{ font-size:11px; color:var(--paper); white-space:nowrap; }
+  #questText b{ color:var(--gold2); font-family:"Reggae One"; }
+
+  /* ---------- 盤面 ---------- */
+  #boardWrap{ flex:1 1 auto; display:flex; flex-direction:column;
+              align-items:center; justify-content:center; gap:10px;
+              position:relative; z-index:3; padding:6px 12px; min-height:0; }
+
+  /* 神棚の枠 + 行列ガター矢印 */
+  #frame{
+    --cell: clamp(64px, 26vw, 104px);
+    --gap: 8px;
+    display:grid;
+    grid-template-columns: 26px calc(var(--cell)*3 + var(--gap)*2) 26px;
+    grid-template-rows: 26px calc(var(--cell)*3 + var(--gap)*2) 26px;
+    gap:4px; align-items:center; justify-items:center;
+  }
+  #board{
+    grid-row:2; grid-column:2;
+    display:grid; grid-template-columns:repeat(3,var(--cell));
+    grid-template-rows:repeat(3,var(--cell)); gap:var(--gap);
+    padding:10px; border-radius:10px;
+    background:
+      linear-gradient(145deg,#3c0a09,#240605);
+    border:3px solid var(--gold);
+    box-shadow:0 8px 24px rgba(0,0,0,.5), inset 0 0 0 2px rgba(233,207,126,.25);
+    touch-action:none;
+  }
+  .tile{
+    position:relative; border-radius:8px; overflow:hidden;
+    background:linear-gradient(180deg,var(--paper),var(--paper2));
+    border:2px solid #b9a06a;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:var(--ink); box-shadow:0 2px 6px rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.4);
+    transition:transform .12s ease;
+  }
+  .tile.blank{ background:repeating-linear-gradient(45deg,#2a0707,#2a0707 6px,#330a09 6px,#330a09 12px);
+               border-color:#5a100e; box-shadow:inset 0 0 8px rgba(0,0,0,.6); }
+  .tile .kanji{ font-family:"Yuji Syuku",serif; font-size:calc(var(--cell)*.5); line-height:1;
+                font-weight:700; }
+  .tile .nm{ font-size:9px; color:var(--ink2); margin-top:2px; letter-spacing:.5px; }
+  .tile .pay{ position:absolute; top:2px; right:4px; font-family:"Reggae One";
+              font-size:13px; color:var(--lacq); text-shadow:0 1px 0 rgba(255,255,255,.6);
+              opacity:0; transition:opacity .2s; }
+  .tile.show .pay{ opacity:1; }
+  .tile .topband{ position:absolute; top:0; left:0; right:0; height:6px; }
+  .tile.spinning .kanji{ filter:blur(.4px); }
+  .tile.pulse{ animation:pulse .4s ease; }
+  @keyframes pulse{ 0%{transform:scale(1);} 40%{transform:scale(1.12);} 100%{transform:scale(1);} }
+  .tile.glow{ box-shadow:0 0 0 3px var(--gold), 0 0 18px var(--gold2); }
+
+  /* ガター矢印 */
+  .arr{
+    width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+    color:var(--gold2); font-size:18px; cursor:pointer; border-radius:6px;
+    background:rgba(0,0,0,.25); border:1px solid rgba(233,207,126,.4);
+    opacity:.35; transition:opacity .15s, transform .1s; touch-action:manipulation;
+  }
+  .arr.on{ opacity:1; }
+  .arr:active{ transform:scale(.86); background:var(--gold); color:var(--lacq-d); }
+  .arr[disabled]{ opacity:.12; pointer-events:none; }
+
+  /* 浮遊スコア */
+  .float{ position:absolute; z-index:30; font-family:"Reggae One"; font-size:22px;
+          color:var(--gold2); text-shadow:0 2px 4px #000; pointer-events:none;
+          animation:floatUp 1s ease forwards; }
+  @keyframes floatUp{ 0%{opacity:0; transform:translateY(8px) scale(.7);}
+                      20%{opacity:1; transform:translateY(0) scale(1.1);}
+                      100%{opacity:0; transform:translateY(-46px) scale(1);} }
+
+  /* ---------- 操作部 ---------- */
+  #ctrl{ flex:0 0 auto; position:relative; z-index:4; padding:6px 14px 12px;
+         display:flex; flex-direction:column; gap:8px; }
+  #status{ text-align:center; font-size:12px; color:var(--gold2); min-height:16px; letter-spacing:.5px; }
+  #status b{ color:#fff; }
+  #spins{ display:flex; gap:6px; justify-content:center; align-items:center; }
+  .pip{ width:11px; height:11px; border-radius:50%; border:1.5px solid var(--gold);
+        background:transparent; }
+  .pip.used{ background:var(--gold); box-shadow:0 0 6px var(--gold2); }
+  #yoseLine{ text-align:center; font-size:12px; color:var(--paper); min-height:16px; }
+  #yoseLine b{ color:var(--gold2); font-family:"Reggae One"; font-size:15px; }
+  .btn{
+    border:none; border-radius:12px; padding:14px; font-family:"Reggae One",serif;
+    font-size:20px; letter-spacing:1px; color:#fff; cursor:pointer;
+    background:linear-gradient(180deg,var(--gold2),var(--gold) 60%,#a8842f);
+    color:var(--lacq-d); box-shadow:0 4px 0 #7c5e1f, 0 6px 14px rgba(0,0,0,.4);
+    transition:transform .08s, box-shadow .08s; touch-action:manipulation; width:100%;
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #7c5e1f, 0 3px 8px rgba(0,0,0,.4); }
+  .btn[disabled]{ filter:grayscale(.6) brightness(.8); pointer-events:none; }
+  .btn.collect{ background:linear-gradient(180deg,#5fae7c,var(--good) 60%,#1f5a37);
+                color:#fff; box-shadow:0 4px 0 #134026, 0 6px 14px rgba(0,0,0,.4); }
+  .btn.collect:active{ box-shadow:0 1px 0 #134026, 0 3px 8px rgba(0,0,0,.4); }
+
+  /* ---------- オーバーレイ ---------- */
+  .overlay{
+    position:absolute; inset:0; z-index:40; display:none; flex-direction:column;
+    align-items:center; justify-content:center; gap:14px; padding:24px;
+    background:radial-gradient(120% 90% at 50% 20%, rgba(60,10,9,.92), rgba(20,5,4,.97));
+    text-align:center;
+  }
+  .overlay.show{ display:flex; }
+  .ttl{ font-family:"Reggae One",serif; color:var(--gold2); text-shadow:0 3px 0 #000,0 0 24px rgba(201,162,63,.4); }
+  #startScreen .ttl{ font-size:52px; line-height:1; }
+  #startScreen .sub{ font-size:14px; color:var(--paper); letter-spacing:2px; margin-top:-4px;}
+  .mizuhiki{ width:120px; height:2px; background:linear-gradient(90deg,transparent,var(--gold),transparent); margin:4px 0; }
+  .howto{ font-size:13px; line-height:1.9; color:var(--paper); max-width:330px; }
+  .howto b{ color:var(--gold2); }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:340px; }
+  .chip{ font-size:11px; padding:4px 9px; border-radius:14px; background:rgba(0,0,0,.3);
+         border:1px solid var(--gold); color:var(--paper); }
+
+  /* 図鑑風シナジー一覧 (start) */
+  #fudaList{ display:flex; flex-direction:column; gap:4px; max-width:340px; max-height:34vh; overflow-y:auto;
+             padding:8px 10px; background:rgba(0,0,0,.25); border-radius:10px; border:1px solid rgba(233,207,126,.3); }
+  #fudaList .fr{ display:flex; align-items:center; gap:8px; font-size:11px; text-align:left; }
+  #fudaList .fk{ font-family:"Yuji Syuku"; font-size:18px; width:24px; text-align:center; flex:0 0 24px; border-radius:4px; }
+  #fudaList .fn{ color:var(--gold2); flex:0 0 64px; }
+  #fudaList .fd{ color:var(--paper); flex:1; }
+
+  /* ---------- 御利益(shop) ---------- */
+  #shopScreen .ttl{ font-size:30px; }
+  #shopSub{ font-size:13px; color:var(--paper); }
+  #shopSub b{ color:var(--gold2); font-family:"Reggae One"; }
+  #offers{ display:flex; flex-direction:column; gap:10px; width:100%; max-width:360px; }
+  .offer{ display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:12px;
+          background:linear-gradient(180deg,var(--paper),var(--paper2)); color:var(--ink);
+          border:2px solid var(--gold); box-shadow:0 4px 10px rgba(0,0,0,.4);
+          cursor:pointer; transition:transform .08s; text-align:left; }
+  .offer:active{ transform:scale(.98); }
+  .offer[disabled]{ filter:grayscale(.5) brightness(.85); pointer-events:none; }
+  .offer .ok{ font-family:"Yuji Syuku"; font-size:34px; width:46px; height:46px; flex:0 0 46px;
+              display:flex; align-items:center; justify-content:center; border-radius:8px;
+              border:2px solid #b9a06a; background:#fff; }
+  .offer .oinfo{ flex:1; }
+  .offer .on{ font-weight:800; font-size:15px; color:var(--lacq); }
+  .offer .od{ font-size:11px; color:var(--ink2); line-height:1.4; }
+  .offer .ocost{ font-family:"Reggae One"; font-size:18px; color:var(--good); flex:0 0 auto; }
+  .offer .ocost.cant{ color:var(--bad); }
+  #shopBtns{ display:flex; gap:10px; width:100%; max-width:360px; }
+  #shopBtns .btn{ font-size:16px; padding:11px; }
+  .btn.ghost{ background:transparent; color:var(--gold2); border:2px solid var(--gold);
+              box-shadow:none; }
+  .btn.ghost:active{ transform:translateY(2px); }
+
+  /* 所持札ミニ表示 */
+  #collMini{ display:flex; flex-wrap:wrap; gap:3px; justify-content:center; max-width:360px; }
+  #collMini .cm{ font-family:"Yuji Syuku"; font-size:15px; width:24px; height:24px; border-radius:4px;
+                 display:flex; align-items:center; justify-content:center; color:#fff;
+                 border:1px solid rgba(0,0,0,.2); }
+  #collMini .cm.sel{ outline:3px solid var(--gold2); }
+
+  /* over */
+  #overScreen .ttl{ font-size:40px; }
+  #overStats{ font-size:15px; line-height:2; color:var(--paper); }
+  #overStats b{ color:var(--gold2); font-family:"Reggae One"; font-size:20px; }
+  #shareBox{ font-size:13px; line-height:1.5; color:var(--paper); background:rgba(0,0,0,.3);
+             border:1px solid var(--gold); border-radius:10px; padding:10px 14px; max-width:320px;
+             white-space:pre-wrap; }
+
+  /* 御札を納める(swap) モード帯 */
+  #swapHint{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+             z-index:20; background:rgba(60,10,9,.95); border:2px solid var(--gold);
+             border-radius:12px; padding:12px 18px; font-size:14px; color:var(--gold2);
+             display:none; text-align:center; }
+  #swapHint.show{ display:block; }
+
+  /* mute */
+  #mute{ position:absolute; top:calc(env(safe-area-inset-top) + 6px); right:8px; z-index:50;
+         width:32px; height:32px; border-radius:50%; border:1px solid var(--gold);
+         background:rgba(0,0,0,.3); color:var(--gold2); font-size:15px; display:flex;
+         align-items:center; justify-content:center; cursor:pointer; }
+
+  .toast{ position:absolute; left:50%; top:18%; transform:translateX(-50%); z-index:60;
+          background:rgba(20,5,4,.95); border:1px solid var(--gold); color:var(--gold2);
+          padding:8px 16px; border-radius:20px; font-size:13px; opacity:0;
+          transition:opacity .25s; pointer-events:none; white-space:nowrap; }
+  .toast.show{ opacity:1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="mute">♪</div>
+
+  <div id="hud">
+    <div class="hudRow">
+      <div id="matsuri">第<b id="stageNo">1</b>祭</div>
+      <div id="wallet"><div class="lbl">財布</div><div class="val"><span id="coins">0</span><small> 文</small></div></div>
+    </div>
+    <div id="questLine">
+      <div id="questBar"><div id="questFill"></div></div>
+      <div id="questText">お供え <b id="rentNow">0</b> 文</div>
+    </div>
+  </div>
+
+  <div id="boardWrap">
+    <div id="frame">
+      <!-- 上ガター(列を上へ) -->
+      <div class="arr" data-axis="col" data-i="0" data-d="-1" style="grid-row:1;grid-column:2;align-self:center;justify-self:start;margin-left:6px;">▲</div>
+      <div class="arr" data-axis="col" data-i="1" data-d="-1" style="grid-row:1;grid-column:2;">▲</div>
+      <div class="arr" data-axis="col" data-i="2" data-d="-1" style="grid-row:1;grid-column:2;align-self:center;justify-self:end;margin-right:6px;">▲</div>
+      <!-- 左ガター(行を左へ) -->
+      <div class="arr" data-axis="row" data-i="0" data-d="-1" style="grid-row:2;grid-column:1;align-self:start;margin-top:6px;">◀</div>
+      <div class="arr" data-axis="row" data-i="1" data-d="-1" style="grid-row:2;grid-column:1;">◀</div>
+      <div class="arr" data-axis="row" data-i="2" data-d="-1" style="grid-row:2;grid-column:1;align-self:end;margin-bottom:6px;">◀</div>
+
+      <div id="board"></div>
+
+      <!-- 右ガター(行を右へ) -->
+      <div class="arr" data-axis="row" data-i="0" data-d="1" style="grid-row:2;grid-column:3;align-self:start;margin-top:6px;">▶</div>
+      <div class="arr" data-axis="row" data-i="1" data-d="1" style="grid-row:2;grid-column:3;">▶</div>
+      <div class="arr" data-axis="row" data-i="2" data-d="1" style="grid-row:2;grid-column:3;align-self:end;margin-bottom:6px;">▶</div>
+      <!-- 下ガター(列を下へ) -->
+      <div class="arr" data-axis="col" data-i="0" data-d="1" style="grid-row:3;grid-column:2;align-self:center;justify-self:start;margin-left:6px;">▼</div>
+      <div class="arr" data-axis="col" data-i="1" data-d="1" style="grid-row:3;grid-column:2;">▼</div>
+      <div class="arr" data-axis="col" data-i="2" data-d="1" style="grid-row:3;grid-column:2;align-self:center;justify-self:end;margin-right:6px;">▼</div>
+
+      <div id="swapHint">納める札を選んでね</div>
+    </div>
+  </div>
+
+  <div id="ctrl">
+    <div id="spins"></div>
+    <div id="status">回して福を集めよう</div>
+    <div id="yoseLine"></div>
+    <button class="btn" id="mainBtn">回す</button>
+  </div>
+
+  <!-- スタート -->
+  <div class="overlay show" id="startScreen">
+    <div class="ttl">寄せ福</div>
+    <div class="sub">Y O S E F U K U</div>
+    <div class="mizuhiki"></div>
+    <div class="howto">
+      縁起物の御札を<b>回し</b>、隣り合う札の<b>福のご縁</b>で銭を稼ぐ。<br>
+      回した後、行や列を<b>「寄せて」</b>札を揃えるのが肝。<br>
+      <b>お供え</b>のノルマを越えれば次の祭へ。
+    </div>
+    <div class="chips">
+      <span class="chip">🎴 隣接シナジー</span>
+      <span class="chip">↔ 寄せの一手</span>
+      <span class="chip">🏮 御札を集める</span>
+    </div>
+    <div id="fudaList"></div>
+    <button class="btn" id="startBtn" style="max-width:280px;">祭をはじめる</button>
+    <div style="font-size:11px;color:var(--gold2)">最高: 第<span id="bestStage">1</span>祭 / <span id="bestScore">0</span>文</div>
+  </div>
+
+  <!-- 御利益(shop) -->
+  <div class="overlay" id="shopScreen">
+    <div class="ttl">御利益</div>
+    <div id="shopSub">財布 <b id="shopCoins">0</b> 文 ・ 札を一枚いただこう</div>
+    <div id="offers"></div>
+    <div id="collMini"></div>
+    <div id="shopBtns">
+      <button class="btn ghost" id="discardBtn" style="flex:1;">札を納める</button>
+      <button class="btn" id="nextBtn" style="flex:1;">次の祭へ</button>
+    </div>
+  </div>
+
+  <!-- ゲームオーバー -->
+  <div class="overlay" id="overScreen">
+    <div class="ttl">願い、ここまで</div>
+    <div class="mizuhiki"></div>
+    <div id="overStats"></div>
+    <div id="shareBox"></div>
+    <button class="btn" id="retryBtn" style="max-width:280px;">もう一度</button>
+    <button class="btn ghost" id="shareBtn" style="max-width:280px;">結果をコピー</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+"use strict";
+(function(){
+  /* =========================================================
+     寄せ福 — YOSEFUKU
+     和風スロット × 隣接シナジー × 「寄せ」の一手 ローグライト
+     ========================================================= */
+
+  /* ---------- 御札データ ---------- */
+  // adj = 上下左右の隣接札。pos: 0..8 (0,2,6,8=角 / 4=中央 / 1,3,5,7=辺)
+  const CORNERS = [0,2,6,8], EDGES=[1,3,5,7], CENTER=4;
+  const FUDA = {
+    koban:{k:"両", nm:"小判", col:"#c9a23f", base:4, rare:0,
+      desc:"そのまま4文。福の素。"},
+    neko:{k:"猫", nm:"招き猫", col:"#b23a2e", base:1, rare:1,
+      desc:"隣の小判1枚につき+5文。"},
+    daruma:{k:"達", nm:"達磨", col:"#8c1d18", base:5, rare:1,
+      desc:"四隅に座ると2倍。"},
+    tai:{k:"鯛", nm:"鯛", col:"#d6607a", base:2, rare:1,
+      desc:"隣の鯛1枚につき+6文。"},
+    fuji:{k:"富", nm:"富士", col:"#2c5a8c", base:2, rare:1,
+      desc:"同じ行と列の札すべて+1文。"},
+    kome:{k:"米", nm:"米俵", col:"#a8842f", base:1, rare:1,
+      desc:"隣接する札1枚につき+3文。"},
+    tsuru:{k:"鶴", nm:"鶴", col:"#5b4a38", base:3, rare:2,
+      desc:"亀と隣り合うと3倍。"},
+    kame:{k:"亀", nm:"亀", col:"#2f7d4f", base:3, rare:2,
+      desc:"鶴と隣り合うと3倍。"},
+    takara:{k:"宝", nm:"宝船", col:"#27506e", base:2, rare:2,
+      desc:"隣接する札の種類1つにつき+4文。"},
+    kumade:{k:"熊", nm:"熊手", col:"#7a4a1f", base:2, rare:2,
+      desc:"同じ行の他の札1枚につき+3文。"},
+    fukubukuro:{k:"福", nm:"福袋", col:"#b2402e", base:0, rare:2, rng:[2,9],
+      desc:"回すたび2〜9文の気まぐれ。"},
+    sakura:{k:"桜", nm:"桜", col:"#d97aa0", base:1, rare:2,
+      desc:"盤上の総額を1.2倍(端数切上)。"},
+    suzu:{k:"鈴", nm:"鈴", col:"#b98f2f", base:2, rare:1,
+      desc:"隣の鈴1枚につき+4文(鳴き交わす)。"},
+    matsu:{k:"松", nm:"門松", col:"#356b3e", base:3, rare:2,
+      desc:"角に座ると+5文。新年の構え。"},
+  };
+  const ALL_IDS = Object.keys(FUDA);
+
+  /* ---------- 永続化 ---------- */
+  const store = {
+    load(k,fb){ try{ const r=localStorage.getItem(k); return r?JSON.parse(r):fb; }catch(e){ return fb; } },
+    save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  };
+  let best = store.load("yosefuku_best", {stage:1, score:0});
+
+  /* ---------- オーディオ (iOS対応) ---------- */
+  let AC=null, muted=store.load("yosefuku_muted",false);
+  function audio(){
+    if(!AC){ try{
+      AC=new (window.AudioContext||window.webkitAudioContext)();
+      AC.onstatechange=()=>{ if(AC.state!=="running"&&!document.hidden){ try{AC.resume();}catch(e){} } };
+    }catch(e){} }
+    if(AC&&AC.state!=="running"){ try{AC.resume();}catch(e){} }
+    return AC;
+  }
+  let silentEl=null;
+  function silentWavUrl(){
+    const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+    const str=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
+    str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");
+    str(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+    v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);
+    str(36,"data");v.setUint32(40,n,true);
+    for(let i=0;i<n;i++) v.setUint8(44+i,0x80);
+    return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+  }
+  function unlockAudio(){
+    if(!silentEl){
+      silentEl=document.createElement("audio");
+      silentEl.setAttribute("playsinline","");
+      silentEl.loop=true; silentEl.volume=0.01; silentEl.src=silentWavUrl();
+    }
+    const p=silentEl.play(); if(p&&p.catch) p.catch(()=>{});
+    audio(); if(!AC) return;
+    const done=()=>{ if(AC.state==="running"){
+      ["pointerdown","pointerup","touchend","click"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true)); } };
+    try{ AC.resume().then(done); }catch(e){ done(); }
+  }
+  ["pointerdown","pointerup","touchend","click"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) audio(); });
+
+  function tone(f,d,type,vol,slideTo){
+    if(muted||!audio()) return;
+    try{
+      const o=AC.createOscillator(),g=AC.createGain();
+      o.type=type||"sine"; o.frequency.value=f;
+      if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+      g.gain.value=vol||0.06; g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+      o.connect(g);g.connect(AC.destination); o.start();o.stop(AC.currentTime+d);
+    }catch(e){}
+  }
+  function noise(d,vol){
+    if(muted||!audio()) return;
+    try{
+      const n=Math.floor(AC.sampleRate*d), buf=AC.createBuffer(1,n,AC.sampleRate), data=buf.getChannelData(0);
+      for(let i=0;i<n;i++) data[i]=(Math.random()*2-1)*(1-i/n);
+      const src=AC.createBufferSource(); src.buffer=buf;
+      const g=AC.createGain(); g.gain.value=vol||0.08;
+      src.connect(g);g.connect(AC.destination); src.start();
+    }catch(e){}
+  }
+  // 和風の音色 (お囃子/鈴/拍子木)
+  const sReel = ()=>tone(180+Math.random()*120,0.03,"square",0.018);
+  const sStop = ()=>{ tone(520,0.06,"sine",0.04); };
+  const sYose = ()=>{ tone(660,0.05,"triangle",0.035,990); };
+  const sCoin = c=>{ tone(880+Math.min(c*6,500),0.07,"sine",0.05); setTimeout(()=>tone(1320,0.09,"sine",0.04),50); };
+  const sBig  = ()=>[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,0.18,"triangle",0.05),i*70));
+  const sPass = ()=>[659,880,1046,1318].forEach((f,i)=>setTimeout(()=>tone(f,0.22,"sine",0.05),i*90));
+  const sBuy  = ()=>{ tone(740,0.08,"square",0.04); setTimeout(()=>tone(1100,0.1,"square",0.04),70); };
+  const sOver = ()=>[392,330,262,196].forEach((f,i)=>setTimeout(()=>tone(f,0.4,"sawtooth",0.05),i*200));
+  const sKi   = ()=>{ noise(0.04,0.06); tone(1400,0.04,"square",0.03); }; // 拍子木
+  const vibe  = ms=>{ try{ navigator.vibrate&&navigator.vibrate(ms); }catch(e){} };
+
+  /* ---------- DOM ---------- */
+  const $=s=>document.querySelector(s);
+  const boardEl=$("#board"), frameEl=$("#frame");
+  const stageNoEl=$("#stageNo"), coinsEl=$("#coins"), rentNowEl=$("#rentNow");
+  const questFill=$("#questFill"), questText=$("#questText");
+  const statusEl=$("#status"), yoseLineEl=$("#yoseLine"), spinsEl=$("#spins");
+  const mainBtn=$("#mainBtn"), toastEl=$("#toast"), swapHint=$("#swapHint");
+
+  /* ---------- 状態 (宣言時に初期化) ---------- */
+  let state="start";        // start | idle | spinning | settled | shop | swap | over
+  let stage=1;
+  let coins=0;              // 財布
+  let lifetimeEarned=0;     // 累計獲得 (スコア)
+  let rent=0;
+  let spinsLeft=3, spinsMax=3;
+  let yoseLeft=0, yoseMax=2;
+  let collection=[];        // 所持札 id 配列
+  let grid=new Array(9).fill(null);   // 表示中の盤 (id)
+  let rollVals=new Array(9).fill(0);  // 福袋などスピン毎乱数
+  let curPay=0;
+  let tiles=[];             // tile DOM
+  let pendingBuy=null;      // shop: 購入予定札 (満杯時の差し替え用)
+  let lastSpinTotal=0;      // 当該ステージ獲得合計
+
+  // お供え(ノルマ): なだらかな冪乗カーブ。序盤は易しく、ビルドが育つほど深くまで進める
+  const RENT_FIX=[20,32,48];
+  function rentFor(n){
+    if(n<=RENT_FIX.length) return RENT_FIX[n-1];
+    return Math.round(13.7*Math.pow(n,1.17)/2)*2;
+  }
+  const COLL_MAX=12;
+
+  /* ---------- 盤の生成 ---------- */
+  function buildBoard(){
+    boardEl.innerHTML="";
+    tiles=[];
+    for(let i=0;i<9;i++){
+      const t=document.createElement("div");
+      t.className="tile blank"; t.dataset.i=i;
+      t.innerHTML='<div class="topband"></div><div class="kanji"></div><div class="nm"></div><div class="pay"></div>';
+      boardEl.appendChild(t);
+      tiles.push(t);
+    }
+  }
+
+  function renderTile(i,animK){
+    const t=tiles[i], id=grid[i];
+    const kanji=t.querySelector(".kanji"), nm=t.querySelector(".nm"), band=t.querySelector(".topband");
+    if(!id){ t.className="tile blank"; kanji.textContent=""; nm.textContent=""; band.style.background="transparent"; return; }
+    const f=FUDA[id];
+    t.className="tile";
+    kanji.textContent= animK!=null ? animK : f.k;
+    kanji.style.color=f.col;
+    nm.textContent=f.nm;
+    band.style.background=f.col;
+  }
+
+  function renderAll(){ for(let i=0;i<9;i++) renderTile(i); }
+
+  /* =========================================================
+     ペイ計算 — 隣接シナジー
+     ========================================================= */
+  function neighbors(i){
+    const r=Math.floor(i/3), c=i%3, out=[];
+    if(r>0) out.push(i-3); if(r<2) out.push(i+3);
+    if(c>0) out.push(i-1); if(c<2) out.push(i+1);
+    return out;
+  }
+  // grid(id配列), rolls(福袋等の値) を受け取り {cells:[..値], total} を返す
+  function computeBoard(g, rolls){
+    const n=9;
+    const baseVal=new Array(n).fill(0);
+    const add=new Array(n).fill(0);   // 加算ボーナス
+    const mul=new Array(n).fill(1);   // 乗算
+    // base
+    for(let i=0;i<n;i++){
+      const id=g[i]; if(!id){ continue; }
+      const f=FUDA[id];
+      baseVal[i] = f.rng ? (rolls?rolls[i]:f.rng[0]) : f.base;
+    }
+    // 各札の自己加算 (隣接依存)
+    for(let i=0;i<n;i++){
+      const id=g[i]; if(!id) continue;
+      const nb=neighbors(i);
+      switch(id){
+        case "neko": add[i]+= 5*nb.filter(j=>g[j]==="koban").length; break;
+        case "tai":  add[i]+= 6*nb.filter(j=>g[j]==="tai").length; break;
+        case "suzu": add[i]+= 4*nb.filter(j=>g[j]==="suzu").length; break;
+        case "kome": add[i]+= 3*nb.filter(j=>g[j]&&g[j]).length; break;
+        case "takara":{
+          const types=new Set(nb.map(j=>g[j]).filter(Boolean));
+          add[i]+= 4*types.size; break;
+        }
+        case "kumade":{
+          const r=Math.floor(i/3);
+          let cnt=0; for(let c=0;c<3;c++){ const j=r*3+c; if(j!==i&&g[j]) cnt++; }
+          add[i]+= 3*cnt; break;
+        }
+        case "matsu": if(CORNERS.includes(i)) add[i]+=5; break;
+      }
+    }
+    // 富士: 同じ行と列の全札 +1 (自分含む他)
+    for(let i=0;i<n;i++){
+      if(g[i]!=="fuji") continue;
+      const r=Math.floor(i/3), c=i%3;
+      for(let k=0;k<n;k++){
+        if(!g[k]) continue;
+        if(Math.floor(k/3)===r || k%3===c){ if(k!==i) add[k]+=1; }
+      }
+    }
+    // 乗算: 達磨四隅、鶴亀隣接
+    for(let i=0;i<n;i++){
+      const id=g[i]; if(!id) continue;
+      if(id==="daruma" && CORNERS.includes(i)) mul[i]*=2;
+      if(id==="tsuru"){ if(neighbors(i).some(j=>g[j]==="kame")) mul[i]*=3; }
+      if(id==="kame"){ if(neighbors(i).some(j=>g[j]==="tsuru")) mul[i]*=3; }
+    }
+    // セル値
+    const cells=new Array(n).fill(0);
+    let total=0;
+    for(let i=0;i<n;i++){
+      if(!g[i]){ cells[i]=0; continue; }
+      let v=Math.round((baseVal[i]+add[i])*mul[i]);
+      cells[i]=v; total+=v;
+    }
+    // 桜: 総額を 1.2^(枚数) 倍 (端数切上)
+    const sakuraN=g.filter(x=>x==="sakura").length;
+    if(sakuraN>0){ total=Math.ceil(total*Math.pow(1.2,sakuraN)); }
+    return {cells, total, sakuraN};
+  }
+
+  function recalcShow(animate){
+    const res=computeBoard(grid, rollVals);
+    curPay=res.total;
+    for(let i=0;i<9;i++){
+      const t=tiles[i], pay=t.querySelector(".pay");
+      if(grid[i] && res.cells[i]>0){ pay.textContent="+"+res.cells[i]; t.classList.add("show"); }
+      else { pay.textContent=""; t.classList.remove("show"); }
+      t.classList.remove("glow");
+    }
+    // ハイライト: 最も高いセル
+    if(animate){
+      let mx=0,mi=-1;
+      for(let i=0;i<9;i++){ if(res.cells[i]>mx){ mx=res.cells[i]; mi=i; } }
+      if(mi>=0 && mx>=8) tiles[mi].classList.add("glow");
+    }
+    const sk = res.sakuraN>0 ? `（桜 ×${(Math.pow(1.2,res.sakuraN)).toFixed(1)}）` : "";
+    yoseLineEl.innerHTML = `この回り <b>${curPay}</b> 文 ${sk}　寄せ残り <b>${yoseLeft}</b>`;
+    return res;
+  }
+
+  /* =========================================================
+     寄せ (行/列シフト, ラップ)
+     ========================================================= */
+  function shiftRow(r,d){
+    const a=[grid[r*3],grid[r*3+1],grid[r*3+2]];
+    const b=d>0 ? [a[2],a[0],a[1]] : [a[1],a[2],a[0]];
+    grid[r*3]=b[0]; grid[r*3+1]=b[1]; grid[r*3+2]=b[2];
+    const ra=[rollVals[r*3],rollVals[r*3+1],rollVals[r*3+2]];
+    const rb=d>0?[ra[2],ra[0],ra[1]]:[ra[1],ra[2],ra[0]];
+    rollVals[r*3]=rb[0]; rollVals[r*3+1]=rb[1]; rollVals[r*3+2]=rb[2];
+  }
+  function shiftCol(c,d){
+    const a=[grid[c],grid[c+3],grid[c+6]];
+    const b=d>0?[a[2],a[0],a[1]]:[a[1],a[2],a[0]];
+    grid[c]=b[0]; grid[c+3]=b[1]; grid[c+6]=b[2];
+    const ra=[rollVals[c],rollVals[c+3],rollVals[c+6]];
+    const rb=d>0?[ra[2],ra[0],ra[1]]:[ra[1],ra[2],ra[0]];
+    rollVals[c]=rb[0]; rollVals[c+3]=rb[1]; rollVals[c+6]=rb[2];
+  }
+  function doYose(axis,i,d){
+    if(state!=="settled"||yoseLeft<=0) return;
+    if(axis==="row") shiftRow(i,d); else shiftCol(i,d);
+    yoseLeft--;
+    renderAll();
+    // ずらした列/行のタイルをパルス
+    const idxs = axis==="row" ? [i*3,i*3+1,i*3+2] : [i,i+3,i+6];
+    idxs.forEach(j=>{ tiles[j].classList.remove("pulse"); void tiles[j].offsetWidth; tiles[j].classList.add("pulse"); });
+    recalcShow(true);
+    sYose(); vibe(8);
+    updateArrows();
+    if(yoseLeft<=0){ statusEl.innerHTML="寄せ終了。<b>収める</b>で福を頂こう"; }
+  }
+
+  function updateArrows(){
+    const on = state==="settled" && yoseLeft>0;
+    document.querySelectorAll(".arr").forEach(a=>{
+      a.classList.toggle("on", on);
+      if(on) a.removeAttribute("disabled"); else a.setAttribute("disabled","");
+    });
+  }
+
+  /* =========================================================
+     スピン
+     ========================================================= */
+  function drawNine(){
+    // collection から9枚を抽選配置 (9枚以上なら一部のみ、未満は blank)
+    const pool=collection.slice();
+    // シャッフル
+    for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+    const pick = pool.slice(0,9);
+    while(pick.length<9) pick.push(null);
+    // 配置もシャッフル
+    for(let i=pick.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pick[i],pick[j]]=[pick[j],pick[i]]; }
+    return pick;
+  }
+
+  let spinTimer=null;
+  function spin(){
+    if(state!=="idle"||spinsLeft<=0) return;
+    state="spinning";
+    mainBtn.disabled=true;
+    statusEl.textContent="お囃子、回る…";
+    updateArrows();
+    sKi();
+    const finalGrid=drawNine();
+    const finalRolls=finalGrid.map(id=> (id&&FUDA[id].rng)? (FUDA[id].rng[0]+Math.floor(Math.random()*(FUDA[id].rng[1]-FUDA[id].rng[0]+1))) : 0);
+    // リール演出: 各タイルが順に止まる
+    let ticks=0;
+    const totalTicks=14;
+    spinTimer=setInterval(()=>{
+      ticks++;
+      for(let i=0;i<9;i++){
+        const stopAt = 6 + i; // 左上から順に停止
+        if(ticks>=stopAt){
+          if(ticks===stopAt){ // 停止フレーム
+            grid[i]=finalGrid[i]; rollVals[i]=finalRolls[i];
+            renderTile(i);
+            tiles[i].classList.remove("spinning","pulse"); void tiles[i].offsetWidth; tiles[i].classList.add("pulse");
+            sStop();
+          }
+        } else {
+          // 回転中
+          const rid=ALL_IDS[Math.floor(Math.random()*ALL_IDS.length)];
+          tiles[i].classList.add("spinning");
+          renderTile(i, FUDA[rid].k);
+          tiles[i].querySelector(".kanji").style.color="#9a7b3a";
+          if(ticks%2===0) sReel();
+        }
+      }
+      if(ticks>=totalTicks){
+        clearInterval(spinTimer); spinTimer=null;
+        for(let i=0;i<9;i++) tiles[i].classList.remove("spinning");
+        settle();
+      }
+    },55);
+  }
+
+  function settle(){
+    state="settled";
+    yoseLeft=yoseMax;
+    const res=recalcShow(true);
+    if(res.total>=40) sBig();
+    statusEl.innerHTML = yoseLeft>0 ? "行・列を<b>寄せて</b>福を揃えよう（スワイプ/矢印）" : "<b>収める</b>で福を頂こう";
+    mainBtn.disabled=false;
+    mainBtn.textContent="収める ＋"+curPay;
+    mainBtn.classList.add("collect");
+    updateArrows();
+  }
+
+  function collect(){
+    if(state!=="settled") return;
+    state="idle";
+    const got=curPay;
+    coins+=got; lifetimeEarned+=got; lastSpinTotal+=got;
+    spinsLeft--;
+    addPip();
+    // 浮遊スコア
+    floatScore("+"+got+" 文");
+    sCoin(got); vibe(12);
+    // payをクリア
+    for(let i=0;i<9;i++){ tiles[i].classList.remove("show","glow"); }
+    mainBtn.classList.remove("collect");
+    updateHUD();
+    updateArrows();
+    yoseLeft=0;
+    yoseLineEl.innerHTML="";
+    if(spinsLeft<=0){
+      setTimeout(resolveStage,500);
+    } else {
+      mainBtn.textContent="回す";
+      statusEl.innerHTML=`あと <b>${spinsLeft}</b> 回。お供えまで <b>${Math.max(0,rent-coins)}</b> 文`;
+    }
+  }
+
+  function floatScore(txt){
+    const f=document.createElement("div");
+    f.className="float"; f.textContent=txt;
+    const br=boardEl.getBoundingClientRect(), ar=$("#app").getBoundingClientRect();
+    f.style.left=(br.left-ar.left+br.width/2-30)+"px";
+    f.style.top=(br.top-ar.top+br.height/2-20)+"px";
+    $("#app").appendChild(f);
+    setTimeout(()=>f.remove(),1000);
+  }
+
+  function resolveStage(){
+    // お供えを払う
+    if(coins>=rent){
+      coins-=rent;
+      sPass();
+      toast("お供え成就! +御利益");
+      updateHUD();
+      setTimeout(openShop,650);
+    } else {
+      gameOver();
+    }
+  }
+
+  /* =========================================================
+     御利益 (shop)
+     ========================================================= */
+  function weightedFuda(){
+    // レア度で重み付け抽選
+    const w={0:6,1:3,2:1.6};
+    const bag=[];
+    ALL_IDS.forEach(id=>{ const n=Math.round((w[FUDA[id].rare]||1)*10); for(let i=0;i<n;i++) bag.push(id); });
+    return bag[Math.floor(Math.random()*bag.length)];
+  }
+  function offerCost(id){
+    const base={0:14,1:24,2:38}[FUDA[id].rare]||20;
+    return base + Math.floor(stage*2);
+  }
+
+  function openShop(){
+    state="shop";
+    pendingBuy=null;
+    $("#startScreen").classList.remove("show");
+    $("#overScreen").classList.remove("show");
+    renderShop();
+    $("#shopScreen").classList.add("show");
+  }
+
+  function renderShop(){
+    $("#shopSub").innerHTML=`財布 <b id="shopCoins">${coins}</b> 文 ・ 札を一枚いただこう`;
+    const offersEl=$("#offers");
+    offersEl.innerHTML="";
+    // 3つの提案 (重複なし)
+    const picks=[]; let guard=0;
+    while(picks.length<3 && guard++<50){ const id=weightedFuda(); if(!picks.includes(id)) picks.push(id); }
+    picks.forEach(id=>{
+      const f=FUDA[id], cost=offerCost(id);
+      const can=coins>=cost && collection.length<COLL_MAX;
+      const full=collection.length>=COLL_MAX;
+      const o=document.createElement("button");
+      o.className="offer"; if(!can&&!full) o.setAttribute("disabled","");
+      o.innerHTML=`<div class="ok" style="color:${f.col}">${f.k}</div>
+        <div class="oinfo"><div class="on">${f.nm}</div><div class="od">${f.desc}</div></div>
+        <div class="ocost ${coins<cost?'cant':''}">${cost}文</div>`;
+      o.addEventListener("pointerup",(e)=>{ e.preventDefault(); buyFuda(id,cost,full); });
+      offersEl.appendChild(o);
+    });
+    renderCollMini();
+  }
+
+  function renderCollMini(selMode){
+    const el=$("#collMini"); el.innerHTML="";
+    collection.forEach((id,idx)=>{
+      const f=FUDA[id];
+      const c=document.createElement("div");
+      c.className="cm"; c.style.background=f.col; c.textContent=f.k; c.title=f.nm;
+      if(selMode){ c.style.cursor="pointer"; c.addEventListener("pointerup",(e)=>{e.preventDefault(); pickToRemove(idx);}); }
+      el.appendChild(c);
+    });
+  }
+
+  let discardMode=false;
+  function buyFuda(id,cost,full){
+    if(coins<cost){ toast("文が足りない…"); return; }
+    if(full){
+      // 差し替え: 納める札を選ぶ
+      pendingBuy={id,cost};
+      discardMode=false;
+      toast("入れ替える札を選んで");
+      enterRemoveMode(true);
+      return;
+    }
+    coins-=cost; collection.push(id);
+    sBuy(); vibe(10);
+    toast(FUDA[id].nm+"を授かった");
+    renderShop();
+  }
+
+  function enterRemoveMode(forSwap){
+    discardMode=!forSwap;
+    statusEl.textContent="";
+    renderCollMini(true);
+    $("#shopSub").innerHTML = forSwap ? "入れ替える(納める)札をタップ" : "納める札をタップ（無料）";
+    $("#discardBtn").textContent = "やめる";
+  }
+  function pickToRemove(idx){
+    if(pendingBuy){
+      collection.splice(idx,1);
+      coins-=pendingBuy.cost;
+      collection.push(pendingBuy.id);
+      toast(FUDA[pendingBuy.id].nm+"に入れ替えた");
+      pendingBuy=null; sBuy();
+    } else {
+      if(collection.length<=3){ toast("これ以上は納められない"); return; }
+      const rid=collection[idx];
+      collection.splice(idx,1);
+      toast(FUDA[rid].nm+"を納めた");
+      sKi();
+    }
+    $("#discardBtn").textContent="札を納める";
+    $("#shopSub").innerHTML=`財布 <b id="shopCoins">${coins}</b> 文 ・ 札を一枚いただこう`;
+    renderShop();
+  }
+
+  /* =========================================================
+     ステージ進行
+     ========================================================= */
+  function startStage(){
+    spinsLeft=spinsMax; lastSpinTotal=0;
+    yoseLeft=0;
+    rent=rentFor(stage);
+    grid=new Array(9).fill(null); rollVals=new Array(9).fill(0);
+    renderAll();
+    state="idle";
+    mainBtn.textContent="回す"; mainBtn.classList.remove("collect"); mainBtn.disabled=false;
+    renderPips();
+    updateHUD();
+    statusEl.innerHTML=`第${stage}祭。お供えは <b>${rent}</b> 文`;
+    yoseLineEl.innerHTML=`寄せは1回の回りにつき <b>${yoseMax}</b> 手`;
+    updateArrows();
+  }
+
+  function nextStage(){
+    stage++;
+    $("#shopScreen").classList.remove("show");
+    startStage();
+  }
+
+  function gameOver(){
+    state="over";
+    sOver();
+    if(stage>best.stage || (stage===best.stage&&lifetimeEarned>best.score)){
+      best={stage:Math.max(stage,best.stage), score:Math.max(lifetimeEarned,best.score)};
+      store.save("yosefuku_best",best);
+    }
+    $("#overStats").innerHTML=
+      `第 <b>${stage}</b> 祭で力尽きた<br>授かった福 <b>${lifetimeEarned}</b> 文<br>`+
+      `<span style="font-size:12px">最高: 第${best.stage}祭 / ${best.score}文</span>`;
+    const grid5=collection.map(id=>FUDA[id].k).join("");
+    $("#shareBox").textContent=
+      `寄せ福 — 第${stage}祭 / ${lifetimeEarned}文\n授かった御札: ${grid5}\nhttps://nrtkumi.github.io/games/yosefuku/`;
+    $("#shopScreen").classList.remove("show");
+    $("#overScreen").classList.add("show");
+  }
+
+  /* ---------- HUD更新 ---------- */
+  function updateHUD(){
+    stageNoEl.textContent=stage;
+    coinsEl.textContent=coins;
+    rentNowEl.textContent=rent;
+    const pct=Math.min(100, rent>0? (coins/rent*100):0);
+    questFill.style.width=pct+"%";
+    if(coins>=rent){ questText.innerHTML=`お供え達成! 余り <b>${coins-rent}</b> 文`; questFill.style.background="linear-gradient(90deg,#5fae7c,#9fe0b6)"; }
+    else { questText.innerHTML=`お供え <b>${rent}</b> 文 まであと <b>${rent-coins}</b>`; questFill.style.background="linear-gradient(90deg,var(--gold),var(--gold2))"; }
+  }
+  function renderPips(){
+    spinsEl.innerHTML="";
+    for(let i=0;i<spinsMax;i++){ const p=document.createElement("div"); p.className="pip"; spinsEl.appendChild(p); }
+  }
+  function addPip(){
+    const used=spinsMax-spinsLeft;
+    const pips=spinsEl.querySelectorAll(".pip");
+    for(let i=0;i<pips.length;i++) pips[i].classList.toggle("used", i<used);
+  }
+
+  let toastTimer=null;
+  function toast(msg){
+    toastEl.textContent=msg; toastEl.classList.add("show");
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove("show"),1500);
+  }
+
+  /* =========================================================
+     入力
+     ========================================================= */
+  mainBtn.addEventListener("pointerup",(e)=>{
+    e.preventDefault();
+    if(state==="idle") spin();
+    else if(state==="settled") collect();
+  });
+
+  // ガター矢印
+  document.querySelectorAll(".arr").forEach(a=>{
+    a.addEventListener("pointerup",(e)=>{
+      e.preventDefault();
+      doYose(a.dataset.axis, parseInt(a.dataset.i,10), parseInt(a.dataset.d,10));
+    });
+  });
+
+  // スワイプで寄せ
+  let sw=null;
+  boardEl.addEventListener("pointerdown",(e)=>{
+    if(state!=="settled"||yoseLeft<=0) return;
+    const r=boardEl.getBoundingClientRect();
+    sw={x:e.clientX,y:e.clientY,r};
+  });
+  boardEl.addEventListener("pointerup",(e)=>{
+    if(!sw||state!=="settled"||yoseLeft<=0){ sw=null; return; }
+    const dx=e.clientX-sw.x, dy=e.clientY-sw.y;
+    const ax=Math.abs(dx), ay=Math.abs(dy);
+    const TH=24;
+    if(ax<TH&&ay<TH){ sw=null; return; }
+    const cell=sw.r.width/3;
+    if(ax>ay){
+      // 行シフト: タッチ開始のy位置の行
+      const row=Math.max(0,Math.min(2,Math.floor((sw.y-sw.r.top)/cell)));
+      doYose("row",row, dx>0?1:-1);
+    } else {
+      const col=Math.max(0,Math.min(2,Math.floor((sw.x-sw.r.left)/cell)));
+      doYose("col",col, dy>0?1:-1);
+    }
+    sw=null;
+  });
+  boardEl.addEventListener("pointercancel",()=>{ sw=null; });
+
+  // キーボード (PC)
+  let kbLine=0, kbAxis="row";
+  window.addEventListener("keydown",(e)=>{
+    if(state==="idle" && (e.key===" "||e.key==="Enter")){ e.preventDefault(); spin(); return; }
+    if(state==="settled"){
+      if(e.key==="Enter"){ e.preventDefault(); collect(); return; }
+      if(yoseLeft>0){
+        if(e.key==="ArrowLeft"){ e.preventDefault(); doYose("row",kbLine,-1); }
+        else if(e.key==="ArrowRight"){ e.preventDefault(); doYose("row",kbLine,1); }
+        else if(e.key==="ArrowUp"){ e.preventDefault(); doYose("col",kbLine,-1); }
+        else if(e.key==="ArrowDown"){ e.preventDefault(); doYose("col",kbLine,1); }
+        else if(e.key>="1"&&e.key<="3"){ kbLine=parseInt(e.key,10)-1; toast("対象 "+(kbLine+1)+"列/行 (←→で行, ↑↓で列)"); }
+      }
+    }
+  });
+
+  // ダブルタップズーム抑止
+  document.addEventListener("dblclick",e=>e.preventDefault(),{passive:false});
+  document.addEventListener("gesturestart",e=>e.preventDefault());
+  let lastTouch=0;
+  document.addEventListener("touchend",(e)=>{
+    const now=Date.now();
+    if(now-lastTouch<=350) e.preventDefault();
+    lastTouch=now;
+  },{passive:false});
+
+  // ボタン群
+  $("#startBtn").addEventListener("pointerup",(e)=>{ e.preventDefault(); newGame(); });
+  $("#retryBtn").addEventListener("pointerup",(e)=>{ e.preventDefault(); newGame(); });
+  $("#nextBtn").addEventListener("pointerup",(e)=>{ e.preventDefault(); if(state==="shop") nextStage(); });
+  $("#discardBtn").addEventListener("pointerup",(e)=>{
+    e.preventDefault();
+    if(pendingBuy){ pendingBuy=null; $("#discardBtn").textContent="札を納める"; $("#shopSub").innerHTML=`財布 <b>${coins}</b> 文 ・ 札を一枚いただこう`; renderShop(); return; }
+    if($("#discardBtn").textContent==="やめる"){ $("#discardBtn").textContent="札を納める"; $("#shopSub").innerHTML=`財布 <b>${coins}</b> 文 ・ 札を一枚いただこう`; renderShop(); }
+    else enterRemoveMode(false);
+  });
+  $("#shareBtn").addEventListener("pointerup",(e)=>{
+    e.preventDefault();
+    const txt=$("#shareBox").textContent;
+    if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>toast("コピーした!"),()=>toast("コピー失敗"));
+    else toast("コピー非対応");
+  });
+  $("#mute").addEventListener("pointerup",(e)=>{
+    e.preventDefault(); muted=!muted; store.save("yosefuku_muted",muted);
+    $("#mute").textContent=muted?"🔇":"♪"; toast(muted?"音オフ":"音オン");
+  });
+
+  /* ---------- 新規ゲーム ---------- */
+  function newGame(){
+    stage=1; coins=0; lifetimeEarned=0;
+    spinsMax=3; yoseMax=2;
+    collection=["koban","koban","koban","neko","kome","daruma","tai","fuji","fukubukuro"];
+    $("#startScreen").classList.remove("show");
+    $("#overScreen").classList.remove("show");
+    $("#shopScreen").classList.remove("show");
+    startStage();
+  }
+
+  /* ---------- スタート画面初期化 ---------- */
+  function initStart(){
+    $("#mute").textContent=muted?"🔇":"♪";
+    $("#bestStage").textContent=best.stage;
+    $("#bestScore").textContent=best.score;
+    // 図鑑
+    const fl=$("#fudaList"); fl.innerHTML="";
+    ALL_IDS.forEach(id=>{
+      const f=FUDA[id];
+      const r=document.createElement("div"); r.className="fr";
+      r.innerHTML=`<div class="fk" style="background:${f.col};color:#fff">${f.k}</div>
+        <div class="fn">${f.nm}</div><div class="fd">${f.desc}</div>`;
+      fl.appendChild(r);
+    });
+  }
+
+  /* ---------- 起動 ---------- */
+  buildBoard();
+  renderAll();
+  renderPips();
+  updateHUD();
+  initStart();
+
+})();
+</script>
+</body>
+</html>
