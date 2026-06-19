@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#e23b2e">
+<title>ドアップめし — 料理ズームアウトクイズ</title>
+<meta name="description" content="超ドアップの料理写真がゆっくりズームアウト。何の料理かわかった瞬間に名前をタップ!早いほど高得点。出題はウィキペディアの実写真から毎回変わる。">
+<meta property="og:title" content="ドアップめし — 料理ズームアウトクイズ">
+<meta property="og:description" content="超ドアップの料理写真がゆっくりズームアウト。何の料理かわかった瞬間に名前をタップ!早いほど高得点。寿司・ラーメン・麻婆豆腐…毎回変わる実写真クイズ。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/doappu-meshi/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/doappu-meshi/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍜</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&family=Zen+Maru+Gothic:wght@500;700;900&family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --cream: #fff6e3;
+    --paper: #fffdf6;
+    --tomato: #e23b2e;
+    --mustard: #f4a72b;
+    --matcha: #5a9e57;
+    --ink: #38271b;
+    --brown: #7a5638;
+    --line: #e7d3ac;
+  }
+  * { box-sizing: border-box; touch-action: manipulation; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #f0dcb8;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    font-family: "Zen Maru Gothic", sans-serif;
+    color: var(--ink);
+  }
+  /* PCワイド画面対策: 縦長カラムに制限して中央寄せ */
+  #stage {
+    position: fixed; top: 0; bottom: 0;
+    left: 50%; transform: translateX(-50%);
+    width: min(100vw, 520px, 64vh);
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.0) 0 22px, rgba(255,255,255,0.35) 22px 24px),
+      linear-gradient(180deg, #fff8ea 0%, var(--cream) 60%, #ffeed0 100%);
+    box-shadow: 0 0 50px rgba(120,70,40,0.35);
+    display: flex; flex-direction: column;
+    padding: calc(var(--sat) + 8px) 10px calc(var(--sab) + 10px);
+  }
+  #mute {
+    position: absolute;
+    top: calc(var(--sat) + 8px); right: 10px;
+    z-index: 30;
+    width: 40px; height: 40px;
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    background: var(--paper);
+    color: var(--ink); font-size: 18px;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 var(--ink);
+    touch-action: none;
+  }
+  /* ---------- HUD ---------- */
+  #hud {
+    display: flex; gap: 6px; align-items: stretch;
+    margin: 0 46px 8px 0;
+    min-height: 40px;
+  }
+  .hudbox {
+    flex: 1;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    padding: 3px 6px;
+    text-align: center;
+    display: flex; flex-direction: column; justify-content: center;
+    box-shadow: 2px 2px 0 rgba(56,39,27,0.85);
+  }
+  .hudbox .lbl { font-size: 9px; color: var(--brown); letter-spacing: 0.1em; }
+  .hudbox .val { font-family: "DotGothic16", monospace; font-size: 18px; line-height: 1.05; }
+  #scoreV { color: var(--tomato); }
+  #livesV { font-family: "Zen Maru Gothic"; font-size: 13px; letter-spacing: 0.04em; }
+  /* ---------- 写真エリア(皿のショーケース風) ---------- */
+  #photoBox {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 3px solid var(--ink);
+    background: #2a1d12;
+    box-shadow: 4px 4px 0 rgba(56,39,27,0.85), inset 0 0 0 4px rgba(255,255,255,0.06);
+  }
+  #photo {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    -webkit-user-drag: none;
+    will-change: transform;
+  }
+  #ptsBadge {
+    position: absolute; top: 8px; left: 8px;
+    z-index: 6;
+    display: flex; align-items: baseline; gap: 4px;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    padding: 4px 12px;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  #ptsBadge .plbl { font-size: 9px; color: var(--brown); }
+  #ptsV { font-family: "DotGothic16", monospace; font-size: 18px; color: var(--tomato); }
+  #ptsBadge .punit { font-size: 10px; color: var(--brown); }
+  #catChip {
+    position: absolute; top: 8px; right: 8px;
+    z-index: 6;
+    background: var(--mustard);
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px; font-weight: 700;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  /* ラウンド予告バナー */
+  #banner {
+    position: absolute; inset: 0;
+    z-index: 10;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 10px;
+    background:
+      repeating-linear-gradient(45deg, #fff2d6 0 16px, #ffe9bf 16px 32px);
+    text-align: center;
+    padding: 16px;
+    color: var(--ink);
+  }
+  #bnRound {
+    font-family: "RocknRoll One", sans-serif;
+    font-size: 16px;
+    color: var(--tomato);
+    letter-spacing: 0.08em;
+  }
+  #bnEmoji { font-size: 66px; line-height: 1; filter: drop-shadow(0 4px 10px rgba(122,86,56,0.4)); }
+  #bnCat { font-size: 22px; font-weight: 700; }
+  #bnCat b { color: var(--tomato); font-size: 27px; }
+  #bnErr { font-size: 13px; color: var(--tomato); line-height: 1.9; font-weight: 700; }
+  /* リビールパネル */
+  #reveal {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    z-index: 8;
+    background: linear-gradient(180deg, rgba(255,253,246,0) 0%, rgba(255,253,246,0.92) 24%, var(--paper) 46%);
+    padding: 40px 14px 12px;
+    display: flex; flex-direction: column; gap: 2px;
+    text-align: left;
+    border-top: 0;
+  }
+  #rvResult { font-family: "DotGothic16", monospace; font-size: 15px; }
+  #rvResult.good { color: var(--matcha); }
+  #rvResult.bad { color: var(--tomato); }
+  #rvName {
+    font-family: "RocknRoll One", sans-serif;
+    font-size: clamp(21px, 6.6vw, 30px);
+    line-height: 1.2;
+    color: var(--ink);
+  }
+  #rvCat { font-size: 12px; color: var(--brown); font-weight: 700; }
+  #rvAttr { font-size: 9.5px; color: #a98f72; line-height: 1.5; margin-top: 3px; }
+  #rvAttr a { color: var(--brown); }
+  #nextBtn { align-self: flex-end; margin-top: 6px; }
+  /* コンボ演出 */
+  #comboPop {
+    position: absolute;
+    top: 38%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9;
+    font-family: "RocknRoll One", sans-serif;
+    font-size: 42px;
+    color: var(--mustard);
+    -webkit-text-stroke: 2px var(--ink);
+    pointer-events: none;
+    opacity: 0;
+    white-space: nowrap;
+    filter: drop-shadow(0 3px 0 var(--ink));
+  }
+  #comboPop.bad-pop { color: var(--tomato); }
+  #comboPop.pop { animation: popjump 0.9s ease-out; }
+  @keyframes popjump {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-6deg); }
+    25% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(-3deg); }
+    60% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: translate(-50%, -72%) scale(1) rotate(0deg); }
+  }
+  /* ---------- 4択ボタン ---------- */
+  #choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .cbtn {
+    font-family: "Zen Maru Gothic", sans-serif;
+    font-weight: 700;
+    font-size: clamp(13px, 3.9vw, 16px);
+    line-height: 1.25;
+    color: var(--ink);
+    border: 2.5px solid var(--ink);
+    border-radius: 14px;
+    background: var(--paper);
+    box-shadow: 3px 3px 0 var(--ink);
+    min-height: 58px;
+    padding: 8px 6px;
+    cursor: pointer;
+    touch-action: none;
+    transition: transform 0.08s, box-shadow 0.08s, background 0.2s, color 0.2s;
+    overflow: hidden;
+  }
+  .cbtn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--ink); }
+  .cbtn[disabled] { opacity: 0.6; }
+  .cbtn.good {
+    opacity: 1;
+    background: var(--matcha); color: #fff;
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+  .cbtn.bad {
+    opacity: 1;
+    background: var(--tomato); color: #fff;
+  }
+  .cbtn .kno { font-family: "DotGothic16", monospace; font-size: 10px; color: var(--mustard); display: block; }
+  .cbtn.good .kno, .cbtn.bad .kno { color: rgba(255,255,255,0.85); }
+  /* ---------- オーバーレイ ---------- */
+  .ov {
+    position: absolute; inset: 0;
+    z-index: 20;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px;
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0) 0 22px, rgba(255,255,255,0.4) 22px 24px),
+      linear-gradient(180deg, #fff8ea 0%, var(--cream) 100%);
+    padding: calc(var(--sat) + 16px) 20px calc(var(--sab) + 16px);
+    text-align: center;
+  }
+  .hidden { display: none !important; }
+  .title {
+    font-family: "RocknRoll One", sans-serif;
+    font-size: clamp(40px, 14vw, 66px);
+    line-height: 1.0;
+    margin: 0;
+    color: var(--tomato);
+    text-shadow: 4px 4px 0 var(--mustard), 6px 6px 0 var(--ink);
+    letter-spacing: 0.02em;
+  }
+  .sub {
+    font-family: "DotGothic16", monospace;
+    letter-spacing: 0.18em;
+    font-size: 11px; color: var(--brown);
+    margin: 0;
+  }
+  .desc { font-size: 13.5px; color: var(--ink); line-height: 1.95; margin: 2px 0; max-width: 420px; }
+  .desc b { color: var(--tomato); }
+  .stat { font-family: "DotGothic16", monospace; font-size: 13px; color: var(--brown); }
+  .stat b { color: var(--ink); font-size: 17px; }
+  .kbd-hint { font-size: 11px; color: #b09572; }
+  .btn {
+    font-family: "RocknRoll One", sans-serif;
+    font-size: 19px;
+    color: #fff;
+    background: var(--tomato);
+    border: 3px solid var(--ink); border-radius: 14px;
+    padding: 13px 44px;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 var(--ink);
+    touch-action: none;
+  }
+  .btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--ink); }
+  .btn.small { font-size: 15px; padding: 9px 24px; border-radius: 12px; box-shadow: 3px 3px 0 var(--ink); }
+  .btn.ghost {
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 15px;
+    padding: 10px 26px;
+  }
+  .credit { font-size: 10px; color: #a98f72; line-height: 1.7; }
+  .credit a { color: var(--brown); }
+  #resCard {
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    border-radius: 18px;
+    box-shadow: 5px 5px 0 var(--ink);
+    padding: 18px 26px 22px;
+    display: flex; flex-direction: column; align-items: center; gap: 9px;
+    max-width: 360px;
+  }
+  #resTitle {
+    font-family: "RocknRoll One", sans-serif;
+    font-size: clamp(28px, 9vw, 42px);
+    margin: 0;
+    color: var(--tomato);
+  }
+  #resTitle.over { color: var(--brown); }
+  #resScore { font-size: 48px; font-family: "DotGothic16", monospace; color: var(--tomato); line-height: 1; }
+  #resScore small { font-size: 15px; color: var(--brown); font-family: "Zen Maru Gothic"; }
+  #resHits { font-size: 14px; color: var(--ink); }
+  #resHits b { color: var(--matcha); font-family: "DotGothic16", monospace; font-size: 18px; }
+  #resComment { font-size: 13px; color: var(--brown); font-weight: 700; }
+  #newRecord {
+    font-weight: 900; color: var(--matcha); font-size: 15px;
+    animation: pulse 1s infinite alternate;
+  }
+  @keyframes pulse { from { opacity: 0.7; transform: scale(1); } to { opacity: 1; transform: scale(1.06); } }
+  .spinner {
+    width: 34px; height: 34px;
+    border: 4px solid rgba(226,59,46,0.25);
+    border-top-color: var(--tomato);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="stage">
+  <button id="mute" aria-label="mute">🔊</button>
+  <div id="hud">
+    <div class="hudbox"><span class="lbl">しなめ</span><span class="val" id="roundV">-</span></div>
+    <div class="hudbox"><span class="lbl">スコア</span><span class="val" id="scoreV">0</span></div>
+    <div class="hudbox"><span class="lbl">ライフ</span><span class="val" id="livesV">❤️❤️❤️</span></div>
+    <div class="hudbox"><span class="lbl">ベスト</span><span class="val" id="bestV">0</span></div>
+  </div>
+
+  <div id="photoBox">
+    <img id="photo" alt="" draggable="false">
+    <div id="ptsBadge"><span class="plbl">いま答えると</span><span id="ptsV">1000</span><span class="punit">pt</span></div>
+    <div id="catChip"></div>
+    <div id="reveal" class="hidden">
+      <div id="rvResult"></div>
+      <div id="rvName"></div>
+      <div id="rvCat"></div>
+      <div id="rvAttr"></div>
+      <button class="btn small" id="nextBtn">つぎへ ▶</button>
+    </div>
+    <div id="banner">
+      <div id="bnRound"></div>
+      <div id="bnEmoji">🍳</div>
+      <div id="bnCat"></div>
+      <div class="spinner" id="bnSpin"></div>
+      <div id="bnErr" class="hidden"></div>
+      <button class="btn small hidden" id="bnRetry">再試行</button>
+    </div>
+    <div id="comboPop"></div>
+  </div>
+
+  <div id="choices">
+    <button class="cbtn" id="c0" disabled><span class="kno">[1]</span>?</button>
+    <button class="cbtn" id="c1" disabled><span class="kno">[2]</span>?</button>
+    <button class="cbtn" id="c2" disabled><span class="kno">[3]</span>?</button>
+    <button class="cbtn" id="c3" disabled><span class="kno">[4]</span>?</button>
+  </div>
+
+  <div class="ov" id="titleOv">
+    <h1 class="title">ドアップめし</h1>
+    <p class="sub">ZOOM-OUT GOURMET QUIZ</p>
+    <p class="desc">
+      <b>超ドアップ</b>の料理写真がゆっくりズームアウト。<br>
+      何の料理かわかった瞬間に4択から名前をタップ!<br>
+      <b>早く当てるほど高得点</b>(100〜1000pt)+連続正解コンボ。<br>
+      全10品・ライフ3。出題は毎回変わる。
+    </p>
+    <p class="stat">ベストスコア: <b id="titleBest">0</b></p>
+    <button class="btn" id="startBtn">いただきます</button>
+    <p class="kbd-hint">PC: 1〜4キーで回答 / Spaceで開始・つぎへ</p>
+    <p class="credit">
+      写真・解説: <a href="https://ja.wikipedia.org/" target="_blank" rel="noopener">ウィキペディア</a> /
+      <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">ウィキメディア・コモンズ</a>(各種CCライセンス)<br>
+      出典記事は各問の答え合わせからたどれます
+    </p>
+  </div>
+
+  <div class="ov hidden" id="resultOv">
+    <div id="resCard">
+      <h2 id="resTitle">完食!</h2>
+      <div id="resScore">0<small> pt</small></div>
+      <p id="resHits">正解 <b>0</b> / 10</p>
+      <p id="resComment"></p>
+      <p id="newRecord" class="hidden">🏆 自己ベスト更新!</p>
+      <p class="stat">ベストスコア: <b id="resBest">0</b></p>
+    </div>
+    <button class="btn" id="retryBtn">もう一杯</button>
+    <div style="display:flex; gap:10px;">
+      <button class="btn ghost" id="shareBtn">𝕏 でシェア</button>
+      <button class="btn ghost" id="homeBtn">タイトルへ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================
+   ドアップめし — 料理ズームアウトクイズ
+   データ: ウィキペディア pageimages API(キー不要・CORS対応)
+   写真: ウィキメディア・コモンズ(各種CCライセンス)
+   ===================================================== */
+
+const $ = (id) => document.getElementById(id);
+
+/* ---------- オーディオ(iOS消音スイッチ対策込み) ---------- */
+let AC = null;
+let muted = false;
+try { muted = localStorage.getItem("meshi_muted") === "1"; } catch (e) {}
+
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => { if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch (e) {} } };
+    } catch (e) {}
+  }
+  if (AC && AC.state !== "running") { try { AC.resume(); } catch (e) {} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const sr = 8000, n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  str(36, "data"); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 0x80);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline", "");
+    silentEl.loop = true;
+    silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play();
+  if (p && p.catch) p.catch(() => {});
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === "running") {
+      ["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+    }
+  };
+  try { AC.resume().then(done); } catch (e) { done(); }
+}
+["pointerdown", "pointerup", "touchend", "click"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+function tone(f, d, type, vol, slideTo, at) {
+  if (muted || !audio()) return;
+  try {
+    const t0 = AC.currentTime + (at || 0);
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "sine"; o.frequency.setValueAtTime(f, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + d);
+    g.gain.setValueAtTime(vol || 0.06, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t0); o.stop(t0 + d);
+  } catch (e) {}
+}
+function noise(d, vol, at) {
+  if (muted || !audio()) return;
+  try {
+    const n = Math.floor(AC.sampleRate * d);
+    const buf = AC.createBuffer(1, n, AC.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = AC.createBufferSource(); src.buffer = buf;
+    const g = AC.createGain(); g.gain.value = vol || 0.08;
+    src.connect(g); g.connect(AC.destination); src.start(AC.currentTime + (at || 0));
+  } catch (e) {}
+}
+const sBtn = () => tone(520, 0.07, "square", 0.035);
+const sTick = (p) => tone(660 + 720 * p, 0.03, "square", 0.013 + 0.012 * p);
+const sBanner = () => { tone(392, 0.16, "triangle", 0.05, 660); tone(660, 0.2, "triangle", 0.04, null, 0.15); };
+function sGood(cmb) {
+  const base = [523, 659, 784, 1047, 1319];
+  const n = Math.min(3 + Math.floor(cmb / 2), 5);
+  for (let i = 0; i < n; i++) tone(base[i], 0.13, "triangle", 0.05, null, i * 0.07);
+  if (cmb >= 3) noise(0.18, 0.022, n * 0.07);
+}
+const sBad = () => { tone(196, 0.42, "sawtooth", 0.06, 70); noise(0.18, 0.05); };
+const sRecord = () => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.2, "triangle", 0.05, null, i * 0.09)); };
+const sFinish = () => { [523, 659, 784].forEach((f, i) => tone(f, 0.18, "triangle", 0.05, null, i * 0.1)); };
+const sStart = () => { tone(523, 0.1, "square", 0.04); tone(784, 0.18, "square", 0.04, null, 0.09); };
+
+/* ---------- データ(料理マスタ) ----------
+   q: ウィキペディア記事タイトル(実画像が取れる解決済みタイトル) / name: 表示名 / cat: カテゴリキー
+   q 省略時は name をそのまま記事タイトルに使う */
+const CATS = [
+  { key: "washoku", ja: "和食",        emoji: "🍱" },
+  { key: "rice",    ja: "ご飯・丼",     emoji: "🍚" },
+  { key: "noodle",  ja: "麺類",        emoji: "🍜" },
+  { key: "chuka",   ja: "中華",        emoji: "🥟" },
+  { key: "yoshoku", ja: "洋食・西洋",   emoji: "🍴" },
+  { key: "ethnic",  ja: "アジア・エスニック", emoji: "🌏" },
+  { key: "sweets",  ja: "スイーツ",     emoji: "🍰" },
+];
+const D = (name, cat, q) => ({ name, cat, q: q || name, img: null });
+const DISHES = [
+  // 和食
+  D("寿司","washoku"), D("天ぷら","washoku"), D("刺身","washoku"),
+  D("とんかつ","washoku","豚カツ"), D("唐揚げ","washoku","から揚げ"),
+  D("焼き鳥","washoku"), D("すき焼き","washoku"), D("おでん","washoku"),
+  D("茶碗蒸し","washoku"), D("コロッケ","washoku"), D("お好み焼き","washoku"), D("たこ焼き","washoku"),
+  // ご飯・丼
+  D("牛丼","rice"), D("カツ丼","rice"), D("親子丼","rice"), D("天丼","rice"),
+  D("海鮮丼","rice"), D("オムライス","rice"), D("チャーハン","rice"),
+  D("ビビンバ","rice"), D("カレーライス","rice"), D("ロコモコ","rice"),
+  // 麺類
+  D("ラーメン","noodle"), D("うどん","noodle"), D("そうめん","noodle","素麺"),
+  D("蕎麦","noodle"), D("焼きそば","noodle"), D("つけ麺","noodle"),
+  D("冷やし中華","noodle"), D("ナポリタン","noodle"), D("カルボナーラ","noodle"),
+  D("フォー","noodle"), D("担担麺","noodle"), D("パッタイ","noodle"),
+  // 中華
+  D("麻婆豆腐","chuka"), D("春巻き","chuka"), D("生春巻き","chuka"),
+  D("小籠包","chuka"), D("酢豚","chuka"), D("青椒肉絲","chuka"),
+  D("北京ダック","chuka"), D("エビチリ","chuka","エビのチリソース煮"),
+  // 洋食・西洋
+  D("ハンバーグ","yoshoku"), D("ステーキ","yoshoku"), D("グラタン","yoshoku"),
+  D("ピザ","yoshoku"), D("ラザニア","yoshoku"), D("パエリア","yoshoku"),
+  D("ローストビーフ","yoshoku"), D("オムレツ","yoshoku"), D("エスカルゴ","yoshoku"),
+  D("ボルシチ","yoshoku"), D("フィッシュ&チップス","yoshoku","フィッシュ・アンド・チップス"),
+  D("エッグベネディクト","yoshoku"), D("フライドチキン","yoshoku"),
+  D("ホットドッグ","yoshoku"), D("サンドイッチ","yoshoku"),
+  // アジア・エスニック
+  D("トムヤムクン","ethnic"), D("ガパオライス","ethnic","パットガパオ"),
+  D("ナシゴレン","ethnic"), D("ビリヤニ","ethnic"), D("カオマンガイ","ethnic"),
+  D("サモサ","ethnic"), D("タコス","ethnic"), D("ブリトー","ethnic","ブリート"),
+  D("ケバブ","ethnic"), D("プルコギ","ethnic"), D("サムギョプサル","ethnic"),
+  D("チヂミ","ethnic"), D("キンパ","ethnic","キムパプ"), D("キムチ","ethnic"),
+  // スイーツ
+  D("ショートケーキ","sweets"), D("パンケーキ","sweets","ホットケーキ"),
+  D("ティラミス","sweets"), D("プリン","sweets","カスタードプディング"),
+  D("アイスクリーム","sweets"), D("どら焼き","sweets"), D("大福","sweets"),
+  D("たい焼き","sweets"), D("クレープ","sweets"), D("ドーナツ","sweets"),
+  D("マカロン","sweets"), D("パフェ","sweets"), D("あんみつ","sweets"),
+  D("モンブラン","sweets","モンブラン (ケーキ)"), D("杏仁豆腐","sweets"), D("羊羹","sweets"),
+];
+
+const API = (titles) =>
+  `https://ja.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(titles)}` +
+  `&prop=pageimages&piprop=thumbnail&pithumbsize=1000&pilimit=50&format=json&formatversion=2&redirects=1&origin=*`;
+
+async function fetchBatch(titles) {
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timer = ctl ? setTimeout(() => ctl.abort(), 12000) : null;
+      const res = await fetch(API(titles.join("|")), ctl ? { signal: ctl.signal } : {});
+      if (timer) clearTimeout(timer);
+      if (!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
+      const d = (await res.json()).query;
+      const norm = {}, redir = {}, pt = {};
+      (d.normalized || []).forEach(n => { norm[n.from] = n.to; });
+      (d.redirects || []).forEach(r => { redir[r.from] = r.to; });
+      (d.pages || []).forEach(p => { if (p.thumbnail) pt[p.title] = p.thumbnail.source; });
+      const out = {};
+      for (const t of titles) {
+        let f = norm[t] || t; f = redir[f] || f;
+        if (pt[f]) out[t] = pt[f];
+      }
+      return out;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("fetch失敗");
+}
+
+// 全料理のサムネを2バッチで取得し DISHES[].img を埋める。カテゴリ別プールを返す
+let metaPool = null;        // { catKey: [dish,...] }(img取得済みのみ)
+let metaPromise = null;
+async function ensureMeta() {
+  if (metaPool) return metaPool;
+  if (metaPromise) return metaPromise;
+  metaPromise = (async () => {
+    const titles = DISHES.map(d => d.q);
+    const map = {};
+    for (let i = 0; i < titles.length; i += 50) {
+      const got = await fetchBatch(titles.slice(i, i + 50));
+      Object.assign(map, got);
+    }
+    const pool = {};
+    for (const d of DISHES) {
+      if (map[d.q]) { d.img = map[d.q]; (pool[d.cat] = pool[d.cat] || []).push(d); }
+    }
+    // 4択が組めないカテゴリは出題から外す
+    for (const k of Object.keys(pool)) { if (pool[k].length < 4) delete pool[k]; }
+    if (!Object.keys(pool).length) throw new Error("料理データの取得に失敗");
+    metaPool = pool;
+    return pool;
+  })();
+  try { return await metaPromise; }
+  finally { metaPromise = null; }
+}
+
+function preloadImage(url) {
+  return new Promise((resolve, reject) => {
+    const im = new Image();
+    const timer = setTimeout(() => { im.src = ""; reject(new Error("timeout")); }, 9000);
+    im.onload = () => { clearTimeout(timer); resolve(im); };
+    im.onerror = () => { clearTimeout(timer); reject(new Error("imgfail")); };
+    im.src = url;
+  });
+}
+
+/* ---------- 状態(ループ・UIが触るものは全てここで初期化) ---------- */
+const ROUNDS = 10, LIVES = 3;
+const ZOOM_MS = 8000, SCALE_MAX = 8;
+const PTS_MAX = 1000, PTS_MIN = 100, COMBO_BONUS = 50;
+
+let phase = "title";    // title | intro | zoom | reveal | result
+let round = 0;          // 1..10
+let score = 0;
+let lives = LIVES;
+let combo = 0;
+let correctCount = 0;
+let best = 0;
+try { best = parseInt(localStorage.getItem("meshi_best") || "0", 10) || 0; } catch (e) {}
+let current = null;     // {cat, item, choices, answerIndex}
+let nextPrep = null;
+let catSeq = [];
+let usedNames = new Set();
+let zoomT0 = 0, zoomP = 0;
+let lastTickAt = 0;
+let roundSeq = 0;
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ラウンドの出題1件を準備(写真ロード失敗はスキップして次候補)
+async function prepareRound(cat) {
+  const pool = await ensureMeta();
+  const list = pool[cat.key] || [];
+  const cands = shuffle(list.filter(d => !usedNames.has(d.name)));
+  let item = null;
+  for (let i = 0; i < Math.min(cands.length, 6); i++) {
+    try { await preloadImage(cands[i].img); item = cands[i]; break; } catch (e) {}
+  }
+  if (!item) throw new Error("写真の読み込みに失敗");
+  // ダミーは同カテゴリの別料理から(似たもの同士で迷わせる)
+  const dummies = shuffle(list.filter(d => d.name !== item.name).map(d => d.name)).slice(0, 3);
+  if (dummies.length < 3) throw new Error("選択肢が不足");
+  const choices = shuffle([item.name, ...dummies]);
+  return { cat, item, choices, answerIndex: choices.indexOf(item.name) };
+}
+
+/* ---------- 表示ヘルパー ---------- */
+function updateHud() {
+  $("roundV").textContent = round > 0 ? `${round}/${ROUNDS}` : "-";
+  $("scoreV").textContent = score;
+  $("livesV").textContent = "❤️".repeat(lives) + "🤍".repeat(LIVES - lives);
+  $("bestV").textContent = best;
+}
+
+const choiceBtns = () => [$("c0"), $("c1"), $("c2"), $("c3")];
+
+function setChoices(data) {
+  choiceBtns().forEach((b, i) => {
+    b.innerHTML = `<span class="kno">[${i + 1}]</span>`;
+    b.appendChild(document.createTextNode(data ? data.choices[i] : "?"));
+    b.disabled = !data;
+    b.classList.remove("good", "bad");
+  });
+}
+
+function popText(text, bad) {
+  const el = $("comboPop");
+  el.textContent = text;
+  el.classList.toggle("bad-pop", !!bad);
+  el.classList.remove("pop");
+  void el.offsetWidth;
+  el.classList.add("pop");
+}
+
+function currentPts() {
+  return Math.round(PTS_MAX - (PTS_MAX - PTS_MIN) * zoomP);
+}
+
+/* ---------- メインループ(タイトル時点から回す) ---------- */
+function loop(now) {
+  if (phase === "zoom") {
+    zoomP = Math.min(1, (now - zoomT0) / ZOOM_MS);
+    const s = Math.pow(SCALE_MAX, 1 - zoomP); // 知覚的に等速なズーム
+    $("photo").style.transform = `scale(${s.toFixed(4)})`;
+    $("ptsV").textContent = currentPts();
+    const interval = 520 - 380 * zoomP;
+    if (zoomP < 1 && now - lastTickAt > interval) { sTick(zoomP); lastTickAt = now; }
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ---------- ゲーム進行 ---------- */
+function buildCatSeq() {
+  const seq = [];
+  while (seq.length < ROUNDS) {
+    const block = shuffle(CATS.slice());
+    if (seq.length && block[0] === seq[seq.length - 1]) block.push(block.shift());
+    seq.push(...block);
+  }
+  return seq.slice(0, ROUNDS);
+}
+
+function startGame() {
+  sStart();
+  $("titleOv").classList.add("hidden");
+  $("resultOv").classList.add("hidden");
+  round = 0; score = 0; lives = LIVES; combo = 0; correctCount = 0;
+  usedNames = new Set();
+  catSeq = buildCatSeq();
+  nextPrep = prepareRound(catSeq[0]);
+  nextPrep.catch(() => {});
+  updateHud();
+  beginRound();
+}
+
+async function beginRound() {
+  const seq = ++roundSeq;
+  round++;
+  phase = "intro";
+  const cat = catSeq[round - 1];
+  $("bnRound").textContent = `${round}/${ROUNDS}品目`;
+  $("bnEmoji").textContent = cat.emoji;
+  $("bnCat").innerHTML = "つぎは… <b></b>!";
+  $("bnCat").querySelector("b").textContent = cat.ja;
+  $("bnErr").classList.add("hidden");
+  $("bnRetry").classList.add("hidden");
+  $("bnSpin").classList.remove("hidden");
+  $("banner").classList.remove("hidden");
+  $("reveal").classList.add("hidden");
+  $("ptsBadge").classList.add("hidden");
+  $("catChip").textContent = `${cat.emoji} ${cat.ja}`;
+  setChoices(null);
+  updateHud();
+  sBanner();
+  const minDelay = new Promise(r => setTimeout(r, 1400));
+  let data = null;
+  try {
+    const got = await Promise.all([nextPrep, minDelay]);
+    data = got[0];
+  } catch (e) {
+    if (seq !== roundSeq) return;
+    $("bnSpin").classList.add("hidden");
+    $("bnErr").textContent = "データの取得に失敗しました。\n通信環境を確認してください。";
+    $("bnErr").classList.remove("hidden");
+    $("bnRetry").classList.remove("hidden");
+    return;
+  }
+  if (seq !== roundSeq || phase !== "intro") return;
+  current = data;
+  usedNames.add(data.item.name);
+  const ph = $("photo");
+  ph.style.transition = "none";
+  const ox = 12 + Math.random() * 76, oy = 12 + Math.random() * 76;
+  ph.style.transformOrigin = `${ox.toFixed(1)}% ${oy.toFixed(1)}%`;
+  ph.style.transform = `scale(${SCALE_MAX})`;
+  ph.src = data.item.img;
+  setChoices(data);
+  $("banner").classList.add("hidden");
+  $("ptsBadge").classList.remove("hidden");
+  zoomT0 = performance.now();
+  zoomP = 0;
+  lastTickAt = 0;
+  $("ptsV").textContent = PTS_MAX;
+  phase = "zoom";
+}
+
+function retryRound() {
+  if (phase !== "intro") return;
+  sBtn();
+  metaPool = null; // メタ取得に失敗していた場合は取り直す
+  nextPrep = prepareRound(catSeq[round - 1]);
+  nextPrep.catch(() => {});
+  round--;
+  beginRound();
+}
+
+function choose(i) {
+  if (phase !== "zoom" || !current) return;
+  phase = "reveal";
+  const data = current;
+  const isCorrect = i === data.answerIndex;
+  const ph = $("photo");
+  ph.style.transition = "transform 0.7s cubic-bezier(.22,.9,.3,1)";
+  ph.style.transform = "scale(1)";
+  $("ptsBadge").classList.add("hidden");
+  choiceBtns().forEach((b, k) => {
+    b.disabled = true;
+    if (k === data.answerIndex) b.classList.add("good");
+    else if (k === i) b.classList.add("bad");
+  });
+  let pts = 0, bonus = 0;
+  if (isCorrect) {
+    pts = currentPts();
+    bonus = combo * COMBO_BONUS;
+    combo++;
+    correctCount++;
+    score += pts + bonus;
+    sGood(combo);
+    popText(combo >= 2 ? `${combo}皿 コンボ!` : "うまい!");
+  } else {
+    combo = 0;
+    lives--;
+    sBad();
+    popText("ごちそうさま…", true);
+  }
+  updateHud();
+  const rv = $("rvResult");
+  if (isCorrect) {
+    rv.textContent = bonus > 0 ? `+${pts}pt +コンボ ${bonus}pt` : `+${pts}pt`;
+    rv.className = "good";
+  } else {
+    rv.textContent = "ざんねん… 正解は…";
+    rv.className = "bad";
+  }
+  $("rvName").textContent = data.item.name;
+  $("rvCat").textContent = `${data.cat.emoji} ${data.cat.ja}`;
+  const wikiUrl = "https://ja.wikipedia.org/wiki/" + encodeURIComponent(data.item.q);
+  $("rvAttr").innerHTML = "";
+  const a = document.createElement("a");
+  a.href = wikiUrl; a.target = "_blank"; a.rel = "noopener";
+  a.textContent = "📷 写真・解説: ウィキペディア / コモンズ ↗";
+  $("rvAttr").appendChild(a);
+  const isLast = round >= ROUNDS || lives <= 0;
+  $("nextBtn").textContent = isLast ? "けっか発表 ▶" : "つぎへ ▶";
+  $("reveal").classList.remove("hidden");
+  if (!isLast) {
+    nextPrep = prepareRound(catSeq[round]);
+    nextPrep.catch(() => {});
+  }
+}
+
+function nextStep() {
+  if (phase !== "reveal") return;
+  sBtn();
+  if (round >= ROUNDS || lives <= 0) showResult();
+  else beginRound();
+}
+
+function resultComment(n) {
+  if (n >= 10) return "全問正解!グルメの達人 🏆";
+  if (n >= 8) return "お見事!料理通です 😋";
+  if (n >= 5) return "なかなかの舌の持ち主 🍴";
+  if (n >= 2) return "もう一杯どうぞ 🍚";
+  return "腹ペコ修行から再挑戦 🔍";
+}
+
+function showResult() {
+  phase = "result";
+  $("reveal").classList.add("hidden");
+  const isRecord = score > best && score > 0;
+  if (isRecord) {
+    best = score;
+    try { localStorage.setItem("meshi_best", String(best)); } catch (e) {}
+    sRecord();
+  } else {
+    sFinish();
+  }
+  updateHud();
+  const cleared = lives > 0;
+  $("resTitle").textContent = cleared ? "完食!" : "ごちそうさま…";
+  $("resTitle").classList.toggle("over", !cleared);
+  $("resScore").innerHTML = `${score}<small> pt</small>`;
+  $("resHits").innerHTML = `正解 <b>${correctCount}</b> / ${ROUNDS}`;
+  $("resComment").textContent = resultComment(correctCount);
+  $("resBest").textContent = best;
+  $("newRecord").classList.toggle("hidden", !isRecord);
+  $("resultOv").classList.remove("hidden");
+}
+
+function goTitle() {
+  phase = "title";
+  roundSeq++;
+  $("resultOv").classList.add("hidden");
+  $("titleBest").textContent = best;
+  $("titleOv").classList.remove("hidden");
+}
+
+function shareX() {
+  const text = `🍜ドアップめし — 料理ズームアウトクイズで ${score}pt(正解${correctCount}/${ROUNDS})!\nどこまで早く見抜ける?`;
+  const url = "https://nrtkumi.github.io/games/doappu-meshi/";
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank", "noopener");
+}
+
+/* ---------- 入力(Pointer Events / clickは使わない) ---------- */
+function onTap(id, fn) {
+  $(id).addEventListener("pointerup", (e) => { e.preventDefault(); fn(); });
+}
+onTap("startBtn", startGame);
+onTap("retryBtn", startGame);
+onTap("homeBtn", goTitle);
+onTap("shareBtn", shareX);
+onTap("nextBtn", nextStep);
+onTap("bnRetry", retryRound);
+onTap("c0", () => choose(0));
+onTap("c1", () => choose(1));
+onTap("c2", () => choose(2));
+onTap("c3", () => choose(3));
+onTap("mute", () => {
+  muted = !muted;
+  $("mute").textContent = muted ? "🔇" : "🔊";
+  try { localStorage.setItem("meshi_muted", muted ? "1" : "0"); } catch (e) {}
+  if (!muted) sBtn();
+});
+$("mute").textContent = muted ? "🔇" : "🔊";
+
+document.addEventListener("keydown", (e) => {
+  if (e.repeat) return;
+  if (phase === "zoom") {
+    const k = ["1", "2", "3", "4"].indexOf(e.key);
+    if (k >= 0) { e.preventDefault(); choose(k); }
+  } else if (phase === "reveal") {
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); nextStep(); }
+  } else if (phase === "title" || phase === "result") {
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); startGame(); }
+  }
+});
+
+/* ---------- ダブルタップズーム抑止(iOS Safari対策3点セット) ---------- */
+document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
+document.addEventListener("gesturestart", e => e.preventDefault(), { passive: false });
+let lastTouchEnd = 0;
+document.addEventListener("touchend", (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 350) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+
+/* ---------- 初期化 ---------- */
+$("titleBest").textContent = best;
+updateHud();
+$("banner").classList.add("hidden");
+$("ptsBadge").classList.add("hidden");
+// メタは先読みしておく(タイトル表示中に裏で取得)
+ensureMeta().catch(() => {});
+
+// テスト用フック(E2Eから状態を覗くためだけに使用)
+window.MS = {
+  get phase() { return phase; },
+  get round() { return round; },
+  get score() { return score; },
+  get lives() { return lives; },
+  get combo() { return combo; },
+  get correctCount() { return correctCount; },
+  get best() { return best; },
+  get answer() { return current ? current.answerIndex : -1; },
+  get choices() { return current ? current.choices.slice() : []; },
+};
+</script>
+</body>
+</html>
