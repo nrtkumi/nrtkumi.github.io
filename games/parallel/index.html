@@ -3,112 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-<title>パラレル株式会社 — 並行世界同期課</title>
-<meta name="description" content="2つの並行世界を1本指で同時操作。締切ウォールの隙間を両世界くぐり抜け、契約を集めて決算ごとに強化するローグライト。あなたはパラレル株式会社の同期係。">
-<meta property="og:title" content="パラレル株式会社 — 並行世界同期課">
-<meta property="og:description" content="2つの並行世界を1本指で同時操作。締切ウォールの隙間を両世界くぐり抜け、契約を集めて決算ごとに強化するローグライト。">
+<title>パラレル オールナイト — たまり場の熱量を朝まで守れ</title>
+<meta name="description" content="Z世代の音声SNS『パラレル』がテーマ。友達のたまり場を朝までホスト。みんなの「今やりたい気分」に合わせてアクティビティを切り替え、コミュニケーション熱量を保て。親フラはミュートで撃退、決算ごとに強化するローグライト。">
+<meta property="og:title" content="パラレル オールナイト — たまり場の熱量を朝まで守れ">
+<meta property="og:description" content="友達のオンラインたまり場を朝までホスト。みんなの気分に合わせてゲーム・動画・カラオケを切り替え、コミュニケーション熱量を守るZ世代たまり場ローグライト。">
 <meta property="og:image" content="https://nrtkumi.github.io/games/parallel/assets/ogp.jpg">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://nrtkumi.github.io/games/parallel/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
   :root{
-    --ink:#0e1117; --ink2:#161b25; --line:#2a3340;
-    --paper:#e9e4d3;
-    --amber:#e0a83a; --amber-dk:#7a5a18;
-    --cyan:#39c2c9;  --cyan-dk:#155f63;
-    --seal:#e0392b; --seal-dk:#7d1b14;
-    --hi:#f2ecd8;
+    --night:#141733; --night2:#0e1024; --panel:#1e2347;
+    --coral:#ff7d6b; --coral-dk:#a23f33;
+    --mint:#5fe3c2; --mint-dk:#1f7a64;
+    --butter:#ffd36b; --pink:#ff9ecb; --sky:#84baff;
+    --cream:#f4efe6; --dim:#9aa0c8;
   }
-  html,body{ height:100%; background:var(--ink); overflow:hidden; overscroll-behavior:none; }
-  body{ font-family:"Noto Sans JP",sans-serif; color:var(--hi); }
+  html,body{ height:100%; background:var(--night2); overflow:hidden; overscroll-behavior:none; }
+  body{ font-family:"Zen Maru Gothic",sans-serif; color:var(--cream); }
   #wrap{
     position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%);
-    width:100%; max-width:min(480px, 62vh);
-    background:var(--ink); box-shadow:0 0 60px rgba(0,0,0,.6);
-    overflow:hidden;
+    width:100%; max-width:min(480px, 64vh);
+    background:radial-gradient(120% 60% at 50% 22%, #232a55 0%, var(--night) 46%, var(--night2) 100%);
+    box-shadow:0 0 70px rgba(0,0,0,.6); overflow:hidden;
   }
   canvas{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; display:block; }
 
-  /* ---- overlays ---- */
   .screen{
     position:absolute; inset:0; z-index:10; display:none;
-    flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; padding:calc(env(safe-area-inset-top) + 18px) 22px calc(env(safe-area-inset-bottom) + 18px);
-    background:linear-gradient(180deg, rgba(14,17,23,.82), rgba(14,17,23,.94));
+    flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    padding:calc(env(safe-area-inset-top) + 18px) 22px calc(env(safe-area-inset-bottom) + 18px);
+    background:linear-gradient(180deg, rgba(14,16,36,.82), rgba(14,16,36,.95));
   }
   .screen.on{ display:flex; }
   .badge{
-    font-family:"DotGothic16",monospace; font-size:11px; letter-spacing:.32em;
-    color:var(--amber); border:1px solid var(--line); border-radius:2px;
-    padding:5px 12px 4px; margin-bottom:18px; background:rgba(0,0,0,.25);
+    font-size:11px; font-weight:700; letter-spacing:.26em; color:var(--mint);
+    border:1.5px solid rgba(95,227,194,.4); border-radius:100px; padding:6px 15px 5px; margin-bottom:20px;
+    background:rgba(95,227,194,.07);
   }
-  h1{
-    font-family:"DotGothic16",monospace; line-height:1.18; font-weight:400;
-    font-size:clamp(30px,8.6vw,46px); letter-spacing:.02em; margin-bottom:6px;
-    text-shadow:2px 2px 0 var(--seal-dk), -2px 0 0 var(--cyan-dk);
-  }
-  .sub{ font-size:13px; color:#9aa6b4; letter-spacing:.12em; margin-bottom:22px; }
+  h1{ font-weight:900; line-height:1.12; font-size:clamp(30px,9vw,48px); letter-spacing:.01em; margin-bottom:8px; }
+  h1 .all{ display:block; font-family:"Outfit",sans-serif; font-weight:800; font-size:.52em; letter-spacing:.22em; color:var(--coral); margin-top:6px; }
+  .sub{ font-size:13.5px; color:var(--dim); letter-spacing:.06em; margin-bottom:22px; line-height:1.6; }
   .how{
-    font-size:13.5px; line-height:1.85; color:#c7ced8; max-width:300px;
-    background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:6px;
-    padding:14px 16px; margin-bottom:22px; text-align:left;
+    font-size:13.5px; line-height:1.9; color:#d7dbf2; max-width:312px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:16px;
+    padding:15px 17px; margin-bottom:22px; text-align:left;
   }
-  .how b{ color:var(--amber); font-weight:700; }
-  .how .c{ color:var(--cyan); font-weight:700; }
-  .how .r{ color:var(--seal); font-weight:700; }
+  .how b{ color:var(--coral); } .how .m{ color:var(--mint); } .how .y{ color:var(--butter); }
+  .emj{ font-size:15px; }
   .btn{
-    font-family:"DotGothic16",monospace; font-size:19px; letter-spacing:.16em;
-    color:var(--ink); background:var(--amber); border:none; border-radius:4px;
-    padding:15px 40px; cursor:pointer; box-shadow:0 4px 0 var(--amber-dk);
+    font-family:"Zen Maru Gothic",sans-serif; font-weight:900; font-size:19px; letter-spacing:.08em;
+    color:#2a1410; background:linear-gradient(180deg,#ffb38f,var(--coral)); border:none; border-radius:100px;
+    padding:15px 44px; cursor:pointer; box-shadow:0 5px 0 var(--coral-dk), 0 10px 22px rgba(255,125,107,.32);
     transition:transform .05s, box-shadow .05s;
   }
-  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--amber-dk); }
-  .btn.cyan{ background:var(--cyan); box-shadow:0 4px 0 var(--cyan-dk); }
-  .btn.cyan:active{ box-shadow:0 1px 0 var(--cyan-dk); }
-  .small{ font-size:12px; color:#7d8794; margin-top:16px; letter-spacing:.08em; }
-  .small b{ color:#aeb8c4; }
+  .btn:active{ transform:translateY(3px); box-shadow:0 2px 0 var(--coral-dk); }
+  .btn.mint{ background:linear-gradient(180deg,#9af3dd,var(--mint)); box-shadow:0 5px 0 var(--mint-dk), 0 10px 22px rgba(95,227,194,.3); }
+  .btn.mint:active{ box-shadow:0 2px 0 var(--mint-dk); }
+  .small{ font-size:12px; color:var(--dim); margin-top:16px; letter-spacing:.04em; }
+  .small b{ color:#cfd4f2; }
 
-  /* ---- result ---- */
-  #ttl-result{ color:var(--seal); text-shadow:2px 2px 0 var(--seal-dk); }
-  .stat{ font-family:"DotGothic16",monospace; }
-  .statline{ display:flex; justify-content:space-between; width:min(300px,82vw); font-size:14px; padding:7px 2px; border-bottom:1px dashed var(--line); }
-  .statline span:first-child{ color:#9aa6b4; }
-  .statline span:last-child{ color:var(--hi); font-family:"DotGothic16",monospace; }
-  .bignum{ font-family:"DotGothic16",monospace; font-size:46px; color:var(--amber); margin:4px 0 2px; line-height:1; }
-  .newrec{ color:var(--seal); font-family:"DotGothic16",monospace; font-size:14px; letter-spacing:.2em; margin-bottom:10px; animation:bl 1s steps(2) infinite; }
-  @keyframes bl{ 50%{opacity:.25} }
+  /* result */
+  #ttl-result{ color:var(--butter); }
+  .bignum{ font-family:"Outfit",sans-serif; font-weight:800; font-size:50px; color:var(--coral); margin:2px 0; line-height:1; }
+  .statline{ display:flex; justify-content:space-between; width:min(300px,82vw); font-size:13.5px; padding:7px 4px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .statline span:first-child{ color:var(--dim); }
+  .statline span:last-child{ color:var(--cream); font-weight:700; }
+  .newrec{ color:var(--mint); font-weight:900; font-size:14px; letter-spacing:.14em; margin-bottom:8px; animation:bl 1s steps(2) infinite; }
+  @keyframes bl{ 50%{opacity:.3} }
 
-  /* ---- upgrade picker ---- */
-  #screen-upg{ background:linear-gradient(180deg, rgba(10,13,18,.93), rgba(10,13,18,.97)); justify-content:flex-start; }
-  .upg-head{ margin-top:6px; }
-  .upg-q{ font-family:"DotGothic16",monospace; font-size:13px; color:var(--cyan); letter-spacing:.28em; margin-bottom:2px; }
-  .upg-title{ font-family:"DotGothic16",monospace; font-size:24px; margin-bottom:4px; }
-  .upg-note{ font-size:11.5px; color:#8b94a1; margin-bottom:16px; letter-spacing:.06em; }
-  .cards{ display:flex; flex-direction:column; gap:11px; width:min(330px,90vw); }
+  /* upgrade */
+  #screen-upg{ background:linear-gradient(180deg, rgba(11,13,30,.94), rgba(11,13,30,.97)); justify-content:flex-start; }
+  .upg-head{ margin-top:4px; }
+  .upg-q{ font-weight:700; font-size:13px; color:var(--mint); letter-spacing:.16em; margin-bottom:2px; }
+  .upg-title{ font-weight:900; font-size:23px; margin-bottom:3px; }
+  .upg-note{ font-size:11.5px; color:var(--dim); margin-bottom:15px; }
+  .cards{ display:flex; flex-direction:column; gap:11px; width:min(335px,91vw); }
   .card{
-    border:1px solid var(--line); border-left:4px solid var(--amber); border-radius:6px;
-    background:rgba(255,255,255,.035); padding:13px 15px; text-align:left; cursor:pointer;
-    transition:transform .06s, background .1s, border-color .1s;
+    display:flex; align-items:center; gap:13px;
+    border:1px solid rgba(255,255,255,.1); border-radius:16px;
+    background:rgba(255,255,255,.045); padding:13px 15px; text-align:left; cursor:pointer;
+    transition:transform .06s, background .1s;
   }
-  .card:active{ transform:scale(.98); }
-  .card.rare{ border-left-color:var(--seal); }
-  .card .ci{ font-size:22px; float:right; margin-left:8px; }
-  .card .cn{ font-family:"DotGothic16",monospace; font-size:16px; color:var(--hi); margin-bottom:3px; }
-  .card .cd{ font-size:12px; line-height:1.55; color:#aab3c0; }
-  .card .ctag{ display:inline-block; font-family:"DotGothic16",monospace; font-size:9.5px; letter-spacing:.16em; color:var(--amber); border:1px solid var(--amber-dk); border-radius:2px; padding:1px 6px; margin-bottom:6px; }
-  .card.rare .ctag{ color:var(--seal); border-color:var(--seal-dk); }
+  .card:active{ transform:scale(.975); }
+  .card.rare{ border-color:rgba(255,211,107,.5); background:rgba(255,211,107,.07); }
+  .card .ci{ font-size:30px; flex:0 0 auto; width:40px; text-align:center; }
+  .card .cn{ font-weight:900; font-size:16px; color:var(--cream); margin-bottom:2px; }
+  .card .cd{ font-size:12px; line-height:1.5; color:#b6bbe0; }
+  .card.rare .cn{ color:var(--butter); }
 
-  /* ---- pause btn ---- */
   #pause{
-    position:absolute; top:calc(env(safe-area-inset-top) + 7px); right:9px; z-index:6;
-    font-family:"DotGothic16",monospace; font-size:13px; line-height:1; color:#9aa6b4;
-    background:rgba(0,0,0,.4); border:1px solid var(--line); border-radius:3px;
-    padding:6px 9px; cursor:pointer; display:none;
+    position:absolute; top:calc(env(safe-area-inset-top) + 8px); right:9px; z-index:6;
+    font-size:14px; font-weight:700; color:var(--dim);
+    background:rgba(0,0,0,.32); border:1px solid rgba(255,255,255,.12); border-radius:100px;
+    padding:6px 13px; cursor:pointer; display:none;
   }
   #pause.on{ display:block; }
 </style>
@@ -116,48 +108,46 @@
 <body>
 <div id="wrap">
   <canvas id="cv"></canvas>
-  <button id="pause">‖ 休憩</button>
+  <button id="pause">‖</button>
 
   <!-- TITLE -->
   <div class="screen on" id="screen-title">
-    <div class="badge">PARALLEL INC. ／ 並行世界同期課</div>
-    <h1>パラレル<br>株式会社</h1>
-    <div class="sub">2つの世界を、1本の指で。</div>
+    <div class="badge">PARALLEL ／ オンラインのたまり場</div>
+    <h1>パラレル<span class="all">ALL-NIGHT</span></h1>
+    <div class="sub">友達のたまり場を、朝までホスト。</div>
     <div class="how">
-      きみは<b>並行世界の同期係</b>。上下に並ぶ<b>世界A</b>と<span class="c">世界B</span>を<u>同時に</u>動かす。<br>
-      ・ドラッグで<b>両世界のキャラが同じ列へ</b><br>
-      ・<span class="r">締切ウォール</span>はスキマだけが安全。両世界くぐれ<br>
-      ・<b>契約書📄</b>を集めて決算で<b>昇進(強化)</b><br>
-      両世界で同時キャッチ=<span class="c">並行ボーナス</span>!
+      きみは<b>たまり場のホスト</b>。集まった親友の<b>「今やりたい気分」</b>に合わせて、ルームの<span class="m">アクティビティ</span>を切り替えよう。<br>
+      ・下のボタンで <span class="emj">🎮</span><span class="emj">🎬</span><span class="emj">🎤</span><span class="emj">🎵</span><span class="emj">💬</span> を選ぶ<br>
+      ・気分が合った友達は<b>盛り上がり</b>、<span class="m">コミュニケーション熱量</span>が上がる<br>
+      ・<span class="y">親フラ📵</span>が来た友達はタップで<b>ミュート</b>!<br>
+      ・熱量が尽きると<b>解散</b>。決算ごとに強化して朝を目指せ
     </div>
-    <button class="btn" id="btn-start">出社する</button>
-    <div class="small">最高売上 <b id="t-best">0</b> ／ 勤続 <b id="t-days">0</b> 日</div>
+    <button class="btn" id="btn-start">通話をはじめる</button>
+    <div class="small">最高熱量 <b id="t-best">0</b>pt ／ 通算 <b id="t-days">0</b> 夜</div>
   </div>
 
   <!-- UPGRADE -->
   <div class="screen" id="screen-upg">
     <div class="upg-head">
-      <div class="upg-q" id="upg-q">第1四半期 決算</div>
-      <div class="upg-title">昇進 — 1つ選べ</div>
-      <div class="upg-note">スキルはこのランの間ずっと有効</div>
+      <div class="upg-q" id="upg-q">02:00 — 夜が更けてきた</div>
+      <div class="upg-title">アップデート ─ 1つ選べ</div>
+      <div class="upg-note">強化はこの夜の間ずっと有効</div>
     </div>
     <div class="cards" id="upg-cards"></div>
   </div>
 
   <!-- RESULT -->
   <div class="screen" id="screen-result">
-    <h1 id="ttl-result">倒産</h1>
-    <div class="newrec" id="r-newrec" style="display:none">★ 過去最高売上 ★</div>
+    <h1 id="ttl-result">即解散…</h1>
+    <div class="newrec" id="r-newrec" style="display:none">★ 自己ベスト更新 ★</div>
     <div class="bignum" id="r-score">0</div>
-    <div class="sub" style="margin-bottom:16px">期末売上(円)</div>
-    <div class="stat">
-      <div class="statline"><span>クリア四半期</span><span id="r-q">0</span></div>
-      <div class="statline"><span>集めた契約</span><span id="r-contracts">0</span></div>
-      <div class="statline"><span>最大並行コンボ</span><span id="r-combo">0</span></div>
-      <div class="statline"><span>最高売上</span><span id="r-best">0</span></div>
-    </div>
-    <button class="btn cyan" id="btn-retry" style="margin-top:22px">再雇用される</button>
-    <div class="small">勤続 <b id="r-days">0</b> 日目</div>
+    <div class="sub" style="margin-bottom:14px">獲得コミュニケーション熱量(pt)</div>
+    <div class="statline"><span>滞在できた時刻</span><span id="r-time">--:--</span></div>
+    <div class="statline"><span>最高同時接続</span><span id="r-peak">0</span> 人</div>
+    <div class="statline"><span>パーティータイム</span><span id="r-fever">0</span> 回</div>
+    <div class="statline"><span>最高熱量</span><span id="r-best">0</span>pt</div>
+    <button class="btn mint" id="btn-retry" style="margin-top:22px">もう一回つなぐ</button>
+    <div class="small">通算 <b id="r-days">0</b> 夜目</div>
   </div>
 </div>
 
@@ -165,7 +155,8 @@
 "use strict";
 (function(){
 /* ============================================================= *
- *  パラレル株式会社 — 並行世界同期課
+ *  パラレル オールナイト — たまり場ホスト・ローグライト
+ *  題材: Z世代向け音声SNS「パラレル」(パラレル株式会社)
  *  単一HTML / canvas 2D / Web Audio リアルタイム合成
  * ============================================================= */
 
@@ -178,437 +169,356 @@ const scrTitle = document.getElementById("screen-title");
 const scrUpg = document.getElementById("screen-upg");
 const scrResult = document.getElementById("screen-result");
 
-/* ---------- 画面サイズ ---------- */
-let W = 0, H = 0, dpr = 1;
+/* ---------- サイズ ---------- */
+let W=0, H=0, dpr=1;
 function resize(){
   const r = wrap.getBoundingClientRect();
-  W = Math.max(1, r.width); H = Math.max(1, r.height);
-  dpr = Math.min(2, window.devicePixelRatio || 1);
-  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  W=Math.max(1,r.width); H=Math.max(1,r.height);
+  dpr=Math.min(2, window.devicePixelRatio||1);
+  cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
 }
-window.addEventListener("resize", resize);
-resize();
+window.addEventListener("resize", resize); resize();
 
-/* ---------- ユーティリティ ---------- */
-const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
-const lerp = (a,b,t)=> a+(b-a)*t;
-let seed = 123456789;
-function rnd(){ // 決定論RNG(Math.random非依存=テスト安定)
-  seed = (seed*1103515245 + 12345) & 0x7fffffff;
-  return seed / 0x7fffffff;
-}
-const ri = (a,b)=> a + Math.floor(rnd()*(b-a+1));
+/* ---------- util ---------- */
+const clamp=(v,a,b)=> v<a?a:(v>b?b:v);
+const lerp=(a,b,t)=> a+(b-a)*t;
+let seed=123456789;
+function rnd(){ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; }
+const ri=(a,b)=> a+Math.floor(rnd()*(b-a+1));
+const pick=(arr)=> arr[Math.floor(rnd()*arr.length)];
 function fmt(n){ return Math.floor(n).toLocaleString("en-US"); }
+function nowMs(){ try{return Date.now();}catch(e){return performance.now();} }
 
-/* ---------- 永続データ ---------- */
-const SKEY = "parallel_inc_v1";
-let save = { best:0, days:0 };
-try{ const s = JSON.parse(localStorage.getItem(SKEY)); if(s) save = Object.assign(save, s); }catch(e){}
+/* ---------- 永続 ---------- */
+const SKEY="parallel_allnight_v1";
+let save={ best:0, days:0 };
+try{ const s=JSON.parse(localStorage.getItem(SKEY)); if(s) save=Object.assign(save,s);}catch(e){}
 function persist(){ try{ localStorage.setItem(SKEY, JSON.stringify(save)); }catch(e){} }
 
 /* ============================================================= *
- *  ゲーム状態(宣言時に全初期化 — ループ初回フレームで死なせない)
+ *  アクティビティ定義
+ * ============================================================= */
+const ACTS = [
+  { id:"game",    emo:"🎮", name:"ゲーム",   col:"#5fe3c2" },
+  { id:"video",   emo:"🎬", name:"動画",     col:"#ff7d6b" },
+  { id:"karaoke", emo:"🎤", name:"カラオケ", col:"#ffd36b" },
+  { id:"music",   emo:"🎵", name:"音楽",     col:"#ff9ecb" },
+  { id:"chat",    emo:"💬", name:"だべり",   col:"#84baff" },
+];
+const actById = id => ACTS.find(a=>a.id===id);
+const NAMES = ["りく","ゆい","はる","あおい","そら","みお","かい","ひな","れん","つむぎ","ゆうと","のあ","いつき","ことね","あさひ","ねね"];
+
+/* ============================================================= *
+ *  ゲーム状態(宣言時に全初期化)
  * ============================================================= */
 const G = {
-  mode: "title",          // title | play | upg | result | pause
-  worlds: 2,              // 世界数(2 or 3)
-  cols: 4,
-  t: 0,                   // 経過(秒)
-  qTime: 0,               // 今四半期の経過
-  qLen: 24,               // 四半期の長さ(秒)
-  quarter: 0,             // クリア四半期数
-  speed: 150,             // 落下速度(px/s)
-  spawnGap: 1.35,         // ウォール間隔(秒)
-  itemGap: 1.7,
-  // 列ターゲット(両世界共通)
-  col: 1, colF: 1,        // 現在列(整数 / 補間)
-  // スコア
-  score: 0, lives: 3, maxLives: 3,
-  contracts: 0, combo: 0, maxCombo: 0, comboTimer: 0,
-  shield: 0, shieldMax: 0, shieldCd: 0,
-  // フィールド要素
-  worldsArr: [],          // 各世界の {walls:[], items:[], avatar..., spawnT, itemT, tint}
-  // 強化フラグ
-  up: {},                 // 取得済みアップグレード count
-  // 演出
-  particles: [],
-  shake: 0,
-  flash: 0,
-  glitch: 0,
-  slow: 0,                // スローモー残り秒
-  slowCd: 0,
-  magnet: 0,
-  // 内部
-  scorePulse: 0,
+  mode:"title",          // title|play|upg|result|pause
+  t:0,
+  netsu:60,              // コミュニケーション熱量 0..100
+  score:0,
+  hour:21, qTime:0, qLen:22,  // 夜の時計(21時スタート、qLen秒で1時間進む)
+  friends:[],
+  maxFriends:3,
+  active:[],             // 現在のアクティビティid(通常1, 画面共有で2)
+  maxActive:1,
+  combo:0,
+  fever:0, feverCd:0, feverCount:0,
+  peak:0,
+  hazardT:5,
+  up:{},
+  particles:[],
+  floaties:[],           // 上昇する♥♪など
+  shake:0, flash:0, feverFlash:0,
+  scorePulse:0, netsuHit:0,
+  oshiCd:0,
+  reachedMorning:false,
+  // レイアウトキャッシュ
+  _btnRects:[], _friendHit:[], _oshiRect:null,
 };
 
-/* 世界の色味 */
-const TINT = [
-  { main:"#e0a83a", dk:"#7a5a18", glow:"rgba(224,168,58,", name:"世界A" },
-  { main:"#39c2c9", dk:"#155f63", glow:"rgba(57,194,201,", name:"世界B" },
-  { main:"#b16ad0", dk:"#4d2664", glow:"rgba(177,106,208,", name:"世界C" },
-];
-
-/* ---------- レイアウト計算 ---------- */
-const HUD_H = 64;
-function worldRect(i){
-  const top = HUD_H;
-  const avail = H - HUD_H;
-  const h = avail / G.worlds;
-  return { x:0, y: top + h*i, w: W, h: h };
-}
-function colX(rect, c){
-  const pad = 10;
-  const cw = (rect.w - pad*2) / G.cols;
-  return rect.x + pad + cw*(c+0.5);
-}
-function colW(rect){ const pad=10; return (rect.w-pad*2)/G.cols; }
-function catchY(rect){ return rect.y + rect.h - Math.min(64, rect.h*0.22); }
+/* ---------- レイアウト ---------- */
+const HUD_H=78;
+function barH(){ return 92; } // 下部アクティビティバー
+function roomRect(){ return { x:0, y:HUD_H, w:W, h:H-HUD_H-barH() }; }
 
 /* ============================================================= *
- *  ゲーム開始・初期化
+ *  初期化
  * ============================================================= */
+let startSeed=123456789;
 function newGame(){
-  seed = startSeed;
-  G.worlds = 2; G.cols = 4;
-  G.t = 0; G.qTime = 0; G.qLen = 24; G.quarter = 0;
-  G.speed = 150; G.spawnGap = 1.4; G.itemGap = 1.7;
-  G.col = 1; G.colF = 1;
-  G.score = 0; G.lives = 3; G.maxLives = 3;
-  G.contracts = 0; G.combo = 0; G.maxCombo = 0; G.comboTimer = 0;
-  G.shield = 0; G.shieldMax = 0; G.shieldCd = 0;
-  G.up = {};
-  G.particles.length = 0; G.shake = 0; G.flash = 0; G.glitch = 0;
-  G.slow = 0; G.slowCd = 0; G.magnet = 0; G.scorePulse = 0;
-  buildWorlds();
-  G.mode = "play";
-  hideAll();
-  elPause.classList.add("on");
-}
-let startSeed = 123456789;
-
-function buildWorlds(){
-  G.worldsArr.length = 0;
-  for(let i=0;i<G.worlds;i++){
-    G.worldsArr.push({
-      walls: [], items: [],
-      spawnT: 0.8 + i*0.7,   // 世界ごとにウォール出現をズラす(=必ず通れる猶予)
-      itemT: 1.2 + i*0.5,
-      tint: i,
-    });
-  }
+  seed=startSeed;
+  G.mode="play"; G.t=0; G.netsu=62; G.score=0;
+  G.hour=21; G.qTime=0; G.qLen=22;
+  G.maxFriends=3; G.maxActive=1;
+  G.active=[ pick(ACTS).id ];
+  G.combo=0; G.fever=0; G.feverCd=0; G.feverCount=0; G.peak=0;
+  G.hazardT=6;
+  G.up={};
+  G.friends.length=0; G.particles.length=0; G.floaties.length=0;
+  G.shake=0; G.flash=0; G.feverFlash=0; G.scorePulse=0; G.netsuHit=0; G.oshiCd=0;
+  G.reachedMorning=false;
+  for(let i=0;i<G.maxFriends;i++) addFriend();
+  hideAll(); elPause.classList.add("on");
 }
 
-/* ---------- ウォール / アイテム生成 ---------- */
-function gapCount(){
-  // 序盤はスキマ2、進行で1
-  if(G.quarter < 1) return 2;
-  if(G.quarter < 3) return (rnd()<0.5?2:1);
-  return 1;
-}
-function spawnWall(w){
-  const n = G.cols;
-  const gaps = new Set();
-  const gc = Math.min(gapCount(), n-1);
-  while(gaps.size < gc) gaps.add(ri(0,n-1));
-  w.walls.push({ y:-26, gaps:[...gaps], h:24, hit:false, scored:false });
-}
-function spawnItem(w){
-  const c = ri(0, G.cols-1);
-  // ゴールド契約(レア)を稀に
-  const gold = rnd() < 0.12 + (G.up.tokku?0.12:0);
-  w.items.push({ y:-20, c, taken:false, gold, miss:false });
-}
-
-/* ============================================================= *
- *  アップグレード定義
- * ============================================================= */
-const UPGRADES = [
-  { id:"fukuri", icon:"🏥", tag:"福利厚生", name:"健康診断", rare:false,
-    desc:"ライフ上限+1、さらに1回復。",
-    apply(){ G.maxLives++; G.lives = Math.min(G.maxLives, G.lives+1); } },
-  { id:"rousai", icon:"🛡️", tag:"保険", name:"労災保険", rare:false,
-    desc:"締切を1回まで肩代わりするシールド(四半期ごと自動回復)。",
-    apply(){ G.shieldMax++; G.shield = G.shieldMax; } },
-  { id:"tokku", icon:"💰", tag:"営業", name:"契約特需", rare:false,
-    desc:"契約の単価+40%。ゴールド契約も出やすくなる。",
-    apply(){ G.up.tokku = (G.up.tokku||0)+1; } },
-  { id:"parallel", icon:"⚡", tag:"並行", name:"並行ボーナス強化", rare:false,
-    desc:"両世界同時キャッチのコンボ倍率が大きく上昇。",
-    apply(){ G.up.parallel = (G.up.parallel||0)+1; } },
-  { id:"jidou", icon:"🤖", tag:"DX", name:"業務自動化AI", rare:false,
-    desc:"一定間隔で各世界の最前の締切ウォールを自動で承認(消去)。",
-    apply(){ G.up.jidou = (G.up.jidou||0)+1; } },
-  { id:"magnet", icon:"🧲", tag:"DX", name:"電子契約", rare:false,
-    desc:"自分の列の契約を少し離れていても引き寄せる。",
-    apply(){ G.up.magnet = (G.up.magnet||0)+1; } },
-  { id:"jitan", icon:"🕒", tag:"働き方", name:"時短勤務", rare:false,
-    desc:"全体の落下速度を15%ダウン。次の四半期から効く。",
-    apply(){ G.up.jitan = (G.up.jitan||0)+1; G.speed *= 0.85; } },
-  { id:"slow", icon:"⏳", tag:"特権", name:"重役の鶴の一声", rare:false,
-    desc:"画面下のボタンでスロー演出(時間が遅くなる)。クールダウンあり。",
-    apply(){ G.up.slow = (G.up.slow||0)+1; } },
-  { id:"expand", icon:"🌐", tag:"事業拡大", name:"並行世界の増設", rare:true,
-    desc:"世界が3つに増える!難度は上がるが全得点が大幅UP。",
-    apply(){ if(G.worlds<3){ G.worlds=3; rebuildAddWorld(); } G.up.expand=(G.up.expand||0)+1; } },
-];
-function rebuildAddWorld(){
-  // 既存2世界を保持しつつ3つ目を追加
-  while(G.worldsArr.length < G.worlds){
-    const i = G.worldsArr.length;
-    G.worldsArr.push({ walls:[], items:[], spawnT:1.0+i*0.6, itemT:1.4, tint:i });
-  }
-}
-function pickUpgrades(){
-  const pool = UPGRADES.filter(u=>{
-    if(u.id==="expand" && G.worlds>=3) return false;
-    return true;
+function addFriend(){
+  const n = G.friends.length;
+  const favCount = ri(2,3);
+  const favs=[]; const pool=ACTS.slice();
+  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  for(let i=0;i<favCount;i++) favs.push(pool[i].id);
+  G.friends.push({
+    name: NAMES[n % NAMES.length],
+    favs, mood: pick(favs),
+    moodT: 2 + rnd()*3,
+    vibe: 0.72, present:true, offT:0,
+    hazard:null,
+    col: pick(["#ff7d6b","#5fe3c2","#ffd36b","#ff9ecb","#84baff","#b6a7ff"]),
+    bob: rnd()*6.28,
+    pop:0,
   });
-  // シャッフル(決定論RNG)
-  const arr = pool.slice();
-  for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
-  // レアを1枚は混ぜやすく
-  const out = arr.slice(0,3);
-  return out;
+}
+
+/* 友達の配置(在席のみ詰めてグリッド) */
+function layoutFriends(){
+  const r=roomRect();
+  const present=G.friends;
+  const n=present.length;
+  const cols = n<=2?n: (n<=4?2: (n<=6?3:3));
+  const rows = Math.ceil(n/cols);
+  const cw=r.w/cols, chH=Math.min(r.h/Math.max(rows,1), 150);
+  const totalH=chH*rows, startY=r.y+(r.h-totalH)/2 + chH/2;
+  G._friendHit.length=0;
+  for(let i=0;i<n;i++){
+    const cx=(i%cols), cy=Math.floor(i/cols);
+    const inRow = Math.min(cols, n-cy*cols);
+    const rowW = cw*inRow;
+    const x = r.x + (r.w-rowW)/2 + cw*cx + cw/2;
+    const y = startY + chH*cy;
+    present[i]._x=x; present[i]._y=y; present[i]._rad=Math.min(34, cw*0.28);
+    G._friendHit.push({f:present[i], x, y, rad:present[i]._rad+16});
+  }
 }
 
 /* ============================================================= *
- *  更新ループ
+ *  アップデート
  * ============================================================= */
 function update(dt){
-  if(G.mode !== "play") return;
+  if(G.mode!=="play") return;
+  G.t += dt;
 
-  // スロー演出
-  let scale = 1;
-  if(G.slow > 0){ G.slow -= dt; scale = 0.4; }
-  const sdt = dt * scale;
+  // タイマー演出
+  if(G.shake>0) G.shake=Math.max(0,G.shake-dt*60);
+  if(G.flash>0) G.flash=Math.max(0,G.flash-dt*3);
+  if(G.feverFlash>0) G.feverFlash=Math.max(0,G.feverFlash-dt*2);
+  if(G.scorePulse>0) G.scorePulse=Math.max(0,G.scorePulse-dt*3);
+  if(G.netsuHit>0) G.netsuHit=Math.max(0,G.netsuHit-dt*3);
+  if(G.feverCd>0) G.feverCd-=dt;
+  if(G.oshiCd>0) G.oshiCd-=dt;
 
-  G.t += dt; G.qTime += dt;
-  if(G.slowCd>0) G.slowCd -= dt;
+  layoutFriends();
 
-  // 速度の自然加速
-  G.speed += sdt * 2.2;
+  const hoursDeep = G.hour>=21 ? (G.hour-21) : (G.hour+3); // 21→0..9
+  const moodFast = 1 + hoursDeep*0.13 - (G.up.kuuki?0.4:0);
+  const drainSlow = (G.up.night?0.8:1) * (G.up.setsuzoku?0.85:1);
 
-  // 列補間
-  G.colF = lerp(G.colF, G.col, Math.min(1, dt*16));
+  // フィーバー
+  let inFever = G.fever>0;
+  if(inFever){ G.fever-=dt; }
 
-  // コンボ減衰
-  if(G.comboTimer>0){ G.comboTimer -= dt; if(G.comboTimer<=0) G.combo=0; }
-
-  // 演出減衰
-  if(G.shake>0) G.shake = Math.max(0, G.shake - dt*60);
-  if(G.flash>0) G.flash = Math.max(0, G.flash - dt*3);
-  if(G.glitch>0) G.glitch = Math.max(0, G.glitch - dt*2);
-  if(G.scorePulse>0) G.scorePulse = Math.max(0, G.scorePulse - dt*3);
-
-  // 自動化AIタイマー
-  if(G.up.jidou){
-    G._jidouT = (G._jidouT||0) - dt;
-    if(G._jidouT <= 0){
-      G._jidouT = Math.max(2.4, 5.5 - G.up.jidou*0.7);
-      for(const w of G.worldsArr){
-        // 最前(最もyが大きく、まだcatch前)のウォールを承認
-        let target=null;
-        for(const wl of w.walls){ if(!wl.hit && !wl.approved){ if(!target||wl.y>target.y) target=wl; } }
-        if(target){ target.approved=true; target.scored=true;
-          const r = worldRect(G.worldsArr.indexOf(w));
-          burst(W*0.5, catchY(r), TINT[w.tint].main, 10); }
-      }
-      beep(660,0.05,"square",0.05);
+  // 友達更新
+  let satisfied=0, presentCount=0, totalVibe=0;
+  for(const f of G.friends){
+    if(f.pop>0) f.pop=Math.max(0,f.pop-dt*3);
+    if(!f.present){
+      f.offT-=dt;
+      if(f.offT<=0){ f.present=true; f.vibe=0.4; f.mood=pick(f.favs); f.hazard=null; f.pop=1;
+        spawnFloaty(f._x||W/2, f._y||H/2, "👋", "#84baff"); }
+      continue;
     }
-  }
+    presentCount++;
 
-  // 各世界の更新
-  for(let i=0;i<G.worldsArr.length;i++){
-    const w = G.worldsArr[i];
-    const rect = worldRect(i);
-    const cy = catchY(rect);
+    // 気分シフト
+    f.moodT -= dt*moodFast;
+    if(f.moodT<=0){ f.mood=pick(f.favs); f.moodT = 2.4 + rnd()*3.2; f.pop=0.6; }
 
-    // スポーン
-    w.spawnT -= sdt;
-    if(w.spawnT <= 0){
-      spawnWall(w);
-      w.spawnT = Math.max(0.7, G.spawnGap - G.t*0.006) + rnd()*0.25;
-    }
-    w.itemT -= sdt;
-    if(w.itemT <= 0){
-      spawnItem(w);
-      w.itemT = Math.max(0.9, G.itemGap - G.t*0.004) + rnd()*0.6;
-    }
-
-    // ウォール移動
-    for(const wl of w.walls){
-      const prevY = wl.y;
-      wl.y += G.speed * sdt;
-      if(wl.approved){ continue; }
-      // catchYを跨いだ瞬間に判定
-      if(!wl.hit && prevY < cy && wl.y >= cy){
-        wl.hit = true;
-        const safe = wl.gaps.includes(G.col);
-        if(safe){
-          wl.scored = true;
-          addScore(8 * scoreMul(), W*0.5, cy, false);
-        }else{
-          damage(i, cy);
+    // ハザード
+    if(f.hazard){
+      f.hazard.t -= dt;
+      if(f.hazard.t<=0){
+        // 放置 → 失敗
+        if(f.hazard.type==="oyafura"){
+          if(G.up.mute && G._muteReady){ G._muteReady=false; G._muteCd=8; f.hazard=null; spawnFloaty(f._x,f._y,"🔇","#5fe3c2"); beep(520,0.06,"sine",0.05); }
+          else { friendLeaves(f, 14); }
+        } else { // sleepy
+          f.vibe=Math.max(0,f.vibe-0.5); f.hazard=null;
+          spawnFloaty(f._x,f._y,"😴","#9aa0c8");
         }
       }
+      // ハザード中は満足判定しない
+      continue;
     }
-    // アイテム移動
-    for(const it of w.items){
-      it.y += G.speed * sdt;
-      const ix = colX(rect, it.c);
-      // マグネット: 自列に近ければ引き寄せ
-      let reach = colW(rect)*0.5 + 4;
-      if(G.up.magnet) reach += colW(rect)*0.55*G.up.magnet;
-      const myx = colX(rect, G.col);
-      if(!it.taken && !it.miss && it.y > cy-26 && it.y < cy+22){
-        if(Math.abs(ix - myx) <= reach){
-          it.taken = true;
-          collectItem(i, it, ix, cy);
-        }
-      }
-      if(it.y > rect.y+rect.h+24 && !it.taken){ it.miss = true; }
+
+    const matched = inFever || G.active.includes(f.mood);
+    if(matched){
+      let rate=0.42; if(G.up.karaoke && G.active.includes("karaoke") && f.mood==="karaoke") rate*=1.5;
+      f.vibe=clamp(f.vibe+rate*dt,0,1);
+      satisfied++;
+      // 熱量放出
+      if(rnd()<dt*(2.2+f.vibe*3)) spawnFloaty(f._x, f._y-f._rad, pick(["❤️","🎶","✨","！"]), actById(f.mood)?.col||"#fff");
+    }else{
+      f.vibe=clamp(f.vibe - 0.14*drainSlow*dt, 0, 1);
+      if(f.vibe<=0){ friendLeaves(f, 6); continue; }
     }
-    // 掃除
-    w.walls = w.walls.filter(wl=> wl.y < rect.y+rect.h+40);
-    w.items = w.items.filter(it=> it.y < rect.y+rect.h+40 && !it.taken);
+    totalVibe += f.vibe;
+  }
+  G.peak=Math.max(G.peak, presentCount);
+
+  // ミュートマスター回復
+  if(G.up.mute){ if(G._muteCd>0){ G._muteCd-=dt; if(G._muteCd<=0) G._muteReady=true; } if(G._muteReady===undefined) G._muteReady=true; }
+
+  // 熱量の増減
+  const gain = (inFever?2.0:1) * (satisfied*(3.4) + totalVibe*2.2) * (G.up.shinyu?1.18:1);
+  const baseDrain = (3.2 + hoursDeep*0.85) * drainSlow;
+  const mismatchDrain = (presentCount - satisfied) * 0.5;
+  G.netsu = clamp(G.netsu + (gain - baseDrain - mismatchDrain)*dt, 0, 100);
+
+  // スコア(熱量×満足人数の積分)
+  const sc = (G.netsu/100) * (1 + satisfied*0.9) * (inFever?2:1) * 9 * dt;
+  if(sc>0){ G.score += sc; G.scorePulse=Math.min(1,G.scorePulse+sc*0.02); }
+
+  // フィーバー発火
+  if(!inFever && G.netsu>=100 && G.feverCd<=0 && presentCount>0){
+    G.fever = (G.up.reaction?5.5:4); G.feverCd = 10; G.feverCount++;
+    G.feverFlash=1; G.combo++;
+    for(const f of G.friends){ if(f.present){ f.hazard=null; spawnFloaty(f._x,f._y-20,"🎉",f.col); } }
+    beep(660,0.1,"triangle",0.08); setTimeout(()=>beep(990,0.12,"triangle",0.07),90); setTimeout(()=>beep(1320,0.14,"triangle",0.06),180);
   }
 
-  // パーティクル
-  for(const p of G.particles){
-    p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 420*dt; p.life -= dt;
+  // ハザード生成
+  G.hazardT -= dt;
+  if(G.hazardT<=0){
+    const cand=G.friends.filter(f=>f.present && !f.hazard);
+    if(cand.length){
+      const f=pick(cand);
+      const sleepyOk = !G.up.night;
+      const type = (sleepyOk && rnd()<0.4) ? "sleepy" : "oyafura";
+      f.hazard={ type, t: type==="oyafura"? 3.6 : 4.2, max: type==="oyafura"?3.6:4.2 };
+      beep(type==="oyafura"?300:240,0.07,"sawtooth",0.045);
+    }
+    G.hazardT = Math.max(2.2, 6.5 - hoursDeep*0.4) + rnd()*2;
   }
-  G.particles = G.particles.filter(p=>p.life>0);
 
-  // 四半期決算
-  if(G.qTime >= G.qLen){
-    openUpgrade();
-  }
-}
+  // 熱量ゼロ → 解散
+  if(G.netsu<=0){ gameOver(); return; }
 
-function scoreMul(){
-  let m = 1;
-  if(G.worlds>=3) m *= 1.7;
-  return m;
-}
-function itemValue(gold){
-  let base = gold ? 60 : 18;
-  if(G.up.tokku) base *= (1 + 0.4*G.up.tokku);
-  base *= scoreMul();
-  return Math.round(base);
+  // フロート/パーティクル
+  for(const p of G.floaties){ p.y+=p.vy*dt; p.vy+=-12*dt; p.life-=dt; }
+  G.floaties=G.floaties.filter(p=>p.life>0);
+  for(const p of G.particles){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=380*dt; p.life-=dt; }
+  G.particles=G.particles.filter(p=>p.life>0);
+
+  // 時計を進める
+  G.qTime += dt;
+  if(G.qTime>=G.qLen){ advanceHour(); }
 }
 
-function collectItem(wi, it, x, y){
-  G.contracts++;
-  const v = itemValue(it.gold);
-  // 並行ボーナス: 短時間内に複数世界でキャッチ
-  G._lastCatch = G._lastCatch || {};
-  G._lastCatch[wi] = G.t;
-  let parallel = 0;
-  for(let k=0;k<G.worldsArr.length;k++){ if(k!==wi && G._lastCatch[k] && G.t-G._lastCatch[k] < 0.45) parallel++; }
-  if(parallel>0){
-    G.combo += 1;
-    G.comboTimer = 1.6;
-    G.maxCombo = Math.max(G.maxCombo, G.combo);
-    const mul = 1 + G.combo*(0.25 + (G.up.parallel?0.25*G.up.parallel:0));
-    addScore(Math.round(v*mul), x, y, true);
-    burst(x, y, "#f2ecd8", 16);
-    beep(880 + G.combo*40, 0.08, "triangle", 0.07);
-    G.flash = Math.min(1, G.flash+0.35);
-  }else{
-    addScore(v, x, y, it.gold);
-    burst(x, y, it.gold?"#e0a83a":TINT[G.worldsArr[wi].tint].main, it.gold?14:8);
-    beep(it.gold?720:520, 0.05, "sine", 0.05);
-  }
+function friendLeaves(f, netsuPenalty){
+  f.present=false; f.offT = (G.up.setsuzoku?4.5:7) + rnd()*2; f.vibe=0; f.hazard=null;
+  G.netsu=Math.max(0, G.netsu-netsuPenalty); G.netsuHit=1; G.shake=10; G.flash=Math.min(1,G.flash+0.3); G.combo=0;
+  burst(f._x||W/2, f._y||H/2, "#9aa0c8", 14);
+  spawnFloaty(f._x||W/2, f._y||H/2, "💤", "#9aa0c8");
+  beep(170,0.18,"sawtooth",0.07);
 }
 
-function addScore(v, x, y, big){
-  G.score += v;
-  G.scorePulse = 1;
-  G.particles.push({ x, y, vx:0, vy:-60, life:0.8, txt:"+"+v, col:big?"#f2ecd8":"#cfd6e0", sz:big?18:13, kind:"txt" });
+function spawnFloaty(x,y,txt,col){ G.floaties.push({ x:x+(rnd()-0.5)*20, y, vy:-46-rnd()*30, life:0.9+rnd()*0.5, txt, col, sz:16+rnd()*8 }); }
+function burst(x,y,col,n){ for(let i=0;i<n;i++){ const a=rnd()*6.28, sp=60+rnd()*200; G.particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-50,life:0.4+rnd()*0.5,col,sz:3+rnd()*3}); } }
+
+/* ---------- 時計を1時間進める → アップデート選択 ---------- */
+function advanceHour(){
+  G.qTime=0;
+  G.hour = (G.hour+1)%24;
+  if(G.hour===6 && !G.reachedMorning){ G.reachedMorning=true; G.netsu=Math.min(100,G.netsu+25); G.feverFlash=1;
+    for(const f of G.friends){ if(f.present) spawnFloaty(f._x,f._y,"🌅","#ffd36b"); } }
+  G.netsu=Math.min(100, G.netsu+8); // 区切りボーナス
+  G.qLen = Math.max(15, 22 - (G.hour>=21?G.hour-21:G.hour+3)*0.7);
+  G.mode="upg"; elPause.classList.remove("on");
+  buildUpgrade(); show(scrUpg);
 }
 
-function damage(wi, y){
-  if(G.shield>0){
-    G.shield--;
-    G.shake = 8; G.flash = Math.min(1, G.flash+0.3); G.glitch = 0.5;
-    burst(W*0.5, y, "#39c2c9", 16);
-    beep(200,0.12,"sawtooth",0.06);
-    return;
-  }
-  G.lives--;
-  G.combo = 0;
-  G.shake = 16; G.flash = 1; G.glitch = 1;
-  burst(W*0.5, y, "#e0392b", 26);
-  beep(120,0.22,"sawtooth",0.09);
-  setTimeout(()=>beep(90,0.18,"sawtooth",0.08), 60);
-  if(G.lives <= 0){ gameOver(); }
+/* ============================================================= *
+ *  アップグレード
+ * ============================================================= */
+const UPGRADES=[
+  { id:"invite", icon:"✉️", name:"招待状", rare:false, desc:"親友がもう1人参加。熱量の上限と火力が上がる。",
+    apply(){ G.maxFriends++; addFriend(); } },
+  { id:"share", icon:"📺", name:"画面共有", rare:true, desc:"アクティビティを同時に2つ選べる。バラバラな気分も両取り!",
+    apply(){ G.maxActive=2; G.up.share=1; } },
+  { id:"karaoke", icon:"🎤", name:"カラオケ大会", rare:false, desc:"カラオケ中の盛り上がりが1.5倍。一気に熱量が回復。",
+    apply(){ G.up.karaoke=(G.up.karaoke||0)+1; } },
+  { id:"mute", icon:"🔇", name:"ミュートマスター", rare:false, desc:"親フラを自動で1回ブロック(時間で再チャージ)。",
+    apply(){ G.up.mute=1; G._muteReady=true; G._muteCd=0; } },
+  { id:"night", icon:"🌙", name:"夜更かし耐性", rare:false, desc:"眠気が来なくなり、熱量の自然減も20%ダウン。",
+    apply(){ G.up.night=1; } },
+  { id:"setsuzoku", icon:"🔌", name:"常時接続", rare:false, desc:"退屈(vibe低下)がゆるやかに。ログオフからの復帰も早い。",
+    apply(){ G.up.setsuzoku=(G.up.setsuzoku||0)+1; } },
+  { id:"shinyu", icon:"💞", name:"親友ボーナス", rare:false, desc:"みんなのvibeが熱量に変わる効率+18%。",
+    apply(){ G.up.shinyu=(G.up.shinyu||0)+1; } },
+  { id:"reaction", icon:"🎉", name:"リアクション連打", rare:false, desc:"パーティータイムが長くなる(+1.5秒)。",
+    apply(){ G.up.reaction=(G.up.reaction||0)+1; } },
+  { id:"kuuki", icon:"🫧", name:"空気が読める", rare:false, desc:"みんなの気分の移り変わりがゆっくりに。場を回しやすい。",
+    apply(){ G.up.kuuki=(G.up.kuuki||0)+1; } },
+  { id:"oshi", icon:"📣", name:"推しの一言", rare:false, desc:"ボタンで全員を一時的に大満足にできる(クールダウンあり)。",
+    apply(){ G.up.oshi=1; G.oshiCd=0; } },
+];
+function pickUpgrades(){
+  const pool=UPGRADES.filter(u=>{
+    if(u.id==="share" && G.maxActive>=2) return false;
+    if(u.id==="mute" && G.up.mute) return false;
+    if(u.id==="night" && G.up.night) return false;
+    if(u.id==="oshi" && G.up.oshi) return false;
+    return true;
+  });
+  const arr=pool.slice();
+  for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+  return arr.slice(0,3);
 }
-
-function burst(x,y,col,n){
-  for(let i=0;i<n;i++){
-    const a = rnd()*Math.PI*2, sp = 60+rnd()*220;
-    G.particles.push({ x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-60, life:0.4+rnd()*0.5, col, sz:2+rnd()*3, kind:"dot" });
-  }
-}
-
-/* ---------- 四半期決算 ---------- */
-function openUpgrade(){
-  G.quarter++;
-  G.qTime = 0;
-  // シールド回復
-  if(G.shieldMax>0) G.shield = G.shieldMax;
-  // 次四半期は少しタフに
-  G.qLen = 22 + G.quarter*1.5;
-  G.score += 50 * scoreMul(); // 決算ボーナス
-  G.mode = "upg";
-  elPause.classList.remove("on");
-  buildUpgradeScreen();
-  show(scrUpg);
-}
-function buildUpgradeScreen(){
-  document.getElementById("upg-q").textContent = "第"+G.quarter+"四半期 決算";
-  const cards = pickUpgrades();
-  const host = document.getElementById("upg-cards");
-  host.innerHTML = "";
-  for(const u of cards){
-    const el = document.createElement("div");
-    el.className = "card" + (u.rare?" rare":"");
-    el.innerHTML =
-      '<span class="ci">'+u.icon+'</span>'+
-      '<div class="ctag">'+u.tag+(u.rare?' ★レア':'')+'</div>'+
-      '<div class="cn">'+u.name+'</div>'+
-      '<div class="cd">'+u.desc+'</div>';
-    el.addEventListener("pointerup", (e)=>{ e.preventDefault(); chooseUpgrade(u); }, {passive:false});
+function buildUpgrade(){
+  const hh = String(G.hour).padStart(2,"0")+":00";
+  const deep = G.hour>=21 ? G.hour-21 : G.hour+3;   // 0..9 (21時→朝6時)
+  const phr = deep<2 ? "まだまだ宵の口" : (deep<5 ? "盛り上がってきた" : (deep<8 ? "夜が更けてきた" : "もうすぐ朝だ"));
+  document.getElementById("upg-q").textContent = hh+" — "+phr;
+  const host=document.getElementById("upg-cards"); host.innerHTML="";
+  for(const u of pickUpgrades()){
+    const el=document.createElement("div");
+    el.className="card"+(u.rare?" rare":"");
+    el.innerHTML='<div class="ci">'+u.icon+'</div><div><div class="cn">'+u.name+(u.rare?' ✦':'')+'</div><div class="cd">'+u.desc+'</div></div>';
+    el.addEventListener("pointerup",(e)=>{ e.preventDefault(); chooseUpgrade(u); },{passive:false});
     host.appendChild(el);
   }
 }
 function chooseUpgrade(u){
-  u.apply();
-  G.up[u.id] = (G.up[u.id]||0)+1;
-  beep(700,0.06,"triangle",0.06);
-  setTimeout(()=>beep(980,0.08,"triangle",0.06),70);
-  G.mode = "play";
-  hideAll();
-  elPause.classList.add("on");
+  u.apply(); G.up[u.id]=(G.up[u.id]||0)+1;
+  beep(680,0.06,"triangle",0.06); setTimeout(()=>beep(940,0.08,"triangle",0.06),70);
+  G.mode="play"; hideAll(); elPause.classList.add("on");
 }
 
 /* ---------- ゲームオーバー ---------- */
 function gameOver(){
-  G.mode = "result";
-  elPause.classList.remove("on");
-  const newRec = G.score > save.best;
-  if(newRec) save.best = Math.floor(G.score);
-  save.days += 1;
-  persist();
-  document.getElementById("r-score").textContent = fmt(G.score);
-  document.getElementById("r-q").textContent = G.quarter;
-  document.getElementById("r-contracts").textContent = G.contracts;
-  document.getElementById("r-combo").textContent = G.maxCombo;
-  document.getElementById("r-best").textContent = fmt(save.best);
-  document.getElementById("r-days").textContent = save.days;
-  document.getElementById("r-newrec").style.display = newRec ? "block":"none";
-  document.getElementById("ttl-result").textContent = G.quarter>=6 ? "上場!" : (G.quarter>=3?"円満退社":"倒産");
+  G.mode="result"; elPause.classList.remove("on");
+  const sc=Math.floor(G.score);
+  const newRec = sc>save.best;
+  if(newRec) save.best=sc;
+  save.days+=1; persist();
+  document.getElementById("r-score").textContent=fmt(sc);
+  document.getElementById("r-time").textContent=String(G.hour).padStart(2,"0")+":00";
+  document.getElementById("r-peak").textContent=G.peak;
+  document.getElementById("r-fever").textContent=G.feverCount;
+  document.getElementById("r-best").textContent=fmt(save.best);
+  document.getElementById("r-days").textContent=save.days;
+  document.getElementById("r-newrec").style.display=newRec?"block":"none";
+  const hrs = G.hour>=21?G.hour-21:G.hour+3;
+  document.getElementById("ttl-result").textContent = G.reachedMorning?"完徹レジェンド🌅" : (hrs>=4?"いい夜だった":(hrs>=2?"まあまあ盛り上がった":"即解散…"));
   show(scrResult);
 }
 
@@ -619,279 +529,221 @@ function draw(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
 
-  // 背景
-  ctx.fillStyle = "#0e1117";
-  ctx.fillRect(0,0,W,H);
+  let ox=0,oy=0; if(G.shake>0){ ox=(rnd()-0.5)*G.shake; oy=(rnd()-0.5)*G.shake; }
+  ctx.save(); ctx.translate(ox,oy);
 
-  let ox=0, oy=0;
-  if(G.shake>0){ ox=(rnd()-0.5)*G.shake; oy=(rnd()-0.5)*G.shake; }
-  ctx.save();
-  ctx.translate(ox,oy);
-
-  drawGrid();
-
-  if(G.mode==="play" || G.mode==="upg" || G.mode==="pause" || G.mode==="result"){
-    for(let i=0;i<G.worldsArr.length;i++) drawWorld(i);
+  drawRoomBg();
+  const playing = (G.mode==="play"||G.mode==="upg"||G.mode==="pause"||G.mode==="result");
+  if(playing){
+    drawFriends();
+    drawFloaties();
     drawParticles();
+    drawBar();
     drawHUD();
-    if(G.up.slow) drawSlowButton();
+    if(G.up.oshi) drawOshi();
   }
-
   ctx.restore();
 
-  // フラッシュ
-  if(G.flash>0){
-    ctx.fillStyle = "rgba(242,236,216,"+(G.flash*0.22)+")";
-    ctx.fillRect(0,0,W,H);
-  }
+  if(G.feverFlash>0){ ctx.fillStyle="rgba(255,211,107,"+(G.feverFlash*0.16)+")"; ctx.fillRect(0,0,W,H); }
+  if(G.flash>0){ ctx.fillStyle="rgba(255,125,107,"+(G.flash*0.16)+")"; ctx.fillRect(0,0,W,H); }
 }
 
-function drawGrid(){
-  ctx.strokeStyle = "rgba(255,255,255,0.035)";
-  ctx.lineWidth = 1;
-  const step = 26;
-  ctx.beginPath();
-  for(let x=0;x<W;x+=step){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
-  for(let y=0;y<H;y+=step){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
-  ctx.stroke();
+function drawRoomBg(){
+  const r=roomRect();
+  // 部屋の床(あたたかい光)
+  const g=ctx.createRadialGradient(W/2, r.y+r.h*0.4, 20, W/2, r.y+r.h*0.4, W*0.9);
+  g.addColorStop(0, G.fever>0?"rgba(255,211,107,0.16)":"rgba(255,180,120,0.10)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle=g; ctx.fillRect(0,r.y,W,r.h);
+  // 星(夜)
+  ctx.fillStyle="rgba(255,255,255,0.5)";
+  for(let i=0;i<22;i++){
+    const x=((i*73)%W), y=HUD_H+ ((i*139)%Math.max(40,(r.h*0.5)));
+    const tw=0.4+0.6*Math.abs(Math.sin(G.t*1.5+i));
+    ctx.globalAlpha=tw*0.5; ctx.fillRect(x,y,2,2);
+  }
+  ctx.globalAlpha=1;
 }
 
-function drawWorld(i){
-  const w = G.worldsArr[i];
-  const rect = worldRect(i);
-  const tint = TINT[w.tint];
-  const cy = catchY(rect);
+function roundRect(x,y,w,h,rad){ ctx.beginPath(); ctx.moveTo(x+rad,y); ctx.arcTo(x+w,y,x+w,y+h,rad); ctx.arcTo(x+w,y+h,x,y+h,rad); ctx.arcTo(x,y+h,x,y,rad); ctx.arcTo(x,y,x+w,y,rad); ctx.closePath(); }
 
-  // パネル背景(世界の色味)
-  ctx.save();
-  ctx.beginPath(); ctx.rect(rect.x,rect.y,rect.w,rect.h); ctx.clip();
-  ctx.fillStyle = tint.glow + "0.05)";
-  ctx.fillRect(rect.x,rect.y,rect.w,rect.h);
+function drawFriends(){
+  for(const f of G.friends){
+    const x=f._x, y=f._y, rad=f._rad||30; if(x==null) continue;
+    const matched = G.fever>0 || (f.present && !f.hazard && G.active.includes(f.mood));
+    const bob = Math.sin(G.t*2.4 + f.bob)* (matched?4:1.5);
+    const yy = y+bob;
+    const popS = 1 + (f.pop>0? Math.sin(f.pop*9)*0.06 : 0) + (matched?0.03:0);
 
-  // パネル上枠ラベル
-  ctx.fillStyle = tint.glow+"0.85)";
-  ctx.font = "11px DotGothic16, monospace";
-  ctx.textAlign = "left"; ctx.textBaseline = "top";
-  ctx.fillText(tint.name, rect.x+10, rect.y+5);
-
-  // 列の薄い区切り
-  ctx.strokeStyle = "rgba(255,255,255,0.04)";
-  for(let c=0;c<G.cols;c++){
-    const x = colX(rect,c) - colW(rect)/2;
-    ctx.beginPath(); ctx.moveTo(x,rect.y); ctx.lineTo(x,rect.y+rect.h); ctx.stroke();
-  }
-
-  // catchライン
-  ctx.strokeStyle = tint.glow+"0.5)";
-  ctx.setLineDash([6,6]); ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(rect.x+6,cy); ctx.lineTo(rect.x+rect.w-6,cy); ctx.stroke();
-  ctx.setLineDash([]);
-
-  // ウォール
-  for(const wl of w.walls){
-    drawWall(rect, wl, tint, cy);
-  }
-  // アイテム
-  for(const it of w.items){
-    if(it.taken) continue;
-    drawItem(rect, it);
-  }
-  // アバター
-  drawAvatar(rect, tint, cy);
-
-  // パネル枠
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  ctx.lineWidth=1; ctx.strokeRect(rect.x+0.5,rect.y+0.5,rect.w-1,rect.h-1);
-  ctx.restore();
-}
-
-function drawWall(rect, wl, tint, cy){
-  const cw = colW(rect);
-  for(let c=0;c<G.cols;c++){
-    if(wl.gaps.includes(c)) continue;
-    if(wl.approved) continue;
-    const x = colX(rect,c)-cw/2 + 2;
-    const ww = cw-4;
-    // ハザード帯
-    ctx.fillStyle = "#1c1116";
-    ctx.fillRect(x, wl.y, ww, wl.h);
-    // 斜線(締切=赤)
-    ctx.save();
-    ctx.beginPath(); ctx.rect(x,wl.y,ww,wl.h); ctx.clip();
-    ctx.strokeStyle = wl.scored ? "rgba(120,130,140,0.5)" : "#e0392b";
-    ctx.lineWidth=4;
-    for(let s=-wl.h; s<ww+wl.h; s+=11){
-      ctx.beginPath(); ctx.moveTo(x+s,wl.y+wl.h); ctx.lineTo(x+s+wl.h,wl.y); ctx.stroke();
+    if(!f.present){
+      // 空席
+      ctx.globalAlpha=0.4;
+      ctx.strokeStyle="rgba(255,255,255,0.22)"; ctx.setLineDash([4,5]); ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(x,y,rad,0,6.28); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle="#9aa0c8"; ctx.font="600 11px 'Zen Maru Gothic'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(Math.ceil(f.offT)+"秒", x, y);
+      ctx.globalAlpha=1; continue;
     }
+
+    ctx.save(); ctx.translate(x,yy); ctx.scale(popS,popS);
+
+    // vibeリング
+    ctx.beginPath(); ctx.arc(0,0,rad+7,0,6.28); ctx.strokeStyle="rgba(255,255,255,0.10)"; ctx.lineWidth=4; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,rad+7,-1.5708, -1.5708+6.283*f.vibe); ctx.strokeStyle=matched?"#ffd36b":f.col; ctx.lineWidth=4; ctx.lineCap="round"; ctx.stroke();
+    // 後光
+    if(matched){ ctx.beginPath(); ctx.arc(0,0,rad+2,0,6.28); ctx.fillStyle="rgba(255,211,107,0.18)"; ctx.fill(); }
+
+    // 顔
+    ctx.beginPath(); ctx.arc(0,0,rad,0,6.28); ctx.fillStyle=f.col; ctx.fill();
+    ctx.beginPath(); ctx.arc(0,-rad*0.12,rad*0.92,0,6.28); ctx.fillStyle="rgba(255,255,255,0.14)"; ctx.fill();
+    // 目と口(vibeで表情)
+    ctx.fillStyle="#22243f";
+    const ey=-rad*0.12, ex=rad*0.32;
+    if(f.hazard&&f.hazard.type==="sleepy"){ // 眠そう
+      ctx.lineWidth=2.4; ctx.strokeStyle="#22243f";
+      ctx.beginPath(); ctx.moveTo(-ex-4,ey); ctx.lineTo(-ex+4,ey); ctx.moveTo(ex-4,ey); ctx.lineTo(ex+4,ey); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.arc(-ex,ey,rad*0.13,0,6.28); ctx.arc(ex,ey,rad*0.13,0,6.28); ctx.fill();
+    }
+    // 口
+    ctx.strokeStyle="#22243f"; ctx.lineWidth=2.6; ctx.lineCap="round"; ctx.beginPath();
+    const my=rad*0.34;
+    if(f.vibe>0.6||matched){ ctx.arc(0,my-2,rad*0.3, 0.15*Math.PI, 0.85*Math.PI); }
+    else if(f.vibe>0.3){ ctx.moveTo(-rad*0.22,my); ctx.lineTo(rad*0.22,my); }
+    else { ctx.arc(0,my+6,rad*0.3, 1.15*Math.PI, 1.85*Math.PI); }
+    ctx.stroke();
     ctx.restore();
-    ctx.strokeStyle = wl.scored?"rgba(120,130,140,0.5)":"rgba(224,57,43,0.8)";
-    ctx.lineWidth=1.5; ctx.strokeRect(x,wl.y,ww,wl.h);
-  }
-  // スキマに「契約OK」風の小さなマーク
-  for(const g of wl.gaps){
-    const gx = colX(rect,g);
-    ctx.fillStyle = tint.glow+"0.20)";
-    ctx.fillRect(gx-cw/2+2, wl.y, cw-4, wl.h);
+
+    // 名前
+    ctx.fillStyle="rgba(255,255,255,0.7)"; ctx.font="700 11px 'Zen Maru Gothic'"; ctx.textAlign="center"; ctx.textBaseline="top";
+    ctx.fillText(f.name, x, yy+rad+10);
+
+    // 気分バブル or ハザード
+    drawMoodBubble(f, x, yy-rad-14, matched);
   }
 }
 
-function drawItem(rect, it){
-  const x = colX(rect, it.c);
-  const y = it.y;
-  const s = 11;
-  ctx.save();
-  ctx.translate(x,y);
-  // 紙
-  ctx.fillStyle = it.gold ? "#f0c64e" : "#eae4d3";
-  ctx.strokeStyle = it.gold ? "#7a5a18" : "#9a9486";
-  ctx.lineWidth=1.5;
-  ctx.beginPath();
-  ctx.moveTo(-s,-s-2); ctx.lineTo(s-3,-s-2); ctx.lineTo(s,-s+1); ctx.lineTo(s,s+2); ctx.lineTo(-s,s+2); ctx.closePath();
-  ctx.fill(); ctx.stroke();
-  // 行
-  ctx.strokeStyle = it.gold?"rgba(122,90,24,0.5)":"rgba(140,140,120,0.55)";
-  ctx.lineWidth=1;
-  for(let l=-4;l<=4;l+=4){ ctx.beginPath(); ctx.moveTo(-s+3,l); ctx.lineTo(s-3,l); ctx.stroke(); }
-  // ハンコ
-  ctx.fillStyle = it.gold ? "#e0392b" : "rgba(224,57,43,0.85)";
-  ctx.beginPath(); ctx.arc(s-3.5, s-2.5, 3, 0, Math.PI*2); ctx.fill();
-  ctx.restore();
-}
-
-function drawAvatar(rect, tint, cy){
-  const x = colX(rect, G.colF);
-  const y = cy;
-  ctx.save();
-  ctx.translate(x,y);
-  // 影
-  ctx.fillStyle="rgba(0,0,0,0.35)";
-  ctx.beginPath(); ctx.ellipse(0,14,11,4,0,0,Math.PI*2); ctx.fill();
-  // 体(スーツ)
-  ctx.fillStyle = tint.dk;
-  ctx.fillRect(-8,-2,16,16);
-  ctx.fillStyle = tint.main;
-  ctx.fillRect(-8,-2,16,5);
-  // ネクタイ
-  ctx.fillStyle = "#e0392b";
-  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(2.5,3); ctx.lineTo(0,12); ctx.lineTo(-2.5,3); ctx.closePath(); ctx.fill();
-  // 頭
-  ctx.fillStyle = "#f0d9b8";
-  ctx.beginPath(); ctx.arc(0,-9,6,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle = "#2a2118";
-  ctx.beginPath(); ctx.arc(0,-11,6,Math.PI,Math.PI*2); ctx.fill();
-  // シールドリング
-  if(G.shield>0){
-    ctx.strokeStyle = "rgba(57,194,201,0.85)"; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.arc(0,2,15,0,Math.PI*2); ctx.stroke();
+function drawMoodBubble(f, x, y, matched){
+  if(f.hazard){
+    const hz=f.hazard, frac=clamp(hz.t/hz.max,0,1);
+    const col = hz.type==="oyafura"?"#ff7d6b":"#84baff";
+    // タイマーリング付きの警告
+    ctx.beginPath(); ctx.arc(x,y,16,0,6.28); ctx.fillStyle="rgba(20,18,30,0.85)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,16,-1.5708,-1.5708+6.283*frac); ctx.strokeStyle=col; ctx.lineWidth=3; ctx.lineCap="round"; ctx.stroke();
+    ctx.font="17px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(hz.type==="oyafura"?"📵":"😴", x, y+1);
+    if(hz.type==="oyafura"){ ctx.fillStyle=col; ctx.font="900 9px 'Zen Maru Gothic'"; ctx.fillText("親フラ!", x, y-26); }
+    return;
   }
-  ctx.restore();
+  const a=actById(f.mood); if(!a) return;
+  const w=34,h=28;
+  ctx.fillStyle = matched? a.col : "rgba(40,44,80,0.92)";
+  roundRect(x-w/2, y-h/2, w, h, 9); ctx.fill();
+  // しっぽ
+  ctx.beginPath(); ctx.moveTo(x-5,y+h/2-2); ctx.lineTo(x+5,y+h/2-2); ctx.lineTo(x,y+h/2+6); ctx.closePath(); ctx.fill();
+  ctx.font="18px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.globalAlpha = matched?1:0.92;
+  ctx.fillText(a.emo, x, y+1);
+  ctx.globalAlpha=1;
 }
 
+function drawFloaties(){
+  for(const p of G.floaties){
+    ctx.globalAlpha=clamp(p.life*1.4,0,1);
+    ctx.font=p.sz+"px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(p.txt, p.x, p.y);
+    ctx.globalAlpha=1;
+  }
+}
 function drawParticles(){
-  for(const p of G.particles){
-    if(p.kind==="txt"){
-      ctx.globalAlpha = clamp(p.life*1.3,0,1);
-      ctx.fillStyle = p.col;
-      ctx.font = "700 "+p.sz+"px 'DotGothic16', monospace";
-      ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.fillText(p.txt, p.x, p.y);
-      ctx.globalAlpha=1;
-    }else{
-      ctx.globalAlpha = clamp(p.life*2,0,1);
-      ctx.fillStyle = p.col;
-      ctx.fillRect(p.x-p.sz/2, p.y-p.sz/2, p.sz, p.sz);
-      ctx.globalAlpha=1;
-    }
+  for(const p of G.particles){ ctx.globalAlpha=clamp(p.life*2,0,1); ctx.fillStyle=p.col; ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz); ctx.globalAlpha=1; }
+}
+
+/* ---------- 下部アクティビティバー ---------- */
+function drawBar(){
+  const by=H-barH();
+  ctx.fillStyle="rgba(14,16,36,0.92)"; ctx.fillRect(0,by,W,barH());
+  ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.beginPath(); ctx.moveTo(0,by+0.5); ctx.lineTo(W,by+0.5); ctx.stroke();
+  ctx.font="700 10px 'Zen Maru Gothic'"; ctx.textAlign="left"; ctx.textBaseline="top";
+  ctx.fillStyle="#9aa0c8"; ctx.fillText("いま、みんなで…", 14, by+8);
+
+  const n=ACTS.length, pad=10, gap=8;
+  const bw=(W-pad*2-gap*(n-1))/n, bh=40, y=by+26;
+  G._btnRects.length=0;
+  for(let i=0;i<n;i++){
+    const a=ACTS[i]; const x=pad+i*(bw+gap);
+    const on=G.active.includes(a.id);
+    G._btnRects.push({id:a.id,x,y,w:bw,h:bh});
+    if(on){ roundRect(x,y,bw,bh,13); ctx.fillStyle=a.col; ctx.fill();
+      ctx.save(); ctx.shadowColor=a.col; ctx.shadowBlur=14; roundRect(x,y,bw,bh,13); ctx.fillStyle=a.col; ctx.fill(); ctx.restore(); }
+    else { roundRect(x,y,bw,bh,13); ctx.fillStyle="rgba(255,255,255,0.06)"; ctx.fill(); ctx.strokeStyle="rgba(255,255,255,0.12)"; ctx.lineWidth=1; ctx.stroke(); }
+    ctx.font="20px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.globalAlpha = on?1:0.82;
+    ctx.fillText(a.emo, x+bw/2, y+bh*0.42);
+    ctx.globalAlpha=1;
+    ctx.font="700 9px 'Zen Maru Gothic'"; ctx.fillStyle= on?"#1a1320":"#aab0d8";
+    ctx.fillText(a.name, x+bw/2, y+bh-9);
   }
 }
 
+/* ---------- 推しの一言ボタン ---------- */
+function drawOshi(){
+  const r=24, x=W-38, y=H-barH()-38;
+  G._oshiRect={x,y,r};
+  const ready=G.oshiCd<=0;
+  ctx.beginPath(); ctx.arc(x,y,r,0,6.28);
+  ctx.fillStyle=ready?"#ff9ecb":"rgba(90,80,110,0.7)"; ctx.fill();
+  ctx.strokeStyle="rgba(255,255,255,0.35)"; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.font="20px serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("📣",x,y+1);
+  if(!ready){ ctx.fillStyle="#fff"; ctx.font="900 11px 'Zen Maru Gothic'"; ctx.fillText(Math.ceil(G.oshiCd)+"", x, y-r-8); }
+}
+
+/* ---------- HUD ---------- */
 function drawHUD(){
-  // 帯
-  ctx.fillStyle = "rgba(14,17,23,0.9)";
-  ctx.fillRect(0,0,W,HUD_H);
-  ctx.strokeStyle="rgba(255,255,255,0.08)";
-  ctx.beginPath(); ctx.moveTo(0,HUD_H+0.5); ctx.lineTo(W,HUD_H+0.5); ctx.stroke();
-
-  const top = (typeof safeTop==="number"?safeTop:0);
-
-  // 売上(スコア)
+  ctx.fillStyle="rgba(14,16,36,0.86)"; ctx.fillRect(0,0,W,HUD_H);
+  // 時計
   ctx.textAlign="left"; ctx.textBaseline="alphabetic";
-  ctx.fillStyle="#8b94a1"; ctx.font="10px DotGothic16, monospace";
-  ctx.fillText("当期売上(円)", 12, 20+top);
-  const sc = 1 + G.scorePulse*0.18;
-  ctx.save();
-  ctx.translate(12, 46+top); ctx.scale(sc,sc);
-  ctx.fillStyle="#f2ecd8"; ctx.font="26px DotGothic16, monospace";
-  ctx.textBaseline="alphabetic";
-  ctx.fillText(fmt(G.score), 0, 0);
+  ctx.fillStyle="#9aa0c8"; ctx.font="700 10px 'Zen Maru Gothic'"; ctx.fillText("ただいまの時刻", 14, 22);
+  ctx.fillStyle="#f4efe6"; ctx.font="800 24px Outfit, sans-serif";
+  const mm=String(Math.floor((G.qTime/G.qLen)*60)).padStart(2,"0");
+  ctx.fillText(String(G.hour).padStart(2,"0")+":"+mm, 14, 47);
+  // 同時接続
+  ctx.fillStyle="#5fe3c2"; ctx.font="700 11px 'Zen Maru Gothic'"; ctx.textBaseline="alphabetic";
+  const pc=G.friends.filter(f=>f.present).length;
+  ctx.fillText("🟢 "+pc+"人 接続中", 14, 64);
+
+  // 熱量ゲージ
+  const gx=W*0.40, gy=20, gw=W-gx-14, gh=14;
+  ctx.fillStyle="#9aa0c8"; ctx.font="700 10px 'Zen Maru Gothic'"; ctx.textAlign="left";
+  ctx.fillText("コミュニケーション熱量", gx, 16);
+  roundRect(gx,gy,gw,gh,7); ctx.fillStyle="rgba(255,255,255,0.08)"; ctx.fill();
+  const fr=clamp(G.netsu/100,0,1);
+  const grad=ctx.createLinearGradient(gx,0,gx+gw,0);
+  grad.addColorStop(0,"#ff9ecb"); grad.addColorStop(0.5,"#ff7d6b"); grad.addColorStop(1,"#ffd36b");
+  ctx.save(); roundRect(gx,gy,gw,gh,7); ctx.clip();
+  ctx.fillStyle=grad; ctx.fillRect(gx,gy,gw*fr,gh);
+  if(G.netsuHit>0){ ctx.fillStyle="rgba(255,80,60,"+(G.netsuHit*0.5)+")"; ctx.fillRect(gx,gy,gw,gh); }
   ctx.restore();
+  if(G.fever>0){ ctx.strokeStyle="#ffd36b"; ctx.lineWidth=2; roundRect(gx-1,gy-1,gw+2,gh+2,8); ctx.stroke();
+    ctx.fillStyle="#ffd36b"; ctx.font="900 11px 'Zen Maru Gothic'"; ctx.textAlign="right"; ctx.fillText("🎉パーティータイム!", gx+gw, gy-4); }
 
-  // 四半期(中央やや左)
-  ctx.textAlign="center";
-  ctx.fillStyle="#8b94a1"; ctx.font="10px DotGothic16, monospace";
-  ctx.fillText("四半期", W*0.46, 20+top);
-  ctx.fillStyle="#e0a83a"; ctx.font="20px DotGothic16, monospace";
-  ctx.fillText("Q"+(G.quarter+1), W*0.46, 44+top);
-  const bw=46, bx=W*0.46-bw/2, by=50+top;
-  ctx.fillStyle="rgba(255,255,255,0.1)"; ctx.fillRect(bx,by,bw,3);
-  ctx.fillStyle="#39c2c9"; ctx.fillRect(bx,by,bw*clamp(G.qTime/G.qLen,0,1),3);
-
-  // ライフ(中央右。右上の休憩ボタンと干渉しない位置)
-  const lx = W*0.72;
-  ctx.textAlign="center";
-  ctx.fillStyle="#8b94a1"; ctx.font="10px DotGothic16, monospace";
-  ctx.fillText("体力", lx, 20+top);
-  ctx.font="15px DotGothic16, monospace";
-  let hearts="";
-  for(let i=0;i<G.maxLives;i++) hearts += i<G.lives ? "■":"□";
-  ctx.fillStyle="#e0392b";
-  ctx.fillText(hearts, lx, 42+top);
-  // コンボ
-  if(G.combo>0){
-    ctx.fillStyle="#39c2c9"; ctx.font="12px DotGothic16, monospace";
-    ctx.fillText("並行 x"+G.combo, lx, 57+top);
-  }
-}
-
-let slowBtnRect = null;
-function drawSlowButton(){
-  const r = 26;
-  const x = W-40, y = H - 40 - (typeof safeBot==="number"?safeBot:0);
-  slowBtnRect = {x,y,r};
-  const ready = G.slowCd<=0 && G.slow<=0;
-  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
-  ctx.fillStyle = ready ? "rgba(177,106,208,0.9)" : "rgba(80,70,90,0.7)";
-  ctx.fill();
-  ctx.strokeStyle="rgba(255,255,255,0.3)"; ctx.lineWidth=1.5; ctx.stroke();
-  ctx.fillStyle="#fff"; ctx.font="18px DotGothic16, monospace";
-  ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.fillText("⏳", x, y+1);
-  if(!ready){
-    ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.font="10px DotGothic16, monospace";
-    ctx.fillText(Math.ceil(G.slowCd)+"", x, y+r+10);
-  }
+  // スコア
+  ctx.textAlign="right"; ctx.textBaseline="alphabetic";
+  ctx.fillStyle="#9aa0c8"; ctx.font="700 10px 'Zen Maru Gothic'"; ctx.fillText("熱量pt", W-14, 50);
+  const sc=1+G.scorePulse*0.16;
+  ctx.save(); ctx.translate(W-14,68); ctx.scale(sc,sc); ctx.textAlign="right";
+  ctx.fillStyle="#f4efe6"; ctx.font="800 18px Outfit, sans-serif"; ctx.fillText(fmt(G.score),0,0); ctx.restore();
 }
 
 /* ============================================================= *
- *  メインループ(タイトル時点から回す)
+ *  メインループ
  * ============================================================= */
-let last = 0;
-let safeTop=0, safeBot=0;
-function readSafe(){
-  const cs = getComputedStyle(document.documentElement);
-  // env() を直接は読めないので概算。HUD内では0で十分。
-}
+let last=0;
 function frame(ts){
-  if(!last) last = ts;
-  let dt = (ts-last)/1000; last = ts;
-  dt = Math.min(dt, 0.05); // タブ復帰スパイク抑制
-  try{
-    update(dt);
-    draw();
-  }catch(err){
-    // 例外でループを殺さない
-    console.error(err);
-  }
+  if(!last) last=ts;
+  let dt=(ts-last)/1000; last=ts;
+  dt=Math.min(dt,0.05);
+  try{ update(dt); draw(); }catch(err){ console.error(err); }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -899,137 +751,115 @@ requestAnimationFrame(frame);
 /* ============================================================= *
  *  入力
  * ============================================================= */
-function setColFromX(clientX){
-  const r = wrap.getBoundingClientRect();
-  const x = clamp(clientX - r.left, 0, W);
-  // 列はパッド込みで等分
-  const pad=10; const cw=(W-pad*2)/G.cols;
-  let c = Math.floor((x-pad)/cw);
-  G.col = clamp(c, 0, G.cols-1);
-}
-let dragging=false;
-function onDown(e){
+function handleTap(lx, ly){
   if(G.mode!=="play") return;
-  const px = e.clientX, py = e.clientY;
-  // スローボタン判定
-  if(G.up.slow && slowBtnRect){
-    const r = wrap.getBoundingClientRect();
-    const lx = px-r.left, ly=py-r.top;
-    if(Math.hypot(lx-slowBtnRect.x, ly-slowBtnRect.y) <= slowBtnRect.r+6){
-      if(G.slowCd<=0 && G.slow<=0){ G.slow = 2.2; G.slowCd = 9; beep(300,0.3,"sine",0.05); G.glitch=0.6; }
+  // 推しの一言
+  if(G.up.oshi && G._oshiRect){ const o=G._oshiRect; if(Math.hypot(lx-o.x,ly-o.y)<=o.r+6){
+    if(G.oshiCd<=0){ G.fever=Math.max(G.fever,2.2); G.oshiCd=12; G.feverFlash=1; beep(900,0.18,"sine",0.06);
+      for(const f of G.friends){ if(f.present){ f.hazard=null; spawnFloaty(f._x,f._y,"📣",f.col);} } }
+    return; } }
+  // アクティビティボタン
+  for(const b of G._btnRects){
+    if(lx>=b.x&&lx<=b.x+b.w&&ly>=b.y&&ly<=b.y+b.h){
+      setActivity(b.id); return;
+    }
+  }
+  // 友達(ハザード解除)
+  for(const h of G._friendHit){
+    if(Math.hypot(lx-h.x, ly-h.y)<=h.rad){
+      const f=h.f;
+      if(f.present && f.hazard){
+        if(f.hazard.type==="oyafura"){ spawnFloaty(f._x,f._y,"🔇","#5fe3c2"); beep(560,0.06,"sine",0.05); G.score+=8; G.scorePulse=0.6; }
+        else { spawnFloaty(f._x,f._y,"☀️","#ffd36b"); f.vibe=clamp(f.vibe+0.15,0,1); beep(720,0.05,"sine",0.05); }
+        burst(f._x,f._y,f.col,8);
+        f.hazard=null; f.pop=0.8;
+      }
       return;
     }
   }
-  dragging=true;
-  setColFromX(px);
 }
-function onMove(e){
-  if(!dragging || G.mode!=="play") return;
-  setColFromX(e.clientX);
+function setActivity(id){
+  if(G.maxActive<=1){ if(!G.active.includes(id)){ G.active=[id]; actFx(id); } }
+  else {
+    const i=G.active.indexOf(id);
+    if(i>=0){ if(G.active.length>1) G.active.splice(i,1); }
+    else { G.active.push(id); if(G.active.length>G.maxActive) G.active.shift(); actFx(id); }
+  }
 }
-function onUp(){ dragging=false; }
+function actFx(id){ const a=actById(id); beep(420,0.05,"triangle",0.05);
+  // 切替時、合った友達に！
+  for(const f of G.friends){ if(f.present && !f.hazard && f.mood===id){ f.pop=0.9; spawnFloaty(f._x,f._y-20,"！",a.col); } }
+}
 
-cv.addEventListener("pointerdown", e=>{ e.preventDefault(); onDown(e); }, {passive:false});
-cv.addEventListener("pointermove", e=>{ onMove(e); }, {passive:false});
-window.addEventListener("pointerup", onUp);
-window.addEventListener("pointercancel", onUp);
+function localPt(e){ const r=wrap.getBoundingClientRect(); return { x:clamp(e.clientX-r.left,0,W), y:clamp(e.clientY-r.top,0,H) }; }
+cv.addEventListener("pointerdown", e=>{ e.preventDefault(); const p=localPt(e); handleTap(p.x,p.y); }, {passive:false});
 
-// キーボード(PC)
+// キーボード(PC): 1-5でアクティビティ, スペースで推し
 window.addEventListener("keydown", e=>{
   if(G.mode!=="play") return;
-  if(e.key==="ArrowLeft"||e.key==="a"||e.key==="A"){ G.col=clamp(G.col-1,0,G.cols-1); }
-  else if(e.key==="ArrowRight"||e.key==="d"||e.key==="D"){ G.col=clamp(G.col+1,0,G.cols-1); }
-  else if(e.key===" "){ e.preventDefault(); if(G.up.slow && G.slowCd<=0 && G.slow<=0){ G.slow=2.2; G.slowCd=9; beep(300,0.3,"sine",0.05);} }
+  const k=e.key;
+  if(k>="1"&&k<="5"){ const a=ACTS[parseInt(k)-1]; if(a) setActivity(a.id); }
+  else if(k===" "){ e.preventDefault(); if(G.up.oshi&&G.oshiCd<=0){ G.fever=Math.max(G.fever,2.2); G.oshiCd=12; G.feverFlash=1; for(const f of G.friends){if(f.present)f.hazard=null;} } }
 });
 
-/* ---------- ダブルタップズーム防止 ---------- */
+/* ダブルタップズーム防止 */
 document.addEventListener("dblclick", e=>e.preventDefault(), {passive:false});
 document.addEventListener("gesturestart", e=>e.preventDefault(), {passive:false});
 let lastTE=0;
-document.addEventListener("touchend", e=>{
-  const now = nowMs();
-  if(now-lastTE < 350) e.preventDefault();
-  lastTE = now;
-}, {passive:false});
+document.addEventListener("touchend", e=>{ const now=nowMs(); if(now-lastTE<350) e.preventDefault(); lastTE=now; }, {passive:false});
 
 /* ============================================================= *
  *  Web Audio(iOS消音スイッチ対策込み)
  * ============================================================= */
 let AC=null, silentEl=null;
 function audio(){
-  if(!AC){
-    try{
-      AC = new (window.AudioContext||window.webkitAudioContext)();
-      AC.onstatechange = ()=>{ if(AC.state!=="running" && !document.hidden){ try{AC.resume();}catch(e){} } };
-    }catch(e){}
-  }
-  if(AC && AC.state!=="running"){ try{AC.resume();}catch(e){} }
+  if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); AC.onstatechange=()=>{ if(AC.state!=="running"&&!document.hidden){ try{AC.resume();}catch(e){} } }; }catch(e){} }
+  if(AC&&AC.state!=="running"){ try{AC.resume();}catch(e){} }
   return AC;
 }
 function silentWavUrl(){
-  const sr=8000, n=800, buf=new ArrayBuffer(44+n), v=new DataView(buf);
-  const str=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
-  str(0,"RIFF"); v.setUint32(4,36+n,true); str(8,"WAVE");
-  str(12,"fmt "); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
-  v.setUint32(24,sr,true); v.setUint32(28,sr,true); v.setUint16(32,1,true); v.setUint16(34,8,true);
-  str(36,"data"); v.setUint32(40,n,true);
-  for(let i=0;i<n;i++) v.setUint8(44+i,0x80);
+  const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,0x80);
   return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
 }
 function unlockAudio(){
-  if(!silentEl){
-    silentEl = document.createElement("audio");
-    silentEl.setAttribute("playsinline","");
-    silentEl.loop = true; silentEl.volume = 0.01;
-    silentEl.src = silentWavUrl();
-  }
-  const p = silentEl.play(); if(p&&p.catch) p.catch(()=>{});
-  audio();
-  if(!AC) return;
+  if(!silentEl){ silentEl=document.createElement("audio"); silentEl.setAttribute("playsinline",""); silentEl.loop=true; silentEl.volume=0.01; silentEl.src=silentWavUrl(); }
+  const p=silentEl.play(); if(p&&p.catch) p.catch(()=>{});
+  audio(); if(!AC) return;
   const done=()=>{ if(AC.state==="running"){ ["pointerdown","pointerup","touchend","click"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true)); } };
   try{ AC.resume().then(done); }catch(e){ done(); }
 }
 ["pointerdown","pointerup","touchend","click"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) audio(); });
-
-function beep(freq, dur, type, vol){
-  const ac = audio(); if(!ac || ac.state!=="running") return;
-  try{
-    const t = ac.currentTime;
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.type = type||"sine"; o.frequency.value = freq;
-    g.gain.value = 0; o.connect(g); g.connect(ac.destination);
-    g.gain.setValueAtTime(0,t);
-    g.gain.linearRampToValueAtTime(vol||0.06, t+0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, t+(dur||0.1));
+function beep(freq,dur,type,vol){
+  const ac=audio(); if(!ac||ac.state!=="running") return;
+  try{ const t=ac.currentTime; const o=ac.createOscillator(), g=ac.createGain();
+    o.type=type||"sine"; o.frequency.value=freq; g.gain.value=0; o.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol||0.06,t+0.008); g.gain.exponentialRampToValueAtTime(0.0001,t+(dur||0.1));
     o.start(t); o.stop(t+(dur||0.1)+0.02);
   }catch(e){}
 }
-
-/* ---------- 時刻(Date.now が無い環境向けフォールバック) ---------- */
-function nowMs(){ try{ return Date.now(); }catch(e){ return performance.now(); } }
 
 /* ============================================================= *
  *  画面遷移
  * ============================================================= */
 function hideAll(){ scrTitle.classList.remove("on"); scrUpg.classList.remove("on"); scrResult.classList.remove("on"); }
 function show(el){ hideAll(); el.classList.add("on"); }
-
-document.getElementById("btn-start").addEventListener("pointerup", e=>{ e.preventDefault(); startSeed = (nowMs()&0x7fffffff)||123; newGame(); }, {passive:false});
-document.getElementById("btn-retry").addEventListener("pointerup", e=>{ e.preventDefault(); startSeed = (nowMs()&0x7fffffff)||123; newGame(); }, {passive:false});
-
-elPause.addEventListener("pointerup", e=>{
-  e.preventDefault();
-  if(G.mode==="play"){ G.mode="pause"; elPause.textContent="▶ 再開"; }
-  else if(G.mode==="pause"){ G.mode="play"; last=0; elPause.textContent="‖ 休憩"; }
+document.getElementById("btn-start").addEventListener("pointerup", e=>{ e.preventDefault(); startSeed=(nowMs()&0x7fffffff)||123; newGame(); }, {passive:false});
+document.getElementById("btn-retry").addEventListener("pointerup", e=>{ e.preventDefault(); startSeed=(nowMs()&0x7fffffff)||123; newGame(); }, {passive:false});
+elPause.addEventListener("pointerup", e=>{ e.preventDefault();
+  if(G.mode==="play"){ G.mode="pause"; elPause.textContent="▶"; }
+  else if(G.mode==="pause"){ G.mode="play"; last=0; elPause.textContent="‖"; }
 }, {passive:false});
 
-/* タイトルの数値 */
-document.getElementById("t-best").textContent = fmt(save.best);
-document.getElementById("t-days").textContent = save.days;
+document.getElementById("t-best").textContent=fmt(save.best);
+document.getElementById("t-days").textContent=save.days;
 
-/* デバッグ用にグローバル公開(E2E/ヘッドレステスト用) */
-window.__P = { G, newGame, get save(){return save;}, UPGRADES, chooseUpgrade };
+/* E2E/ヘッドレステスト用フック */
+window.__P={ G, newGame, get save(){return save;}, UPGRADES, chooseUpgrade, ACTS, setActivity, handleTap };
 
 })();
 </script>
