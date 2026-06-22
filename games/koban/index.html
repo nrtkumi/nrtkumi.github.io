@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>小判 — 江戸の両替商</title>
+<meta name="description" content="小判を落として同じ額面をマージ！一文から大判へ、連鎖で大儲け。江戸の両替商気分でどこまで稼げるか。">
+<meta property="og:title" content="小判 — 江戸の両替商">
+<meta property="og:description" content="小判を落として同じ額面をマージ！一文から大判へ、連鎖で大儲け。江戸の両替商気分でどこまで稼げるか。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nrtkumi.github.io/games/koban/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/koban/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kaisei+Decol:wght@400;700&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: #1a1008;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: none;
+  font-family: "Zen Maru Gothic", "Hiragino Mincho ProN", serif;
+}
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#wrap {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100vw, calc(100dvh * 0.6), 480px);
+  height: 100dvh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: #1a1008;
+  box-shadow: 0 0 60px rgba(0,0,0,0.8);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+#hud {
+  width: 100%;
+  padding: 8px 16px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f0904;
+  border-bottom: 1px solid #5a3a10;
+  flex-shrink: 0;
+}
+.hud-block { text-align: center; }
+.hud-label {
+  font-family: "Kaisei Decol", serif;
+  font-size: 0.62rem;
+  color: #8a6a3a;
+  letter-spacing: 0.12em;
+}
+.hud-val {
+  font-family: "Kaisei Decol", serif;
+  font-size: 1.2rem;
+  color: #f0c060;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+#muteBtn {
+  background: none;
+  border: 1px solid #5a3a10;
+  color: #8a6a3a;
+  font-size: 1.1rem;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+  line-height: 1;
+}
+#muteBtn:active { opacity: 0.6; }
+#next-area {
+  width: 100%;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #120c04;
+  border-bottom: 1px solid #3a2808;
+  flex-shrink: 0;
+}
+#next-label {
+  font-family: "Kaisei Decol", serif;
+  font-size: 0.7rem;
+  color: #8a6a3a;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+#next-canvas {
+  width: 44px;
+  height: 44px;
+  touch-action: none;
+}
+#hint-text {
+  font-family: "Kaisei Decol", serif;
+  font-size: 0.65rem;
+  color: #6a5030;
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+  flex: 1;
+}
+#canvas-wrap {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+#gc {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+/* overlays */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 9, 4, 0.92);
+  z-index: 10;
+}
+.overlay.hidden { display: none; }
+.ov-title {
+  font-family: "Kaisei Decol", serif;
+  font-size: 2.6rem;
+  color: #f0c060;
+  text-shadow: 0 2px 12px rgba(200,150,0,0.6);
+  letter-spacing: 0.2em;
+  margin-bottom: 4px;
+}
+.ov-sub {
+  font-family: "Kaisei Decol", serif;
+  font-size: 0.85rem;
+  color: #8a6a3a;
+  letter-spacing: 0.15em;
+  margin-bottom: 24px;
+}
+.ov-btn {
+  font-family: "Kaisei Decol", serif;
+  font-size: 1.1rem;
+  color: #1a1008;
+  background: linear-gradient(160deg, #f0c060 0%, #c88020 50%, #f0c060 100%);
+  border: none;
+  border-radius: 30px;
+  padding: 14px 40px;
+  cursor: pointer;
+  letter-spacing: 0.15em;
+  touch-action: manipulation;
+  box-shadow: 0 4px 20px rgba(200,130,0,0.5);
+  margin: 6px 0;
+}
+.ov-btn:active { transform: scale(0.96); }
+.ov-ladder {
+  font-family: "Kaisei Decol", serif;
+  font-size: 0.7rem;
+  color: #8a6a3a;
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 2;
+  letter-spacing: 0.08em;
+}
+.ov-score-big {
+  font-family: "Kaisei Decol", serif;
+  font-size: 2rem;
+  color: #f0c060;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.ov-best {
+  font-family: "Kaisei Decol", serif;
+  font-size: 0.8rem;
+  color: #8a6a3a;
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+}
+.ov-highest {
+  font-family: "Kaisei Decol", serif;
+  font-size: 1rem;
+  color: #f0c060;
+  letter-spacing: 0.1em;
+  margin-bottom: 20px;
+}
+/* chain flash */
+#chain-flash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Kaisei Decol", serif;
+  font-size: 2.5rem;
+  color: #f0c060;
+  text-shadow: 0 0 30px #f0c060, 0 0 60px rgba(200,150,0,0.6);
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+  white-space: nowrap;
+  letter-spacing: 0.1em;
+}
+/* guide arrow */
+#guide-arrow {
+  position: absolute;
+  top: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, rgba(240,192,96,0.8), rgba(240,192,96,0));
+  height: 30px;
+  pointer-events: none;
+  transition: left 0.06s;
+  display: none;
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div class="hud-block">
+      <div class="hud-label">勘定</div>
+      <div class="hud-val" id="score-disp">0</div>
+    </div>
+    <div class="hud-block">
+      <div class="hud-label">最高</div>
+      <div class="hud-val" id="best-disp">0</div>
+    </div>
+    <div class="hud-block">
+      <div class="hud-label">最高位</div>
+      <div class="hud-val" id="highest-disp">—</div>
+    </div>
+    <button id="muteBtn">🔔</button>
+  </div>
+  <div id="next-area">
+    <div id="next-label">次の小判</div>
+    <canvas id="next-canvas" width="88" height="88"></canvas>
+    <div id="hint-text">タップした列に小判を落とす<br>同じ額面が隣り合うとマージ！</div>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="gc"></canvas>
+    <div id="guide-arrow"></div>
+
+    <!-- TITLE overlay -->
+    <div class="overlay" id="ov-title">
+      <div class="ov-title">小判</div>
+      <div class="ov-sub">江戸の両替商</div>
+      <div class="ov-ladder">
+        一文 → 五文 → 百文 → 一分 → 一両 → 小判 → 大判 → 千両箱
+      </div>
+      <button class="ov-btn" id="startBtn">両替開始</button>
+    </div>
+
+    <!-- GAMEOVER overlay -->
+    <div class="overlay hidden" id="ov-over">
+      <div class="ov-title" style="font-size:1.8rem;margin-bottom:8px">蔵が一杯！</div>
+      <div class="ov-score-big" id="over-score">0</div>
+      <div class="ov-best" id="over-best">最高記録: 0</div>
+      <div class="ov-highest" id="over-highest"></div>
+      <button class="ov-btn" id="restartBtn">もう一度</button>
+    </div>
+  </div>
+
+  <div id="chain-flash" aria-hidden="true"></div>
+</div>
+
+<script>
+"use strict";
+
+// ========================
+// CONSTANTS
+// ========================
+const DENOMS = [
+  { name: "一文",   kanji: "一文",   val: 1,     color: "#8b7355", rim: "#a08060", shine: "#c0a070" },
+  { name: "五文",   kanji: "五文",   val: 5,     color: "#7a6545", rim: "#9a8055", shine: "#b09060" },
+  { name: "百文",   kanji: "百文",   val: 100,   color: "#c0882a", rim: "#d8a040", shine: "#f0c060" },
+  { name: "一分",   kanji: "一分",   val: 500,   color: "#c8921e", rim: "#e0aa30", shine: "#f8d060" },
+  { name: "一両",   kanji: "一両",   val: 1000,  color: "#d4a020", rim: "#e8bc30", shine: "#fce060" },
+  { name: "小判",   kanji: "小判",   val: 5000,  color: "#e8b018", rim: "#fcc828", shine: "#ffe860" },
+  { name: "大判",   kanji: "大判",   val: 20000, color: "#f0c010", rim: "#ffd020", shine: "#fff070" },
+  { name: "千両箱", kanji: "千両箱", val: 100000, color: "#8b5a1e", rim: "#c8832a", shine: "#e8aa50" },
+];
+
+const COLS = 5;
+const MAX_TIER = DENOMS.length - 1;
+
+// Drop probability weights (lower tiers more frequent)
+const DROP_WEIGHTS = [40, 30, 18, 8, 4, 0, 0, 0];
+
+// ========================
+// STATE (all initialized at declaration)
+// ========================
+let score = 0;
+let bestScore = 0;
+let highestTier = -1;
+let bestHighestTier = -1;
+let phase = "title"; // title | playing | over
+let grid = []; // grid[col][row], row 0 = bottom
+let gridRows = 0;
+let nextTier = 0;
+let currentCol = 2;
+let isDragging = false;
+let dropping = false;
+let particles = [];
+let chainFlashTimer = 0;
+let chainFlashText = "";
+let animFrame = null;
+let serverPort = 0; // unused in runtime
+
+// Merge animation queue
+let mergeAnims = []; // {col, row, tier, t, total}
+
+// Score pop animations
+let scorePops = []; // {x, y, text, t, total}
+
+// DPR
+let DPR = window.devicePixelRatio || 1;
+
+// Canvas refs
+const gc = document.getElementById("gc");
+const ctx = gc.getContext("2d");
+const nc = document.getElementById("next-canvas");
+const nctx = nc.getContext("2d");
+
+// ========================
+// AUDIO (iOS-safe)
+// ========================
+let AC = null, muted = false;
+
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => {
+        if (AC.state !== "running" && !document.hidden) {
+          try { AC.resume(); } catch(e) {}
+        }
+      };
+    } catch(e) {}
+  }
+  if (AC && AC.state !== "running") {
+    try { AC.resume(); } catch(e) {}
+  }
+  return AC;
+}
+
+let silentEl = null;
+function silentWavUrl() {
+  const sr=8000, n=800, buf=new ArrayBuffer(44+n), v=new DataView(buf);
+  const str=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+  str(0,"RIFF"); v.setUint32(4,36+n,true); str(8,"WAVE"); str(12,"fmt ");
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr,true); v.setUint16(32,1,true);
+  v.setUint16(34,8,true); str(36,"data"); v.setUint32(40,n,true);
+  for(let i=0;i<n;i++) v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline","");
+    silentEl.loop = true;
+    silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play();
+  if (p && p.catch) p.catch(()=>{});
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === "running")
+      ["pointerdown","pointerup","touchend"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true));
+  };
+  try { AC.resume().then(done); } catch(e) { done(); }
+}
+
+["pointerdown","pointerup","touchend"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) audio(); });
+
+function playTone(freq, dur, type="sine", vol=0.3, decay="exp") {
+  if (muted) return;
+  const ac = audio();
+  if (!ac) return;
+  try {
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ac.currentTime);
+    gain.gain.setValueAtTime(vol, ac.currentTime);
+    if (decay === "exp") {
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+    } else {
+      gain.gain.linearRampToValueAtTime(0, ac.currentTime + dur);
+    }
+    osc.start(ac.currentTime);
+    osc.stop(ac.currentTime + dur + 0.01);
+  } catch(e) {}
+}
+
+function playCoinDrop() {
+  playTone(220, 0.15, "sine", 0.2);
+  setTimeout(()=>playTone(330, 0.1, "triangle", 0.1), 60);
+}
+
+function playMerge(tier, chainCount) {
+  const base = 200 + tier * 80 + chainCount * 40;
+  playTone(base, 0.2, "triangle", 0.35);
+  setTimeout(()=>playTone(base*1.5, 0.15, "sine", 0.25), 80);
+  if (chainCount > 0) {
+    setTimeout(()=>playTone(base*2, 0.2, "sine", 0.2), 160);
+  }
+}
+
+function playGameOver() {
+  playTone(200, 0.3, "sawtooth", 0.3);
+  setTimeout(()=>playTone(160, 0.4, "sawtooth", 0.25), 200);
+  setTimeout(()=>playTone(120, 0.5, "sawtooth", 0.2), 400);
+}
+
+// ========================
+// PERSISTENCE
+// ========================
+function loadPersist() {
+  try {
+    const d = JSON.parse(localStorage.getItem("koban-save") || "{}");
+    bestScore = d.best || 0;
+    bestHighestTier = d.bestTier !== undefined ? d.bestTier : -1;
+  } catch(e) {}
+}
+
+function savePersist() {
+  try {
+    localStorage.setItem("koban-save", JSON.stringify({
+      best: bestScore,
+      bestTier: bestHighestTier
+    }));
+  } catch(e) {}
+}
+
+// ========================
+// GRID HELPERS
+// ========================
+function makeGrid() {
+  grid = [];
+  for (let c = 0; c < COLS; c++) grid.push([]);
+}
+
+function colFull(col) {
+  return grid[col].length >= gridRows;
+}
+
+function pickDropTier() {
+  const w = DROP_WEIGHTS.slice();
+  // Gradually unlock higher tiers based on highest seen
+  const maxDrop = Math.min(MAX_TIER - 1, Math.max(0, highestTier - 1));
+  for (let i = maxDrop + 1; i < w.length; i++) w[i] = 0;
+  const total = w.reduce((a,b)=>a+b, 0);
+  if (total === 0) return 0;
+  let r = Math.random() * total;
+  for (let i = 0; i < w.length; i++) {
+    r -= w[i];
+    if (r <= 0) return i;
+  }
+  return 0;
+}
+
+// ========================
+// MERGE LOGIC
+// ========================
+function doMerges(startCol, startRow, chainCount) {
+  // BFS: find all adjacencies of same tier starting from (startCol, startRow)
+  let madeAny = false;
+  let mergedTier = -1;
+  let mergeCol = startCol, mergeRow = startRow;
+
+  const tier = grid[startCol][startRow];
+  if (tier === undefined || tier === MAX_TIER) return false;
+
+  // Find neighbors (left/right at same row, below in same col)
+  const neighbors = [];
+  // same column, directly below
+  if (startRow > 0 && grid[startCol][startRow - 1] === tier) {
+    neighbors.push([startCol, startRow - 1]);
+  }
+  // left neighbor, same row
+  if (startCol > 0 && grid[startCol - 1][startRow] === tier) {
+    neighbors.push([startCol - 1, startRow]);
+  }
+  // right neighbor, same row
+  if (startCol < COLS - 1 && grid[startCol + 1][startRow] === tier) {
+    neighbors.push([startCol + 1, startRow]);
+  }
+
+  if (neighbors.length === 0) return false;
+
+  // Merge: remove all found + the start, place newTier at lowest position in startCol
+  const toRemove = [[startCol, startRow], ...neighbors];
+  const newTier = Math.min(tier + 1, MAX_TIER);
+
+  // Sort removes top-down in each column to avoid index shifting issues
+  toRemove.sort((a,b) => b[1] - a[1]);
+  for (const [c, r] of toRemove) {
+    grid[c].splice(r, 1);
+  }
+
+  // Place merged coin at bottom-most available spot in startCol
+  const insertRow = grid[startCol].length; // will be pushed to top of current stack
+  grid[startCol].push(newTier);
+
+  // Track score
+  const pts = DENOMS[newTier].val * (1 + chainCount * 2);
+  score += pts;
+  if (score > bestScore) { bestScore = score; }
+
+  // Track highest
+  if (newTier > highestTier) highestTier = newTier;
+  if (newTier > bestHighestTier) { bestHighestTier = newTier; }
+
+  // Save after update
+  savePersist();
+
+  // Merge animation
+  for (const [c, r] of toRemove) {
+    mergeAnims.push({ col: c, row: r, tier, t: 0, total: 18 });
+  }
+
+  // Score pop at merge center
+  const cx = colCenter(startCol);
+  const ry = rowY(grid[startCol].length - 1);
+  scorePops.push({ x: cx, y: ry, text: "+" + formatScore(pts), t: 0, total: 50 });
+
+  if (chainCount > 0) {
+    showChainFlash("連鎖 ×" + (chainCount + 1) + "！");
+  }
+
+  playMerge(newTier, chainCount);
+
+  return { merged: true, col: startCol, row: grid[startCol].length - 1, newTier, chainCount };
+}
+
+// After placing a coin, check all possible merges (cascade)
+function runCascade(col, row, chainCount) {
+  if (row < 0 || row >= grid[col].length) return;
+  const result = doMerges(col, row, chainCount);
+  if (!result) return;
+
+  // The newly placed coin is at result.col, result.row
+  // Check if new coin creates more merges
+  const newRow = grid[result.col].length - 1;
+  setTimeout(() => {
+    runCascade(result.col, newRow, chainCount + 1);
+  }, 200);
+}
+
+// ========================
+// LAYOUT CALCULATIONS (depend on canvas size)
+// ========================
+let cellSize = 60; // pixels (CSS)
+let boardOffsetX = 0;
+let boardOffsetY = 0;
+let boardW = 0;
+let boardH = 0;
+
+function calcLayout() {
+  const w = gc.offsetWidth;
+  const h = gc.offsetHeight;
+  boardW = w;
+  boardH = h;
+  cellSize = Math.floor(w / COLS);
+  const usedH = cellSize * gridRows;
+  boardOffsetX = 0;
+  boardOffsetY = h - usedH;
+}
+
+function colCenter(col) {
+  return boardOffsetX + col * cellSize + cellSize / 2;
+}
+
+function rowY(row) {
+  // row 0 = bottom, increasing up
+  return boardH - (row + 0.5) * cellSize;
+}
+
+// ========================
+// DRAW
+// ========================
+function drawCoin(ctx2, cx, cy, r, tier, alpha, scale) {
+  const d = DENOMS[tier];
+  ctx2.save();
+  ctx2.globalAlpha = alpha;
+  ctx2.translate(cx, cy);
+  ctx2.scale(scale, scale);
+
+  // Coin shadow
+  ctx2.shadowColor = "rgba(0,0,0,0.5)";
+  ctx2.shadowBlur = 6;
+  ctx2.shadowOffsetY = 2;
+
+  // Oval body (koban shape: slightly wider than tall)
+  const rx = r * 0.92, ry = r * 0.78;
+  ctx2.beginPath();
+  ctx2.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+
+  // Radial gradient for gold sheen
+  const grd = ctx2.createRadialGradient(-rx*0.25, -ry*0.3, r*0.05, 0, 0, rx);
+  grd.addColorStop(0, d.shine);
+  grd.addColorStop(0.4, d.color);
+  grd.addColorStop(1, d.rim);
+  ctx2.fillStyle = grd;
+  ctx2.shadowColor = "transparent";
+  ctx2.fill();
+
+  // Rim
+  ctx2.strokeStyle = d.rim;
+  ctx2.lineWidth = r * 0.08;
+  ctx2.stroke();
+
+  // Inner oval rim
+  ctx2.beginPath();
+  ctx2.ellipse(0, 0, rx * 0.78, ry * 0.75, 0, 0, Math.PI * 2);
+  ctx2.strokeStyle = "rgba(255,255,200,0.3)";
+  ctx2.lineWidth = r * 0.04;
+  ctx2.stroke();
+
+  // Kanji text
+  ctx2.shadowColor = "rgba(0,0,0,0.6)";
+  ctx2.shadowBlur = 2;
+  const fontSize = (tier >= 6) ? r * 0.36 : r * 0.42;
+  ctx2.font = `700 ${fontSize}px "Kaisei Decol", serif`;
+  ctx2.fillStyle = "#2a1a04";
+  ctx2.textAlign = "center";
+  ctx2.textBaseline = "middle";
+
+  if (tier === 7) {
+    // 千両箱 — two lines
+    ctx2.font = `700 ${r * 0.3}px "Kaisei Decol", serif`;
+    ctx2.fillText("千両", 0, -r * 0.18);
+    ctx2.fillText("箱", 0, r * 0.18);
+  } else {
+    ctx2.fillText(d.kanji, 0, 0);
+  }
+
+  ctx2.restore();
+}
+
+function draw() {
+  const w = gc.width / DPR;
+  const h = gc.height / DPR;
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  ctx.fillStyle = "#0f0904";
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid lines
+  ctx.strokeStyle = "#2a1a08";
+  ctx.lineWidth = 1;
+  for (let c = 1; c < COLS; c++) {
+    const x = boardOffsetX + c * cellSize;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+  }
+
+  // Column hover highlight
+  if (phase === "playing" && !dropping) {
+    const col = currentCol;
+    ctx.fillStyle = "rgba(240,192,96,0.06)";
+    ctx.fillRect(boardOffsetX + col * cellSize, 0, cellSize, h);
+  }
+
+  // Danger zone line (top 1.5 cells)
+  ctx.strokeStyle = "rgba(200,60,30,0.25)";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, cellSize * 1.5);
+  ctx.lineTo(w, cellSize * 1.5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw coins
+  const r = cellSize * 0.42;
+  for (let c = 0; c < COLS; c++) {
+    for (let row = 0; row < grid[c].length; row++) {
+      const tier = grid[c][row];
+      const cx = colCenter(c);
+      const cy = rowY(row);
+
+      // Check if in merge anim
+      const inAnim = mergeAnims.find(a => a.col === c && a.row === row);
+      if (inAnim) {
+        const t = inAnim.t / inAnim.total;
+        const scale = 1 + Math.sin(t * Math.PI) * 0.5;
+        const alpha = 1 - t;
+        drawCoin(ctx, cx, cy, r, tier, alpha, scale);
+      } else {
+        drawCoin(ctx, cx, cy, r, tier, 1, 1);
+      }
+    }
+  }
+
+  // Particles
+  for (const p of particles) {
+    const t = p.t / p.total;
+    const alpha = 1 - t;
+    const px = p.x + p.vx * p.t;
+    const py = p.y + p.vy * p.t + 0.5 * 0.5 * p.t * p.t;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(px, py, p.r * (1 - t * 0.5), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Score pops
+  for (const sp of scorePops) {
+    const t = sp.t / sp.total;
+    ctx.save();
+    ctx.globalAlpha = 1 - t;
+    ctx.font = `700 ${Math.round(14 + t * 4)}px "Kaisei Decol", serif`;
+    ctx.fillStyle = "#f0c060";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(0,0,0,0.8)";
+    ctx.shadowBlur = 4;
+    ctx.fillText(sp.text, sp.x, sp.y - t * 40);
+    ctx.restore();
+  }
+
+  // Chain flash canvas overlay (if very high chain)
+  // handled via DOM element
+}
+
+function drawNext() {
+  const w = nc.width / DPR;
+  const h = nc.height / DPR;
+  nctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  nctx.clearRect(0, 0, w, h);
+  nctx.fillStyle = "#0f0904";
+  nctx.fillRect(0, 0, w, h);
+  drawCoin(nctx, w / 2, h / 2, w * 0.4, nextTier, 1, 1);
+}
+
+function updateHUD() {
+  document.getElementById("score-disp").textContent = formatScore(score);
+  document.getElementById("best-disp").textContent = formatScore(bestScore);
+  const ht = highestTier >= 0 ? DENOMS[highestTier].name : "—";
+  document.getElementById("highest-disp").textContent = ht;
+}
+
+function formatScore(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + "M";
+  if (n >= 10000) return (n/10000).toFixed(1) + "万";
+  return n.toString();
+}
+
+// ========================
+// CHAIN FLASH
+// ========================
+const chainFlashEl = document.getElementById("chain-flash");
+
+function showChainFlash(text) {
+  chainFlashEl.textContent = text;
+  chainFlashEl.style.opacity = "1";
+  clearTimeout(chainFlashEl._t);
+  chainFlashEl._t = setTimeout(() => {
+    chainFlashEl.style.transition = "opacity 0.5s";
+    chainFlashEl.style.opacity = "0";
+  }, 600);
+}
+
+// ========================
+// GAME LOOP
+// ========================
+let lastT = 0;
+
+function loop(t) {
+  animFrame = requestAnimationFrame(loop);
+  const dt = Math.min(t - lastT, 50);
+  lastT = t;
+
+  if (phase === "title" || phase === "over") {
+    // Still draw minimal background
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.fillStyle = "#0f0904";
+    ctx.fillRect(0, 0, gc.width/DPR, gc.height/DPR);
+    return;
+  }
+
+  // Advance merge anims
+  for (let i = mergeAnims.length - 1; i >= 0; i--) {
+    mergeAnims[i].t++;
+    if (mergeAnims[i].t >= mergeAnims[i].total) {
+      mergeAnims.splice(i, 1);
+    }
+  }
+
+  // Advance score pops
+  for (let i = scorePops.length - 1; i >= 0; i--) {
+    scorePops[i].t++;
+    if (scorePops[i].t >= scorePops[i].total) scorePops.splice(i, 1);
+  }
+
+  // Advance particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].t++;
+    if (particles[i].t >= particles[i].total) particles.splice(i, 1);
+  }
+
+  calcLayout();
+  draw();
+  drawNext();
+  updateHUD();
+}
+
+// ========================
+// DROP COIN
+// ========================
+function dropCoin(col) {
+  if (phase !== "playing" || dropping || colFull(col)) return;
+  dropping = true;
+
+  const tier = nextTier;
+  grid[col].push(tier);
+  const row = grid[col].length - 1;
+
+  if (tier > highestTier) highestTier = tier;
+
+  playCoinDrop();
+
+  // Spawn sparkle particles
+  spawnMergeParticles(colCenter(col), rowY(row), DENOMS[tier].shine, 6);
+
+  // Prepare next coin
+  nextTier = pickDropTier();
+
+  // Check merges after a brief delay
+  setTimeout(() => {
+    runCascade(col, row, 0);
+
+    // Check game over after cascade settles
+    setTimeout(() => {
+      dropping = false;
+      checkGameOver();
+    }, 600);
+  }, 100);
+}
+
+function spawnMergeParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+    const speed = 2 + Math.random() * 3;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      r: 3 + Math.random() * 3,
+      color,
+      t: 0, total: 30 + Math.floor(Math.random() * 20)
+    });
+  }
+}
+
+function checkGameOver() {
+  for (let c = 0; c < COLS; c++) {
+    if (grid[c].length >= gridRows) {
+      startGameOver();
+      return;
+    }
+  }
+}
+
+// ========================
+// GAME STATE TRANSITIONS
+// ========================
+function startGame() {
+  score = 0;
+  highestTier = -1;
+  makeGrid();
+  nextTier = pickDropTier();
+  particles = [];
+  mergeAnims = [];
+  scorePops = [];
+  dropping = false;
+  phase = "playing";
+  currentCol = Math.floor(COLS / 2);
+  document.getElementById("ov-title").classList.add("hidden");
+  document.getElementById("ov-over").classList.add("hidden");
+  document.getElementById("guide-arrow").style.display = "block";
+  updateGuideArrow();
+}
+
+function startGameOver() {
+  phase = "over";
+  if (score > bestScore) bestScore = score;
+  if (highestTier > bestHighestTier) bestHighestTier = highestTier;
+  savePersist();
+  playGameOver();
+
+  document.getElementById("over-score").textContent = formatScore(score) + " 文";
+  document.getElementById("over-best").textContent = "最高記録: " + formatScore(bestScore) + " 文";
+  const htText = highestTier >= 0 ? "最高位: " + DENOMS[highestTier].name : "";
+  document.getElementById("over-highest").textContent = htText;
+  document.getElementById("ov-over").classList.remove("hidden");
+  document.getElementById("guide-arrow").style.display = "none";
+}
+
+// ========================
+// GUIDE ARROW
+// ========================
+const guideArrow = document.getElementById("guide-arrow");
+
+function updateGuideArrow() {
+  if (phase !== "playing") return;
+  const colLeft = boardOffsetX + currentCol * cellSize;
+  const cx = colLeft + cellSize / 2 - 1.5;
+  guideArrow.style.left = cx + "px";
+}
+
+// ========================
+// INPUT
+// ========================
+function colFromX(x) {
+  const col = Math.floor((x - boardOffsetX) / cellSize);
+  return Math.max(0, Math.min(COLS - 1, col));
+}
+
+let lastTouch = 0;
+document.addEventListener("touchend", e => {
+  const n = Date.now();
+  if (n - lastTouch <= 350 && e.cancelable) { e.preventDefault(); }
+  lastTouch = n;
+}, { passive: false });
+document.addEventListener("dblclick", e => e.preventDefault());
+document.addEventListener("gesturestart", e => e.preventDefault());
+
+const canvasWrap = document.getElementById("canvas-wrap");
+
+canvasWrap.addEventListener("pointermove", e => {
+  if (phase !== "playing") return;
+  const rect = gc.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  currentCol = colFromX(x);
+  updateGuideArrow();
+});
+
+canvasWrap.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  if (phase !== "playing") return;
+  isDragging = true;
+  const rect = gc.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  currentCol = colFromX(x);
+  updateGuideArrow();
+});
+
+canvasWrap.addEventListener("pointerup", e => {
+  e.preventDefault();
+  if (!isDragging) return;
+  isDragging = false;
+  if (phase !== "playing") return;
+  const rect = gc.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  currentCol = colFromX(x);
+  updateGuideArrow();
+  dropCoin(currentCol);
+});
+
+canvasWrap.addEventListener("pointercancel", () => { isDragging = false; });
+
+// Keyboard support
+document.addEventListener("keydown", e => {
+  if (phase !== "playing") return;
+  if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
+    currentCol = Math.max(0, currentCol - 1);
+    updateGuideArrow();
+  } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
+    currentCol = Math.min(COLS - 1, currentCol + 1);
+    updateGuideArrow();
+  } else if (e.key === " " || e.key === "Enter") {
+    e.preventDefault();
+    dropCoin(currentCol);
+  }
+});
+
+// ========================
+// MUTE
+// ========================
+document.getElementById("muteBtn").addEventListener("pointerdown", e => {
+  e.preventDefault();
+  muted = !muted;
+  document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔔";
+});
+
+// ========================
+// START / RESTART BUTTONS
+// ========================
+document.getElementById("startBtn").addEventListener("pointerdown", e => {
+  e.preventDefault();
+  startGame();
+});
+document.getElementById("restartBtn").addEventListener("pointerdown", e => {
+  e.preventDefault();
+  startGame();
+});
+
+// ========================
+// RESIZE
+// ========================
+function resize() {
+  DPR = window.devicePixelRatio || 1;
+  const cw = gc.offsetWidth;
+  const ch = gc.offsetHeight;
+  gc.width = Math.round(cw * DPR);
+  gc.height = Math.round(ch * DPR);
+
+  const ncSize = nc.offsetWidth;
+  nc.width = Math.round(ncSize * DPR);
+  nc.height = Math.round(ncSize * DPR);
+
+  // Rows = how many coins fit + 1 overflow row
+  gridRows = Math.max(6, Math.floor(ch / (cw / COLS)));
+  calcLayout();
+  updateGuideArrow();
+}
+
+window.addEventListener("resize", resize);
+
+// ========================
+// INIT
+// ========================
+loadPersist();
+document.getElementById("best-disp").textContent = formatScore(bestScore);
+document.getElementById("highest-disp").textContent =
+  bestHighestTier >= 0 ? DENOMS[bestHighestTier].name : "—";
+
+// Wait for fonts + layout
+window.addEventListener("load", () => {
+  resize();
+  if (!animFrame) {
+    lastT = performance.now();
+    animFrame = requestAnimationFrame(loop);
+  }
+});
+
+// Fallback in case load already fired
+if (document.readyState === "complete") {
+  setTimeout(() => {
+    resize();
+    if (!animFrame) {
+      lastT = performance.now();
+      animFrame = requestAnimationFrame(loop);
+    }
+  }, 50);
+}
+</script>
+</body>
+</html>

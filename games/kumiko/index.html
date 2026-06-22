@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>組子 — 木の欠片を重ねて、列を満たせ。</title>
+<meta name="description" content="組子細工をモチーフにしたブロック配置ライン消しパズル。和紙の盤面に木片を積み上げ、列を揃えれば消える。">
+<meta property="og:title" content="組子 — 木の欠片を重ねて、列を満たせ。">
+<meta property="og:description" content="組子細工をモチーフにしたブロック配置ライン消しパズル。和紙の盤面に木片を積み上げ、列を揃えれば消える。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nrtkumi.github.io/games/kumiko/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/kumiko/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700;800&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%;
+  background: #2a1e14;
+  overflow: hidden;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+body {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  font-family: "Zen Maru Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+}
+#app {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100vw, calc(100dvh * 0.56), 420px);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  background: #f5ede0;
+  box-shadow: 0 0 40px rgba(0,0,0,0.6);
+}
+
+/* HUD */
+#hud {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 6px;
+  background: #3d2b1a;
+  flex-shrink: 0;
+}
+.hud-stat {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.58rem;
+  color: #c9a97a;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+}
+.hud-stat b {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f5ede0;
+  letter-spacing: 0.02em;
+}
+.hud-stat.flex1 { flex: 1; }
+.hud-accent { color: #d4622a; }
+#muteBtn {
+  background: none;
+  border: 1px solid #6b4e35;
+  color: #c9a97a;
+  font-size: 1rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Grid area */
+#gridWrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#gridCanvas {
+  touch-action: none;
+  display: block;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(61,43,26,0.3);
+}
+
+/* Tray */
+#tray {
+  flex-shrink: 0;
+  background: #3d2b1a;
+  padding: 8px 6px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  justify-content: space-around;
+  min-height: 120px;
+}
+.tray-slot {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.tray-slot canvas {
+  touch-action: none;
+  display: block;
+  cursor: grab;
+  border-radius: 3px;
+}
+.tray-slot canvas.used {
+  opacity: 0.15;
+  cursor: default;
+}
+
+/* Overlays */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  background: rgba(61,43,26,0.92);
+  text-align: center;
+  padding: 24px;
+}
+.overlay h1 {
+  font-family: "Shippori Mincho", serif;
+  font-size: 2.6rem;
+  font-weight: 800;
+  color: #f5ede0;
+  letter-spacing: 0.12em;
+  margin-bottom: 6px;
+  text-shadow: 2px 2px 0 rgba(61,43,26,0.5);
+}
+.overlay .sub {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.78rem;
+  color: #c9a97a;
+  letter-spacing: 0.15em;
+  margin-bottom: 28px;
+}
+.overlay .rule {
+  font-size: 0.72rem;
+  color: #c9a97a;
+  line-height: 1.9;
+  margin-bottom: 24px;
+  letter-spacing: 0.05em;
+}
+.overlay .rule span { color: #f5ede0; font-weight: 500; }
+.overlay .best-line {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.7rem;
+  color: #c9a97a;
+  margin-bottom: 20px;
+  letter-spacing: 0.08em;
+}
+.overlay .best-line b { color: #f5ede0; font-size: 1rem; }
+#startBtn, #restartBtn {
+  background: #d4622a;
+  color: #f5ede0;
+  border: none;
+  font-family: "Shippori Mincho", serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  padding: 14px 48px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #8b3d18, 0 5px 12px rgba(0,0,0,0.3);
+  touch-action: manipulation;
+}
+.score-big {
+  font-family: "Shippori Mincho", serif;
+  font-size: 3rem;
+  font-weight: 800;
+  color: #f5ede0;
+  margin-bottom: 4px;
+}
+.score-label {
+  font-size: 0.7rem;
+  color: #c9a97a;
+  letter-spacing: 0.1em;
+  margin-bottom: 20px;
+}
+.combo-display {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.85rem;
+  color: #d4622a;
+  letter-spacing: 0.12em;
+  margin-bottom: 20px;
+}
+/* Floating combo text */
+#comboFloat {
+  position: fixed;
+  pointer-events: none;
+  font-family: "Shippori Mincho", serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #d4622a;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  z-index: 100;
+  opacity: 0;
+  letter-spacing: 0.1em;
+  transition: none;
+}
+
+/* Drag ghost */
+#dragGhost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 50;
+  display: none;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="hud-stat flex1">
+      <span>スコア</span>
+      <b id="hudScore">0</b>
+    </div>
+    <div class="hud-stat flex1">
+      <span>ベスト</span>
+      <b id="hudBest">0</b>
+    </div>
+    <div class="hud-stat flex1">
+      <span>技 <span class="hud-accent" id="hudCombo">×1</span></span>
+      <b id="hudStreak">0連</b>
+    </div>
+    <button id="muteBtn" aria-label="mute toggle">🔊</button>
+  </div>
+
+  <div id="gridWrap">
+    <canvas id="gridCanvas"></canvas>
+    <!-- overlays injected here -->
+  </div>
+
+  <div id="tray">
+    <div class="tray-slot" id="slot0"><canvas id="piece0"></canvas></div>
+    <div class="tray-slot" id="slot1"><canvas id="piece1"></canvas></div>
+    <div class="tray-slot" id="slot2"><canvas id="piece2"></canvas></div>
+  </div>
+</div>
+
+<div id="comboFloat"></div>
+<canvas id="dragGhost"></canvas>
+
+<script>
+"use strict";
+// ============================================================
+// CONSTANTS
+// ============================================================
+const COLS = 8, ROWS = 8;
+const CELL_PAT = 6; // lattice pattern complexity level
+
+// Kumiko wood colors — warm hinoki palette
+const C = {
+  washi:    '#f5ede0', // background paper
+  washiDark:'#ede0cc',
+  gridLine: '#c4aa8a',
+  gridFaint:'#ddd0b8',
+  wood:     '#c8883a', // base piece color
+  woodDark: '#a06b20',
+  woodLight:'#e8b86a',
+  indigo:   '#2c4d7a', // 藍
+  bengara:  '#c03020', // 弁柄赤
+  ghost:    'rgba(200,136,58,0.28)',
+  ghostBad: 'rgba(192,48,32,0.22)',
+  clear:    'rgba(255,220,150,0.7)',
+  darkBg:   '#3d2b1a',
+};
+
+// Polyomino piece definitions [cells array [row,col] relative]
+// Various kumiko-inspired shapes
+const PIECES = [
+  // I-shapes
+  { cells:[[0,0],[0,1],[0,2],[0,3]], name:'横棒(4)' },
+  { cells:[[0,0],[1,0],[2,0],[3,0]], name:'縦棒(4)' },
+  { cells:[[0,0],[0,1],[0,2]], name:'横棒(3)' },
+  { cells:[[0,0],[1,0],[2,0]], name:'縦棒(3)' },
+  { cells:[[0,0],[0,1]], name:'横棒(2)' },
+  { cells:[[0,0],[1,0]], name:'縦棒(2)' },
+  // L-shapes
+  { cells:[[0,0],[1,0],[2,0],[2,1]], name:'L字' },
+  { cells:[[0,0],[0,1],[0,2],[1,0]], name:'逆L字' },
+  { cells:[[0,1],[1,1],[2,1],[2,0]], name:'J字' },
+  { cells:[[0,0],[0,1],[0,2],[1,2]], name:'逆J字' },
+  // T-shapes
+  { cells:[[0,0],[0,1],[0,2],[1,1]], name:'T字' },
+  { cells:[[0,0],[1,0],[2,0],[1,1]], name:'T字縦' },
+  // S/Z shapes
+  { cells:[[0,1],[0,2],[1,0],[1,1]], name:'S字' },
+  { cells:[[0,0],[0,1],[1,1],[1,2]], name:'Z字' },
+  // Squares
+  { cells:[[0,0],[0,1],[1,0],[1,1]], name:'2x2' },
+  { cells:[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]], name:'3x3' },
+  // Single
+  { cells:[[0,0]], name:'単' },
+  // 2x1
+  { cells:[[0,0],[0,1],[1,0]], name:'L小' },
+  { cells:[[0,0],[1,0],[1,1]], name:'J小' },
+  { cells:[[0,0],[0,1],[1,1]], name:'S小' },
+  { cells:[[0,1],[1,0],[1,1]], name:'Z小' },
+  // Special "おじゃま" bonus piece (cross)
+  { cells:[[0,1],[1,0],[1,1],[1,2],[2,1]], name:'十字', bonus:true },
+];
+
+// Weighted random: smaller pieces less common, huge pieces rarer
+const PIECE_WEIGHTS = PIECES.map(p => {
+  const s = p.cells.length;
+  if (p.bonus) return 1.5;
+  if (s === 1) return 2;
+  if (s <= 3) return 5;
+  if (s <= 4) return 8;
+  if (s <= 5) return 4;
+  return 1.5;
+});
+const WEIGHT_SUM = PIECE_WEIGHTS.reduce((a,b)=>a+b,0);
+
+function pickPiece() {
+  let r = Math.random() * WEIGHT_SUM;
+  for (let i = 0; i < PIECES.length; i++) {
+    r -= PIECE_WEIGHTS[i];
+    if (r <= 0) return JSON.parse(JSON.stringify(PIECES[i]));
+  }
+  return JSON.parse(JSON.stringify(PIECES[0]));
+}
+
+// ============================================================
+// AUDIO
+// ============================================================
+let AC = null, muted = false;
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => {
+        if (AC.state !== 'running' && !document.hidden) { try { AC.resume(); } catch(e){} }
+      };
+    } catch(e) {}
+  }
+  if (AC && AC.state !== 'running') { try { AC.resume(); } catch(e){} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);
+  str(36,"data");v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement('audio');
+    silentEl.setAttribute('playsinline','');
+    silentEl.loop = true;
+    silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play(); if (p && p.catch) p.catch(()=>{});
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === 'running')
+      ['pointerdown','pointerup','touchend'].forEach(ev=>document.removeEventListener(ev,unlockAudio,true));
+  };
+  try { AC.resume().then(done); } catch(e){ done(); }
+}
+['pointerdown','pointerup','touchend'].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) audio(); });
+
+function playSound(type) {
+  if (muted) return;
+  const ac = audio(); if (!ac) return;
+  try {
+    const g = ac.createGain();
+    g.connect(ac.destination);
+    const now = ac.currentTime;
+    if (type === 'place') {
+      // カチッ — wood knock
+      const o = ac.createOscillator();
+      o.connect(g); o.type = 'triangle';
+      o.frequency.setValueAtTime(320, now);
+      o.frequency.exponentialRampToValueAtTime(80, now+0.08);
+      g.gain.setValueAtTime(0.25, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now+0.1);
+      o.start(now); o.stop(now+0.1);
+    } else if (type === 'clear') {
+      // 竹の鐘 — line clear chime
+      [440,550,660].forEach((f,i)=>{
+        const o = ac.createOscillator();
+        const g2 = ac.createGain();
+        o.connect(g2); g2.connect(ac.destination);
+        o.type = 'sine'; o.frequency.value = f;
+        const t = now + i*0.07;
+        g2.gain.setValueAtTime(0.15, t);
+        g2.gain.exponentialRampToValueAtTime(0.001, t+0.5);
+        o.start(t); o.stop(t+0.5);
+      });
+    } else if (type === 'combo') {
+      // 太鼓 — combo hit
+      const o = ac.createOscillator();
+      o.connect(g); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(200, now);
+      o.frequency.exponentialRampToValueAtTime(400, now+0.05);
+      g.gain.setValueAtTime(0.3, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now+0.15);
+      o.start(now); o.stop(now+0.15);
+    } else if (type === 'over') {
+      const o = ac.createOscillator();
+      o.connect(g); o.type = 'triangle';
+      o.frequency.setValueAtTime(220, now);
+      o.frequency.exponentialRampToValueAtTime(60, now+0.5);
+      g.gain.setValueAtTime(0.2, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now+0.5);
+      o.start(now); o.stop(now+0.5);
+    } else if (type === 'bonus') {
+      [330,440,550,660,880].forEach((f,i)=>{
+        const o = ac.createOscillator();
+        const g2 = ac.createGain();
+        o.connect(g2); g2.connect(ac.destination);
+        o.type = 'sine'; o.frequency.value = f;
+        const t = now + i*0.05;
+        g2.gain.setValueAtTime(0.12, t);
+        g2.gain.exponentialRampToValueAtTime(0.001, t+0.4);
+        o.start(t); o.stop(t+0.4);
+      });
+    }
+  } catch(e) {}
+}
+
+document.getElementById('muteBtn').addEventListener('pointerdown', e => {
+  e.stopPropagation();
+  muted = !muted;
+  document.getElementById('muteBtn').textContent = muted ? '🔇' : '🔊';
+});
+
+// ============================================================
+// STATE
+// ============================================================
+let grid = []; // ROWS x COLS, 0=empty, 1=filled
+let score = 0, bestScore = 0, gamesPlayed = 0;
+let combo = 0, bestCombo = 0, streak = 0, bestStreak = 0;
+let trayPieces = [null, null, null]; // 3 slots
+let trayUsed = [false, false, false];
+let gameState = 'title'; // title | playing | over
+let clearAnim = []; // [{row, col, t}] flashing cells
+let lastClearTime = 0;
+
+// Drag state
+let dragging = false;
+let dragPieceIdx = -1;
+let dragOffX = 0, dragOffY = 0;
+let dragClientX = 0, dragClientY = 0;
+let ghostRow = -1, ghostCol = -1, ghostValid = false;
+
+// Canvas DPR
+const DPR = window.devicePixelRatio || 1;
+
+// Load persistence
+try {
+  const s = localStorage.getItem('kumiko_v1');
+  if (s) { const d = JSON.parse(s); bestScore = d.best||0; gamesPlayed = d.games||0; bestStreak = d.bestStreak||0; }
+} catch(e) {}
+
+function saveData() {
+  try { localStorage.setItem('kumiko_v1', JSON.stringify({best:bestScore, games:gamesPlayed, bestStreak})); } catch(e) {}
+}
+
+// ============================================================
+// GRID CANVAS
+// ============================================================
+const gridCanvas = document.getElementById('gridCanvas');
+const gridCtx = gridCanvas.getContext('2d');
+let CELL = 0; // px per cell, set in resize
+
+function resize() {
+  const wrap = document.getElementById('gridWrap');
+  const wrapW = wrap.clientWidth;
+  const wrapH = wrap.clientHeight;
+  const maxCell = Math.floor(Math.min(wrapW - 16, wrapH - 16) / Math.max(COLS, ROWS));
+  CELL = Math.max(28, maxCell);
+  const W = CELL * COLS, H = CELL * ROWS;
+  gridCanvas.width = W * DPR;
+  gridCanvas.height = H * DPR;
+  gridCanvas.style.width = W + 'px';
+  gridCanvas.style.height = H + 'px';
+  // tray pieces
+  renderAllTray();
+}
+
+// ============================================================
+// LATTICE PATTERN DRAWING
+// ============================================================
+// Draw a kumiko-style lattice pattern inside a cell
+function drawLattice(ctx, x, y, size, color, opacity) {
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 0.7;
+  const s = size;
+  const g = s / 4;
+  // Outer border
+  ctx.strokeRect(x+1, y+1, s-2, s-2);
+  // Inner diagonal grid (麻の葉/asanoha simplified)
+  ctx.beginPath();
+  ctx.moveTo(x+g, y+1); ctx.lineTo(x+1, y+g);
+  ctx.moveTo(x+3*g, y+1); ctx.lineTo(x+s-1, y+g);
+  ctx.moveTo(x+1, y+3*g); ctx.lineTo(x+g, y+s-1);
+  ctx.moveTo(x+s-1, y+3*g); ctx.lineTo(x+3*g, y+s-1);
+  // Center cross
+  ctx.moveTo(x+s/2, y+1); ctx.lineTo(x+s/2, y+s-1);
+  ctx.moveTo(x+1, y+s/2); ctx.lineTo(x+s-1, y+s/2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Draw a wood-textured filled piece cell
+function drawWoodCell(ctx, x, y, size, highlight, accent) {
+  const s = size;
+  // Base fill with gradient
+  const grd = ctx.createLinearGradient(x, y, x+s, y+s);
+  grd.addColorStop(0, highlight ? C.woodLight : C.wood);
+  grd.addColorStop(1, C.woodDark);
+  ctx.fillStyle = grd;
+  ctx.fillRect(x, y, s, s);
+
+  // Grain lines
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 0.8;
+  for (let i = 1; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x + (s*i/4), y);
+    ctx.lineTo(x + (s*i/4), y+s);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Lattice overlay
+  const lColor = accent ? C.indigo : C.woodDark;
+  drawLattice(ctx, x, y, s, lColor, accent ? 0.6 : 0.35);
+
+  // Bevel highlight
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x+1, y+s-1); ctx.lineTo(x+1, y+1); ctx.lineTo(x+s-1, y+1);
+  ctx.stroke();
+  ctx.globalAlpha = 0.2;
+  ctx.strokeStyle = '#5a2a00';
+  ctx.beginPath();
+  ctx.moveTo(x+1, y+s-1); ctx.lineTo(x+s-1, y+s-1); ctx.lineTo(x+s-1, y+1);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Draw washi paper texture (subtle fiber pattern)
+function drawWashi(ctx, x, y, w, h) {
+  ctx.fillStyle = C.washi;
+  ctx.fillRect(x, y, w, h);
+  // Subtle fibers
+  ctx.save();
+  ctx.globalAlpha = 0.04;
+  ctx.strokeStyle = '#8b6040';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < w; i += 8) {
+    ctx.beginPath();
+    ctx.moveTo(x+i + Math.random()*4-2, y);
+    ctx.lineTo(x+i + Math.random()*4-2, y+h);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ============================================================
+// GRID RENDER
+// ============================================================
+function drawGrid() {
+  const ctx = gridCtx;
+  const W = CELL * COLS, H = CELL * ROWS;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // Washi background
+  drawWashi(ctx, 0, 0, W, H);
+
+  // Light grid cells
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const x = c * CELL, y = r * CELL;
+      // Alternating subtle tint
+      if ((r+c) % 2 === 0) {
+        ctx.fillStyle = C.washiDark;
+        ctx.fillRect(x, y, CELL, CELL);
+      }
+    }
+  }
+
+  // Grid lines
+  ctx.strokeStyle = C.gridLine;
+  ctx.lineWidth = 0.8;
+  for (let r = 0; r <= ROWS; r++) {
+    ctx.beginPath();
+    ctx.moveTo(0, r*CELL); ctx.lineTo(W, r*CELL);
+    ctx.stroke();
+  }
+  for (let c = 0; c <= COLS; c++) {
+    ctx.beginPath();
+    ctx.moveTo(c*CELL, 0); ctx.lineTo(c*CELL, H);
+    ctx.stroke();
+  }
+
+  // Clear animation
+  const now = performance.now();
+  clearAnim = clearAnim.filter(a => now - a.t < 350);
+
+  // Filled cells
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (!grid[r][c]) continue;
+      const x = c*CELL, y = r*CELL;
+      const inAnim = clearAnim.some(a => a.row===r && a.col===c);
+      if (inAnim) {
+        const a = clearAnim.find(a => a.row===r && a.col===c);
+        const t = (now - a.t) / 350;
+        ctx.save();
+        ctx.globalAlpha = 1 - t;
+        ctx.fillStyle = `rgba(255,220,100,${0.9*(1-t)})`;
+        ctx.fillRect(x, y, CELL, CELL);
+        ctx.restore();
+      } else {
+        drawWoodCell(ctx, x, y, CELL, false, false);
+      }
+    }
+  }
+
+  // Ghost preview
+  if (dragging && dragPieceIdx >= 0 && ghostRow >= 0) {
+    const piece = trayPieces[dragPieceIdx];
+    if (piece) {
+      piece.cells.forEach(([dr, dc]) => {
+        const r = ghostRow+dr, c = ghostCol+dc;
+        if (r>=0&&r<ROWS&&c>=0&&c<COLS) {
+          const x = c*CELL, y = r*CELL;
+          ctx.fillStyle = ghostValid ? C.ghost : C.ghostBad;
+          ctx.fillRect(x+1, y+1, CELL-2, CELL-2);
+          if (ghostValid) {
+            drawLattice(ctx, x, y, CELL, C.indigo, 0.5);
+          }
+        }
+      });
+    }
+  }
+}
+
+// ============================================================
+// TRAY PIECE RENDERING
+// ============================================================
+const TRAY_CELL = 22; // px per cell in tray (CSS px)
+const TRAY_PAD = 4;
+
+function getPieceBounds(piece) {
+  const rows = piece.cells.map(c=>c[0]);
+  const cols = piece.cells.map(c=>c[1]);
+  return {
+    minR: Math.min(...rows), maxR: Math.max(...rows),
+    minC: Math.min(...cols), maxC: Math.max(...cols)
+  };
+}
+
+function renderTrayPiece(idx) {
+  const canvas = document.getElementById('piece'+idx);
+  if (!canvas) return;
+  const piece = trayPieces[idx];
+  if (!piece) {
+    canvas.style.display = 'none';
+    return;
+  }
+  const b = getPieceBounds(piece);
+  const pW = (b.maxC - b.minC + 1) * TRAY_CELL;
+  const pH = (b.maxR - b.minR + 1) * TRAY_CELL;
+  const cW = pW + TRAY_PAD*2;
+  const cH = pH + TRAY_PAD*2;
+  canvas.width = cW * DPR;
+  canvas.height = cH * DPR;
+  canvas.style.width = cW + 'px';
+  canvas.style.height = cH + 'px';
+  canvas.style.display = 'block';
+  canvas.className = trayUsed[idx] ? 'used' : '';
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, cW, cH);
+
+  piece.cells.forEach(([dr, dc]) => {
+    const x = (dc - b.minC)*TRAY_CELL + TRAY_PAD;
+    const y = (dr - b.minR)*TRAY_CELL + TRAY_PAD;
+    drawWoodCell(ctx, x, y, TRAY_CELL, false, piece.bonus || false);
+  });
+}
+
+function renderAllTray() {
+  for (let i = 0; i < 3; i++) renderTrayPiece(i);
+}
+
+// ============================================================
+// DRAG GHOST CANVAS
+// ============================================================
+const ghostCanvas = document.getElementById('dragGhost');
+const ghostCtx = ghostCanvas.getContext('2d');
+const GHOST_CELL = Math.floor(CELL * 0.9) || 28;
+
+function renderDragGhost(piece) {
+  if (!piece) { ghostCanvas.style.display='none'; return; }
+  const b = getPieceBounds(piece);
+  const gC = CELL * 0.9;
+  const pW = (b.maxC - b.minC + 1) * gC;
+  const pH = (b.maxR - b.minR + 1) * gC;
+  ghostCanvas.width = pW * DPR;
+  ghostCanvas.height = pH * DPR;
+  ghostCanvas.style.width = pW + 'px';
+  ghostCanvas.style.height = pH + 'px';
+  ghostCanvas.style.display = 'block';
+
+  const ctx = ghostCtx;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, pW, pH);
+  ctx.globalAlpha = 0.75;
+
+  piece.cells.forEach(([dr, dc]) => {
+    const x = (dc - b.minC)*gC;
+    const y = (dr - b.minR)*gC;
+    drawWoodCell(ctx, x, y, gC, true, piece.bonus || false);
+  });
+}
+
+function updateGhostPos() {
+  if (!dragging) return;
+  const piece = trayPieces[dragPieceIdx];
+  if (!piece) return;
+  const b = getPieceBounds(piece);
+  const gC = CELL * 0.9;
+  const pW = (b.maxC - b.minC + 1) * gC;
+  const pH = (b.maxR - b.minR + 1) * gC;
+  ghostCanvas.style.left = (dragClientX - pW/2) + 'px';
+  ghostCanvas.style.top  = (dragClientY - pH * 0.8) + 'px';
+}
+
+// ============================================================
+// GAME LOGIC
+// ============================================================
+function initGrid() {
+  grid = [];
+  for (let r = 0; r < ROWS; r++) {
+    grid.push(new Array(COLS).fill(0));
+  }
+}
+
+function refillTray() {
+  for (let i = 0; i < 3; i++) {
+    trayPieces[i] = pickPiece();
+    trayUsed[i] = false;
+  }
+}
+
+function startGame() {
+  initGrid();
+  score = 0;
+  combo = 0;
+  streak = 0;
+  clearAnim = [];
+  dragging = false;
+  dragPieceIdx = -1;
+  ghostRow = -1;
+  ghostCol = -1;
+  ghostValid = false;
+  refillTray();
+  gameState = 'playing';
+  hideOverlay();
+  updateHUD();
+  renderAllTray();
+}
+
+function canPlace(piece, row, col) {
+  return piece.cells.every(([dr,dc])=>{
+    const r=row+dr, c=col+dc;
+    return r>=0&&r<ROWS&&c>=0&&c<COLS&&!grid[r][c];
+  });
+}
+
+function placePiece(piece, row, col) {
+  piece.cells.forEach(([dr,dc])=>{ grid[row+dr][col+dc]=1; });
+}
+
+function checkLines() {
+  const clearedRows = [];
+  const clearedCols = [];
+  for (let r = 0; r < ROWS; r++) {
+    if (grid[r].every(v=>v===1)) clearedRows.push(r);
+  }
+  for (let c = 0; c < COLS; c++) {
+    let full = true;
+    for (let r = 0; r < ROWS; r++) if (!grid[r][c]) { full=false; break; }
+    if (full) clearedCols.push(c);
+  }
+
+  const totalLines = clearedRows.length + clearedCols.length;
+  if (totalLines === 0) return 0;
+
+  // Collect cells for animation
+  const animCells = new Set();
+  clearedRows.forEach(r => {
+    for (let c=0;c<COLS;c++) animCells.add(`${r},${c}`);
+  });
+  clearedCols.forEach(c => {
+    for (let r=0;r<ROWS;r++) animCells.add(`${r},${c}`);
+  });
+  const now = performance.now();
+  animCells.forEach(k=>{
+    const [r,c]=k.split(',').map(Number);
+    clearAnim.push({row:r,col:c,t:now});
+  });
+
+  // Clear cells (after brief delay managed by animation)
+  setTimeout(()=>{
+    clearedRows.forEach(r=>{ for(let c=0;c<COLS;c++) grid[r][c]=0; });
+    clearedCols.forEach(c=>{ for(let r=0;r<ROWS;r++) grid[r][c]=0; });
+  }, 200);
+
+  return totalLines;
+}
+
+function calcScore(linesCleared, isBonus) {
+  // Base: 10 per cell placed, 50 per line
+  // Combo multiplier, multi-clear bonus
+  let pts = 50 * linesCleared;
+  if (linesCleared > 1) pts += (linesCleared - 1) * 30; // multi-clear bonus
+  if (isBonus) pts += 20;
+  const mult = Math.max(1, combo);
+  return pts * mult;
+}
+
+function checkGameOver() {
+  // Check if any remaining tray piece can be placed anywhere
+  for (let i = 0; i < 3; i++) {
+    if (trayUsed[i]) continue;
+    const piece = trayPieces[i];
+    if (!piece) continue;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (canPlace(piece, r, c)) return false;
+      }
+    }
+  }
+  return true;
+}
+
+function onPiecePlaced(pieceIdx, row, col) {
+  const piece = trayPieces[pieceIdx];
+  if (!canPlace(piece, row, col)) return false;
+
+  placePiece(piece, row, col);
+  trayUsed[pieceIdx] = true;
+  playSound('place');
+
+  // placement score
+  score += piece.cells.length * 5 + (piece.bonus ? 15 : 0);
+
+  // Check lines
+  const lines = checkLines();
+  if (lines > 0) {
+    streak++;
+    combo++;
+    if (combo > bestCombo) bestCombo = combo;
+    if (streak > bestStreak) bestStreak = streak;
+    const pts = calcScore(lines, piece.bonus||false);
+    score += pts;
+    if (lines >= 2) { playSound('combo'); showComboFloat(lines, combo); }
+    else { playSound('clear'); }
+    if (piece.bonus) playSound('bonus');
+  } else {
+    streak = 0;
+    combo = Math.max(0, combo - 1);
+  }
+
+  if (score > bestScore) bestScore = score;
+
+  // Refill if all used
+  const allUsed = trayUsed.every(u=>u);
+  if (allUsed) {
+    setTimeout(()=>{ refillTray(); renderAllTray(); updateHUD(); }, 280);
+  } else {
+    renderTrayPiece(pieceIdx);
+  }
+
+  updateHUD();
+
+  // Check game over (after refill delay)
+  setTimeout(()=>{
+    if (checkGameOver()) {
+      gameState = 'over';
+      gamesPlayed++;
+      saveData();
+      playSound('over');
+      setTimeout(showGameOver, 300);
+    }
+  }, allUsed ? 310 : 50);
+
+  return true;
+}
+
+function updateHUD() {
+  document.getElementById('hudScore').textContent = score.toLocaleString();
+  document.getElementById('hudBest').textContent = bestScore.toLocaleString();
+  document.getElementById('hudCombo').textContent = '×' + Math.max(1, combo);
+  document.getElementById('hudStreak').textContent = streak + '連';
+}
+
+// ============================================================
+// OVERLAY UI
+// ============================================================
+function showOverlay(html) {
+  let ov = document.getElementById('gameOverlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'gameOverlay';
+    ov.className = 'overlay';
+    document.getElementById('gridWrap').appendChild(ov);
+  }
+  ov.innerHTML = html;
+  ov.style.display = 'flex';
+}
+
+function hideOverlay() {
+  const ov = document.getElementById('gameOverlay');
+  if (ov) ov.style.display = 'none';
+}
+
+function showTitle() {
+  const bestLine = bestScore > 0
+    ? `<div class="best-line">ベストスコア <b>${bestScore.toLocaleString()}</b> pts（${gamesPlayed}局）</div>`
+    : '';
+  showOverlay(`
+    <h1>組子</h1>
+    <div class="sub">木片を組み、列を満たせ。</div>
+    <div class="rule">
+      3つの木片をドラッグして盤面に置く<br>
+      <span>列か段が全て埋まると消える</span><br>
+      続けて消すと技（コンボ）が上がる<br>
+      置ける場所がなければ終了
+    </div>
+    ${bestLine}
+    <button id="startBtn">はじめる</button>
+  `);
+  const btn = document.getElementById('startBtn');
+  if (btn) btn.addEventListener('pointerdown', e=>{ e.preventDefault(); startGame(); });
+}
+
+function showGameOver() {
+  showOverlay(`
+    <div class="score-big">${score.toLocaleString()}</div>
+    <div class="score-label">スコア</div>
+    <div class="combo-display">最大技 ×${bestCombo}　最大${bestStreak}連</div>
+    <div class="best-line">ベスト <b>${bestScore.toLocaleString()}</b> pts（${gamesPlayed}局）</div>
+    <button id="restartBtn">もう一度</button>
+  `);
+  const btn = document.getElementById('restartBtn');
+  if (btn) btn.addEventListener('pointerdown', e=>{ e.preventDefault(); startGame(); });
+}
+
+// Floating combo text
+function showComboFloat(lines, combo) {
+  const el = document.getElementById('comboFloat');
+  const text = lines >= 3
+    ? `${lines}連消し！ ×${combo}`
+    : lines === 2 ? `W消し！ ×${combo}` : `コンボ ×${combo}`;
+  el.textContent = text;
+  const rect = document.getElementById('gridWrap').getBoundingClientRect();
+  el.style.left = (rect.left + rect.width/2) + 'px';
+  el.style.top = (rect.top + rect.height*0.35) + 'px';
+  el.style.transform = 'translateX(-50%)';
+  el.style.opacity = '1';
+  el.style.transition = 'opacity 0.8s ease';
+  setTimeout(()=>{ el.style.opacity='0'; }, 900);
+}
+
+// ============================================================
+// DRAG & DROP (Pointer Events)
+// ============================================================
+function getGridPos(clientX, clientY) {
+  const rect = gridCanvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  return {
+    col: Math.floor(x / CELL),
+    row: Math.floor(y / CELL)
+  };
+}
+
+function getDropAnchor(clientX, clientY, piece) {
+  // Drop anchor: top-left of bounding box centered on pointer (adjusted up)
+  const b = getPieceBounds(piece);
+  const pRows = b.maxR - b.minR + 1;
+  const pCols = b.maxC - b.minC + 1;
+  const rect = gridCanvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top - CELL * 0.8; // lifted above finger
+  const anchorCol = Math.round(x / CELL - pCols/2);
+  const anchorRow = Math.round(y / CELL - pRows/2);
+  return { anchorRow: anchorRow - b.minR, anchorCol: anchorCol - b.minC };
+}
+
+// Setup drag on each tray piece canvas
+function setupTrayDrag(idx) {
+  const canvas = document.getElementById('piece'+idx);
+  if (!canvas) return;
+
+  canvas.addEventListener('pointerdown', e => {
+    if (gameState !== 'playing') return;
+    if (trayUsed[idx]) return;
+    if (!trayPieces[idx]) return;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+
+    dragging = true;
+    dragPieceIdx = idx;
+    dragClientX = e.clientX;
+    dragClientY = e.clientY;
+
+    renderDragGhost(trayPieces[idx]);
+    updateGhostPos();
+    updateGhostHighlight();
+  }, {passive:false});
+
+  canvas.addEventListener('pointermove', e => {
+    if (!dragging || dragPieceIdx !== idx) return;
+    e.preventDefault();
+    dragClientX = e.clientX;
+    dragClientY = e.clientY;
+    updateGhostPos();
+    updateGhostHighlight();
+  }, {passive:false});
+
+  canvas.addEventListener('pointerup', e => {
+    if (!dragging || dragPieceIdx !== idx) return;
+    e.preventDefault();
+    dragClientX = e.clientX;
+    dragClientY = e.clientY;
+    finishDrop();
+  }, {passive:false});
+
+  canvas.addEventListener('pointercancel', e => {
+    cancelDrag();
+  });
+}
+
+function updateGhostHighlight() {
+  if (!dragging || dragPieceIdx < 0) return;
+  const piece = trayPieces[dragPieceIdx];
+  if (!piece) return;
+  const { anchorRow, anchorCol } = getDropAnchor(dragClientX, dragClientY, piece);
+  ghostRow = anchorRow;
+  ghostCol = anchorCol;
+  ghostValid = canPlace(piece, anchorRow, anchorCol);
+}
+
+function finishDrop() {
+  if (!dragging || dragPieceIdx < 0) { cancelDrag(); return; }
+  const piece = trayPieces[dragPieceIdx];
+  if (piece && ghostRow >= 0 && ghostValid) {
+    onPiecePlaced(dragPieceIdx, ghostRow, ghostCol);
+  }
+  cancelDrag();
+}
+
+function cancelDrag() {
+  dragging = false;
+  dragPieceIdx = -1;
+  ghostRow = -1;
+  ghostCol = -1;
+  ghostValid = false;
+  ghostCanvas.style.display = 'none';
+}
+
+// Setup drag on all 3 slots
+for (let i = 0; i < 3; i++) setupTrayDrag(i);
+
+// ============================================================
+// DOUBLE-TAP ZOOM PREVENTION
+// ============================================================
+let lastTouch = 0;
+document.addEventListener('touchend', e => {
+  const n = Date.now();
+  if (n - lastTouch <= 350 && e.cancelable) { e.preventDefault(); }
+  lastTouch = n;
+}, {passive:false});
+document.addEventListener('dblclick', e => e.preventDefault());
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+// ============================================================
+// MAIN RAF LOOP
+// ============================================================
+let lastFrame = 0;
+function frame(ts) {
+  requestAnimationFrame(frame);
+  if (ts - lastFrame < 16) return; // ~60fps cap
+  lastFrame = ts;
+  drawGrid();
+}
+requestAnimationFrame(frame);
+
+// ============================================================
+// RESIZE
+// ============================================================
+window.addEventListener('resize', ()=>{ resize(); renderAllTray(); });
+
+// ============================================================
+// INIT
+// ============================================================
+resize();
+initGrid();
+updateHUD();
+showTitle();
+</script>
+</body>
+</html>

@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>こい — 朱鯉の遡上</title>
+<meta name="description" content="一本指で鯉を操り、激流と岩を縫うように泳ぎ上がれ。水墨画の世界観で描かれる無限ウィーブ回避ゲーム。">
+<meta property="og:title" content="こい — 朱鯉の遡上">
+<meta property="og:description" content="一本指で鯉を操り、激流と岩を縫うように泳ぎ上がれ。水墨画の世界観で描かれる無限ウィーブ回避ゲーム。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nrtkumi.github.io/games/koi/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/koi/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#1a1612;overflow:hidden}
+body{
+  display:flex;align-items:center;justify-content:center;
+  overscroll-behavior:none;touch-action:manipulation;
+  user-select:none;-webkit-user-select:none;overflow:hidden;
+  font-family:"Zen Maru Gothic",sans-serif;
+}
+#wrap{
+  position:fixed;
+  width:min(100vw,calc(100dvh*0.6),480px);
+  height:100dvh;
+  left:50%;transform:translateX(-50%);
+  background:#f5f0e8;
+  box-shadow:0 0 40px rgba(0,0,0,0.6);
+  overflow:hidden;
+}
+canvas{display:block;touch-action:none;width:100%;height:100%}
+#mute-btn{
+  position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(245,240,232,0.7);border:1.5px solid #8b7355;
+  font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  z-index:10;touch-action:manipulation;
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+<canvas id="c"></canvas>
+<button id="mute-btn" aria-label="ミュート切替">🔊</button>
+</div>
+<script>
+// ===== AUDIO SETUP (iOS-safe) =====
+let AC=null,muted=false;
+function audio(){
+  if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();AC.onstatechange=()=>{if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}}
+  return AC;
+}
+let silentEl=null;
+function silentWavUrl(){
+  const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);
+  v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  const p=silentEl.play();if(p&&p.catch)p.catch(()=>{});
+  audio();if(!AC)return;
+  const done=()=>{if(AC.state==="running")["pointerdown","pointerup","touchend"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true));};
+  try{AC.resume().then(done);}catch(e){done();}
+}
+["pointerdown","pointerup","touchend"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)audio();});
+
+function playSound(type){
+  if(muted)return;
+  const ac=audio();if(!ac)return;
+  try{
+    const g=ac.createGain();g.connect(ac.destination);
+    const now=ac.currentTime;
+    if(type==="nearmiss"){
+      // slow-mo blip + sparkle
+      const o1=ac.createOscillator();o1.connect(g);
+      o1.type="sine";o1.frequency.setValueAtTime(880,now);o1.frequency.exponentialRampToValueAtTime(1760,now+0.08);
+      g.gain.setValueAtTime(0.18,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.18);
+      o1.start(now);o1.stop(now+0.18);
+      const o2=ac.createOscillator();const g2=ac.createGain();o2.connect(g2);g2.connect(ac.destination);
+      o2.type="triangle";o2.frequency.setValueAtTime(1320,now+0.05);
+      g2.gain.setValueAtTime(0.1,now+0.05);g2.gain.exponentialRampToValueAtTime(0.001,now+0.25);
+      o2.start(now+0.05);o2.stop(now+0.25);
+    } else if(type==="pickup"){
+      const o=ac.createOscillator();o.connect(g);
+      o.type="sine";o.frequency.setValueAtTime(660,now);o.frequency.exponentialRampToValueAtTime(990,now+0.12);
+      g.gain.setValueAtTime(0.14,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.2);
+      o.start(now);o.stop(now+0.2);
+    } else if(type==="hit"){
+      const bufSize=ac.sampleRate*0.3;const buf=ac.createBuffer(1,bufSize,ac.sampleRate);
+      const d=buf.getChannelData(0);for(let i=0;i<bufSize;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/bufSize,2)*0.5;
+      const s=ac.createBufferSource();s.buffer=buf;s.connect(g);
+      g.gain.setValueAtTime(0.4,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);
+      s.start(now);
+    } else if(type==="rush"){
+      const o=ac.createOscillator();o.connect(g);
+      o.type="sawtooth";o.frequency.setValueAtTime(220,now);o.frequency.exponentialRampToValueAtTime(440,now+0.3);
+      g.gain.setValueAtTime(0.08,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);
+      o.start(now);o.stop(now+0.4);
+    } else if(type==="combo"){
+      const o=ac.createOscillator();o.connect(g);
+      o.type="sine";const f=[330,440,550,660][Math.min(3,Math.floor(combo/3))];
+      o.frequency.setValueAtTime(f,now);o.frequency.exponentialRampToValueAtTime(f*1.5,now+0.1);
+      g.gain.setValueAtTime(0.1,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.15);
+      o.start(now);o.stop(now+0.15);
+    }
+  }catch(e){}
+}
+
+document.getElementById("mute-btn").addEventListener("pointerdown",e=>{
+  e.stopPropagation();
+  muted=!muted;
+  document.getElementById("mute-btn").textContent=muted?"🔇":"🔊";
+});
+
+// ===== CANVAS SETUP =====
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+const wrap=document.getElementById("wrap");
+let W=0,H=0,DPR=1;
+
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,3);
+  W=wrap.clientWidth;H=wrap.clientHeight;
+  canvas.width=W*DPR;canvas.height=H*DPR;
+  canvas.style.width=W+"px";canvas.style.height=H+"px";
+}
+resize();
+window.addEventListener("resize",()=>{resize();});
+
+// ===== PERSISTENCE =====
+function lsGet(k,def){try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):def;}catch(e){return def;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+let bestScore=lsGet("koi_bestScore",0);
+let bestDist=lsGet("koi_bestDist",0);
+let bestCombo=lsGet("koi_bestCombo",0);
+
+// ===== GAME STATE (all initialized at declaration) =====
+// States: "title","playing","dead","rush"
+let state="title";
+
+// Koi (player)
+let koi={x:0,y:0,vx:0,vy:0,angle:0,bodySegs:[],trail:[]};
+// Stream speed (px/s in game units)
+let speed=0;
+let baseSpeed=0;
+let dist=0;  // meters
+let score=0;
+let combo=0;
+let comboTimer=0;
+let flowGauge=0;  // 0-1, fills with near-misses
+let rushMode=false;
+let rushTimer=0;
+let nearMissFlash=0;  // cooldown for nearmiss visual
+let slowBlip=0;       // slow-mo effect timer
+let deathTimer=0;
+let spawnTimer=0;
+let pickupSpawnTimer=0;
+let titleAnim=0;
+
+// Obstacles
+let rocks=[];
+let whirls=[];
+let pickups=[];
+// Particles
+let particles=[];
+// Background ink currents
+let inkLines=[];
+
+// Drag / steering
+let dragActive=false;
+let dragX=0;
+let targetX=0;  // target koi X in world units
+
+// Pre-baked rock silhouettes as path2d descriptions (draw as canvas paths)
+const ROCK_SHAPES=[
+  // each: array of [dx,dy] relative offsets, close=true
+  [[0,-20],[14,-12],[18,0],[12,14],[-2,20],[-16,12],[-20,0],[-14,-14]],
+  [[0,-16],[10,-18],[20,-4],[16,10],[4,18],[-10,16],[-20,2],[-16,-12]],
+  [[0,-18],[8,-10],[20,-2],[14,12],[0,22],[-12,14],[-18,-2],[-10,-14]],
+];
+
+// ===== INIT =====
+function initGame(){
+  koi.x=W*0.5;
+  koi.y=H*0.72;
+  koi.vx=0;koi.vy=0;koi.angle=0;
+  koi.bodySegs=[];for(let i=0;i<12;i++)koi.bodySegs.push({x:koi.x,y:koi.y+i*7});
+  koi.trail=[];
+  speed=180;baseSpeed=180;
+  dist=0;score=0;combo=0;comboTimer=0;
+  flowGauge=0;rushMode=false;rushTimer=0;
+  nearMissFlash=0;slowBlip=0;deathTimer=0;
+  spawnTimer=0;pickupSpawnTimer=0;
+  rocks=[];whirls=[];pickups=[];particles=[];
+  targetX=koi.x;
+  inkLines=[];
+  for(let i=0;i<8;i++) inkLines.push(makeInkLine(Math.random()*H));
+  state="playing";
+}
+
+function makeInkLine(y0){
+  return{
+    x:Math.random()*W,
+    y:y0,
+    segs:Array.from({length:12},(_,i)=>({dx:(Math.random()-0.5)*20,dy:0})),
+    alpha:0.04+Math.random()*0.06,
+    spd:0.3+Math.random()*0.4,
+    w:1+Math.random()*2
+  };
+}
+
+// ===== ROCK HITBOX =====
+function rockHit(kx,ky,r){
+  for(const rock of rocks){
+    const dx=kx-rock.x,dy=ky-rock.y;
+    const dist2=dx*dx+dy*dy;
+    const sum=r+rock.r;
+    if(dist2<sum*sum) return true;
+  }
+  for(const w of whirls){
+    const dx=kx-w.x,dy=ky-w.y;
+    if(dx*dx+dy*dy<(w.r*0.55)*(w.r*0.55)) return true;
+  }
+  return false;
+}
+
+function nearMissDist(kx,ky,r){
+  let minNear=Infinity;
+  for(const rock of rocks){
+    const dx=kx-rock.x,dy=ky-rock.y;
+    const d=Math.sqrt(dx*dx+dy*dy)-(r+rock.r);
+    if(d>0&&d<40) minNear=Math.min(minNear,d);
+  }
+  for(const w of whirls){
+    const dx=kx-w.x,dy=ky-w.y;
+    const d=Math.sqrt(dx*dx+dy*dy)-(r+w.r*0.55);
+    if(d>0&&d<40) minNear=Math.min(minNear,d);
+  }
+  return minNear;
+}
+
+// ===== SPAWN =====
+function spawnObstacle(){
+  const t=Math.random();
+  if(t<0.6){
+    // Single rock or pair
+    const margin=40;
+    if(Math.random()<0.4&&rocks.filter(r=>r.y<0).length<2){
+      // Gate: two rocks with a gap
+      const gap=75+Math.random()*40;
+      const cx=margin+Math.random()*(W-margin*2);
+      const r=20+Math.random()*14;
+      rocks.push({x:cx-gap/2-r,y:-r-10,r,shape:Math.floor(Math.random()*3),rot:Math.random()*Math.PI*2,nearMissed:false});
+      rocks.push({x:cx+gap/2+r,y:-r-10,r,shape:Math.floor(Math.random()*3),rot:Math.random()*Math.PI*2,nearMissed:false});
+    } else {
+      const r=18+Math.random()*22;
+      const x=margin+r+Math.random()*(W-margin*2-r*2);
+      rocks.push({x,y:-r-10,r,shape:Math.floor(Math.random()*3),rot:Math.random()*Math.PI*2,nearMissed:false});
+    }
+  } else {
+    // Whirlpool
+    const r=22+Math.random()*18;
+    const x=40+Math.random()*(W-80);
+    whirls.push({x,y:-r-10,r,rot:0,nearMissed:false});
+  }
+}
+
+function spawnPickup(){
+  const x=30+Math.random()*(W-60);
+  const type=Math.random()<0.7?"petal":"sparkle";
+  pickups.push({x,y:-20,type,angle:Math.random()*Math.PI*2,pulse:0});
+}
+
+// ===== PARTICLES =====
+function spawnInkParticles(x,y,count,color){
+  for(let i=0;i<count;i++){
+    const angle=Math.random()*Math.PI*2;
+    const spd=60+Math.random()*140;
+    particles.push({
+      x,y,
+      vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd,
+      life:1,maxLife:0.4+Math.random()*0.5,
+      r:2+Math.random()*5,
+      color,
+      type:"ink"
+    });
+  }
+}
+function spawnSparkParticles(x,y,count){
+  for(let i=0;i<count;i++){
+    const angle=Math.random()*Math.PI*2;
+    const spd=30+Math.random()*80;
+    particles.push({
+      x,y,
+      vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd,
+      life:1,maxLife:0.3+Math.random()*0.3,
+      r:1+Math.random()*3,
+      color:"#d4a017",
+      type:"spark"
+    });
+  }
+}
+
+// ===== DRAW HELPERS =====
+function drawRock(cx,cy,r,shapeIdx,rot){
+  const pts=ROCK_SHAPES[shapeIdx];
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);
+  ctx.beginPath();
+  const scale=r/20;
+  ctx.moveTo(pts[0][0]*scale,pts[0][1]*scale);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0]*scale,pts[i][1]*scale);
+  ctx.closePath();
+  ctx.restore();
+}
+
+function drawKoi(kx,ky,angle,segs,t){
+  const breathe=Math.sin(t*3)*0.5;
+  const bodyLen=segs.length;
+  // Draw tail/body from back to front
+  ctx.save();
+  // Shadow
+  ctx.save();ctx.translate(4,4);
+  ctx.globalAlpha=0.18;
+  ctx.fillStyle="#000";
+  // body silhouette
+  const tailEnd=segs[bodyLen-1];
+  ctx.beginPath();
+  ctx.ellipse(tailEnd.x,tailEnd.y,4,12,angle+Math.PI/2,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // Tail fin (forked)
+  const tail=segs[bodyLen-1];
+  const tail2=segs[bodyLen-3];
+  const tailAngle=Math.atan2(tail.y-tail2.y,tail.x-tail2.x);
+  ctx.save();ctx.translate(tail.x,tail.y);ctx.rotate(tailAngle);
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.bezierCurveTo(-8,-14,-18,-20,-22,-16);
+  ctx.bezierCurveTo(-12,-8,-4,0,0,0);
+  ctx.bezierCurveTo(-4,0,-12,8,-22,16);
+  ctx.bezierCurveTo(-18,20,-8,14,0,0);
+  ctx.fillStyle="rgba(160,30,20,0.7)";
+  ctx.fill();
+  ctx.restore();
+
+  // Body segments — tapered
+  for(let i=bodyLen-1;i>0;i--){
+    const seg=segs[i];const prev=segs[i-1];
+    const w=2+(bodyLen-i)/(bodyLen)*8+breathe*0.3;
+    const nextW=2+(bodyLen-i-1)/(bodyLen)*8+breathe*0.3;
+    const ang=Math.atan2(prev.y-seg.y,prev.x-seg.x);
+    ctx.save();ctx.translate(seg.x,seg.y);ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.ellipse(0,0,nextW*0.8,w,0,0,Math.PI*2);
+    // Gradient red to orange
+    const grad=ctx.createLinearGradient(-w,0,w,0);
+    grad.addColorStop(0,"#cc2200");
+    grad.addColorStop(0.5,"#e84020");
+    grad.addColorStop(1,"#cc2200");
+    ctx.fillStyle=grad;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Scales pattern (just a few arcs for hint)
+  for(let i=2;i<bodyLen-2;i+=3){
+    const seg=segs[i];const prev=segs[i-1];
+    const ang=Math.atan2(prev.y-seg.y,prev.x-seg.x);
+    const w=2+(bodyLen-i)/(bodyLen)*8;
+    ctx.save();ctx.translate(seg.x,seg.y);ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.arc(0,-w*0.4,w*0.6,Math.PI,0);
+    ctx.strokeStyle="rgba(255,160,80,0.4)";ctx.lineWidth=0.8;ctx.stroke();
+    ctx.restore();
+  }
+
+  // Head
+  const head=segs[0];const neck=segs[1];
+  const headAngle=Math.atan2(head.y-neck.y,head.x-neck.x);
+  ctx.save();ctx.translate(head.x,head.y);ctx.rotate(headAngle);
+  // Head shape
+  ctx.beginPath();
+  ctx.ellipse(2+breathe*0.2,0,9+breathe*0.3,6.5,0,0,Math.PI*2);
+  const hgrad=ctx.createRadialGradient(0,0,0,0,0,10);
+  hgrad.addColorStop(0,"#ff5533");hgrad.addColorStop(1,"#bb1100");
+  ctx.fillStyle=hgrad;ctx.fill();
+  // Eye
+  ctx.beginPath();ctx.arc(6,-3,2.2,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();
+  ctx.beginPath();ctx.arc(6.5,-3,1.2,0,Math.PI*2);ctx.fillStyle="#111";ctx.fill();
+  ctx.beginPath();ctx.arc(6.8,-3.4,0.5,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();
+  // Whisker
+  ctx.beginPath();ctx.moveTo(8,2);ctx.quadraticCurveTo(14,6,16,4);
+  ctx.strokeStyle="rgba(255,200,100,0.7)";ctx.lineWidth=1;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(8,0);ctx.quadraticCurveTo(14,1,18,-1);
+  ctx.stroke();
+  // Top fin
+  ctx.beginPath();ctx.moveTo(0,-6);ctx.bezierCurveTo(4,-16,8,-18,10,-12);ctx.bezierCurveTo(8,-9,4,-6,0,-6);
+  ctx.fillStyle="rgba(180,30,10,0.6)";ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
+function drawWhirlpool(cx,cy,r,rot){
+  // Concentric arcs rotating
+  for(let ring=0;ring<4;ring++){
+    const ri=r*(0.25+ring*0.2);
+    const alpha=0.7-ring*0.15;
+    ctx.beginPath();
+    ctx.arc(cx,cy,ri,rot+ring*0.5,rot+ring*0.5+Math.PI*1.6);
+    ctx.strokeStyle=`rgba(20,60,100,${alpha})`;
+    ctx.lineWidth=2.5-ring*0.4;
+    ctx.stroke();
+  }
+  // Center dot
+  ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);
+  ctx.fillStyle="rgba(10,40,80,0.5)";ctx.fill();
+}
+
+// ===== MAIN LOOP =====
+let lastTime=0;
+let globalTime=0;
+
+function frame(ts){
+  requestAnimationFrame(frame);
+  const rawDt=Math.min((ts-lastTime)/1000,0.05);
+  lastTime=ts;
+  globalTime+=rawDt;
+
+  // Slow-mo effect on near-miss
+  const dt=slowBlip>0?rawDt*0.4:rawDt;
+  if(slowBlip>0) slowBlip-=rawDt;
+
+  // RE-APPLY transform every frame (iOS context-loss safe)
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+
+  if(state==="title") drawTitle(ts);
+  else if(state==="playing"||state==="dead") updateAndDraw(dt,rawDt);
+}
+
+// ===== TITLE SCREEN =====
+function drawTitle(ts){
+  titleAnim=ts/1000;
+  // Washi paper background
+  ctx.fillStyle="#f5f0e8";ctx.fillRect(0,0,W,H);
+  drawWashiTexture();
+
+  // Ink current decorations
+  ctx.save();
+  for(let i=0;i<3;i++){
+    const yOff=H*0.15+i*H*0.25;
+    ctx.beginPath();
+    ctx.moveTo(0,yOff+Math.sin(titleAnim*0.3+i)*10);
+    for(let x=0;x<=W;x+=20){
+      ctx.lineTo(x,yOff+Math.sin(titleAnim*0.3+i+x*0.02)*12+Math.sin(x*0.04+i)*6);
+    }
+    ctx.strokeStyle=`rgba(0,0,0,${0.04+i*0.02})`;ctx.lineWidth=18-i*4;ctx.stroke();
+  }
+  ctx.restore();
+
+  // Title
+  ctx.save();
+  ctx.font=`bold ${W*0.28}px "Yuji Syuku", serif`;
+  ctx.textAlign="center";
+  ctx.fillStyle="rgba(0,0,0,0.06)";
+  ctx.fillText("こい",W/2+3,H*0.38+3);
+  const grad=ctx.createLinearGradient(W/2-80,H*0.28,W/2+80,H*0.38);
+  grad.addColorStop(0,"#1a0a00");grad.addColorStop(0.5,"#2c1a08");grad.addColorStop(1,"#1a0a00");
+  ctx.fillStyle=grad;
+  ctx.fillText("こい",W/2,H*0.38);
+  ctx.restore();
+
+  // Subtitle
+  ctx.save();
+  ctx.font=`${W*0.045}px "Yuji Syuku", serif`;
+  ctx.textAlign="center";ctx.fillStyle="#5c3d1e";
+  ctx.fillText("朱鯉の遡上",W/2,H*0.44);
+  ctx.restore();
+
+  // Animated demo koi on title
+  const demoSegs=[];
+  for(let i=0;i<12;i++){
+    const wave=Math.sin(titleAnim*2-i*0.4)*18;
+    demoSegs.push({x:W/2+wave,y:H*0.58+i*9});
+  }
+  drawKoi(demoSegs[0].x,demoSegs[0].y,Math.atan2(demoSegs[0].y-demoSegs[1].y,demoSegs[0].x-demoSegs[1].x),demoSegs,titleAnim);
+
+  // Start prompt
+  const pulse=0.7+0.3*Math.sin(titleAnim*2.2);
+  ctx.save();
+  ctx.font=`${W*0.042}px "Zen Maru Gothic", sans-serif`;
+  ctx.textAlign="center";
+  ctx.globalAlpha=pulse;ctx.fillStyle="#8b4513";
+  ctx.fillText("画面をタップしてスタート",W/2,H*0.82);
+  ctx.restore();
+
+  // Best stats
+  if(bestScore>0){
+    ctx.save();
+    ctx.font=`${W*0.032}px "Zen Maru Gothic", sans-serif`;
+    ctx.textAlign="center";ctx.fillStyle="rgba(100,60,20,0.7)";
+    ctx.fillText(`最高スコア ${bestScore}  最長 ${Math.floor(bestDist)}m  最大コンボ ×${bestCombo}`,W/2,H*0.88);
+    ctx.restore();
+  }
+
+  // Rock decoration
+  ctx.save();
+  ctx.fillStyle="#2a2a2a";
+  drawRock(W*0.12,H*0.68,26,0,0.4);ctx.fill();
+  ctx.fillStyle="#3a3a3a";
+  drawRock(W*0.88,H*0.6,22,2,1.1);ctx.fill();
+  ctx.restore();
+}
+
+// ===== WASHI PAPER TEXTURE =====
+function drawWashiTexture(){
+  ctx.save();ctx.globalAlpha=0.025;
+  for(let i=0;i<30;i++){
+    ctx.beginPath();
+    ctx.moveTo(0,Math.random()*H);
+    ctx.lineTo(W,Math.random()*H);
+    ctx.strokeStyle="#888";ctx.lineWidth=0.5;ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ===== GAME UPDATE & DRAW =====
+function updateAndDraw(dt,rawDt){
+  // ---- UPDATE ----
+  if(state==="playing"){
+    // Speed ramp
+    dist+=speed*dt*0.01;  // "meters"
+    baseSpeed=180+Math.min(dist*0.8,320);
+    speed=rushMode?baseSpeed*1.6:baseSpeed;
+
+    // Koi horizontal steering
+    const STEER_SPEED=420;
+    const dx=targetX-koi.x;
+    koi.vx+=(dx*6-koi.vx)*Math.min(dt*8,1);
+    koi.vx=Math.max(-STEER_SPEED,Math.min(STEER_SPEED,koi.vx));
+    koi.x+=koi.vx*dt;
+    koi.x=Math.max(18,Math.min(W-18,koi.x));
+
+    // Koi angle based on velocity
+    const targetAngle=-Math.atan2(koi.vx*0.5,speed*0.5)*0.6;
+    koi.angle+=(targetAngle-koi.angle)*Math.min(dt*6,1);
+
+    // Update body segments
+    koi.bodySegs[0]={x:koi.x,y:koi.y};
+    for(let i=1;i<koi.bodySegs.length;i++){
+      const seg=koi.bodySegs[i];const prev=koi.bodySegs[i-1];
+      const dx2=prev.x-seg.x,dy2=prev.y-seg.y;
+      const d2=Math.sqrt(dx2*dx2+dy2*dy2);
+      const TARGET_SEG=7;
+      if(d2>TARGET_SEG){
+        koi.bodySegs[i]={x:prev.x-dx2/d2*TARGET_SEG,y:prev.y-dy2/d2*TARGET_SEG};
+      }
+    }
+
+    // Trail
+    koi.trail.push({x:koi.x,y:koi.y,life:1});
+    if(koi.trail.length>20) koi.trail.shift();
+    koi.trail.forEach(t=>{t.life-=dt*3;});
+
+    // Scroll obstacles
+    const scrollSpd=speed;
+    rocks.forEach(r=>{r.y+=scrollSpd*dt;});
+    whirls.forEach(w=>{w.y+=scrollSpd*dt;w.rot+=dt*2;});
+    pickups.forEach(p=>{p.y+=scrollSpd*dt*0.7;p.pulse+=dt*3;p.angle+=dt*1.5;});
+
+    // Remove off-screen
+    rocks=rocks.filter(r=>r.y<H+60);
+    whirls=whirls.filter(w=>w.y<H+60);
+    pickups=pickups.filter(p=>p.y<H+40);
+
+    // Spawn obstacles
+    spawnTimer-=dt;
+    if(spawnTimer<=0){
+      spawnObstacle();
+      spawnTimer=Math.max(0.55,1.4-dist*0.002);
+    }
+    pickupSpawnTimer-=dt;
+    if(pickupSpawnTimer<=0){
+      spawnPickup();
+      pickupSpawnTimer=1.2+Math.random()*1.5;
+    }
+
+    // Collision check (forgiving hitbox: r=10)
+    const KR=10;
+    if(rockHit(koi.x,koi.y,KR)){
+      playSound("hit");
+      spawnInkParticles(koi.x,koi.y,22,"#1a0a00");
+      spawnInkParticles(koi.x,koi.y,8,"#cc2200");
+      state="dead";deathTimer=1.8;
+      // Save best
+      if(score>bestScore){bestScore=score;lsSet("koi_bestScore",bestScore);}
+      if(dist>bestDist){bestDist=dist;lsSet("koi_bestDist",dist);}
+      if(combo>bestCombo){bestCombo=combo;lsSet("koi_bestCombo",bestCombo);}
+    }
+
+    // Near-miss detection
+    const nm=nearMissDist(koi.x,koi.y,KR);
+    if(nm!==Infinity&&nm<32&&nearMissFlash<=0){
+      nearMissFlash=0.5;
+      slowBlip=0.25;
+      combo++;
+      comboTimer=3.5;
+      flowGauge=Math.min(1,flowGauge+0.18);
+      score+=10*Math.max(1,combo);
+      spawnInkParticles(koi.x,koi.y,12,"#1a0a00");
+      spawnSparkParticles(koi.x,koi.y,8);
+      playSound("nearmiss");
+      if(combo>=3) playSound("combo");
+      // Rush mode trigger
+      if(flowGauge>=1&&!rushMode){
+        rushMode=true;rushTimer=6;
+        playSound("rush");
+      }
+    }
+    if(nearMissFlash>0) nearMissFlash-=rawDt;
+
+    // Combo timer
+    if(comboTimer>0){
+      comboTimer-=dt;
+      if(comboTimer<=0){combo=0;comboTimer=0;}
+    }
+
+    // Flow gauge drain
+    if(!rushMode) flowGauge=Math.max(0,flowGauge-dt*0.04);
+    if(rushMode){
+      rushTimer-=dt;
+      flowGauge=rushTimer/6;
+      if(rushTimer<=0){rushMode=false;flowGauge=0;}
+    }
+
+    // Pickup collection
+    for(let i=pickups.length-1;i>=0;i--){
+      const p=pickups[i];
+      const dx=koi.x-p.x,dy=koi.y-p.y;
+      if(dx*dx+dy*dy<(24)*(24)){
+        score+=(p.type==="sparkle"?30:15)*(rushMode?2:1)*Math.max(1,combo);
+        spawnSparkParticles(p.x,p.y,12);
+        playSound("pickup");
+        pickups.splice(i,1);
+      }
+    }
+
+    // Score from distance
+    score+=dt*(rushMode?2:1)*Math.max(1,combo*0.5)*0.5;
+  }
+
+  // Dead countdown
+  if(state==="dead"){
+    deathTimer-=rawDt;
+    rocks.forEach(r=>{r.y+=80*rawDt;});
+    whirls.forEach(w=>{w.y+=80*rawDt;w.rot+=rawDt;});
+    pickups.forEach(p=>{p.y+=60*rawDt;});
+  }
+
+  // Update particles
+  particles.forEach(p=>{
+    p.x+=p.vx*rawDt;p.y+=p.vy*rawDt;
+    p.vy+=rawDt*60;  // gravity
+    p.life-=rawDt/p.maxLife;
+  });
+  particles=particles.filter(p=>p.life>0);
+
+  // Ink lines (background decoration) scroll
+  inkLines.forEach(l=>{
+    l.y+=speed*rawDt*l.spd;
+    if(l.y>H+40) {Object.assign(l,makeInkLine(-40));l.y=-40;}
+  });
+
+  // ---- DRAW ----
+  // Washi background
+  const rushAlpha=rushMode?(Math.min(1,(6-rushTimer)/6)*0.15):0;
+  const bgColor=rushMode?`rgba(255,220,180,${rushAlpha})`:"#f5f0e8";
+  ctx.fillStyle=bgColor;ctx.fillRect(0,0,W,H);
+  if(!rushMode) ctx.fillStyle="#f5f0e8";
+  ctx.fillRect(0,0,W,H);
+
+  // Rush tint
+  if(rushMode){
+    ctx.save();
+    ctx.fillStyle=`rgba(255,120,30,${0.07+0.03*Math.sin(globalTime*8)})`;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+
+  drawWashiTexture();
+
+  // Ink background lines (flowing water)
+  ctx.save();
+  inkLines.forEach(l=>{
+    ctx.beginPath();
+    ctx.moveTo(l.x+l.segs[0].dx,l.y);
+    for(let i=1;i<l.segs.length;i++){
+      ctx.lineTo(l.x+l.segs[i].dx,l.y+i*18);
+    }
+    ctx.strokeStyle=`rgba(40,60,100,${l.alpha})`;ctx.lineWidth=l.w;
+    ctx.lineCap="round";ctx.stroke();
+  });
+  ctx.restore();
+
+  // Ripple lines on water surface
+  ctx.save();
+  for(let i=0;i<5;i++){
+    const ry=((globalTime*0.18+i*0.21)%1)*H;
+    ctx.beginPath();
+    ctx.moveTo(0,ry);
+    for(let x=0;x<=W;x+=30){
+      ctx.lineTo(x,ry+Math.sin(x*0.025+globalTime*1.5+i)*3);
+    }
+    ctx.strokeStyle="rgba(100,140,180,0.08)";ctx.lineWidth=1+i*0.3;ctx.stroke();
+  }
+  ctx.restore();
+
+  // Koi trail
+  ctx.save();
+  koi.trail.forEach((t,idx)=>{
+    const a=t.life*0.3*(rushMode?1.5:1);
+    ctx.beginPath();ctx.arc(t.x,t.y,3+idx*0.2,0,Math.PI*2);
+    ctx.fillStyle=rushMode?`rgba(255,200,50,${a})`:`rgba(180,220,255,${a})`;
+    ctx.fill();
+  });
+  ctx.restore();
+
+  // Pickups
+  pickups.forEach(p=>{
+    const pulse2=Math.sin(p.pulse)*0.2+0.8;
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);ctx.scale(pulse2,pulse2);
+    if(p.type==="petal"){
+      // Sakura petal shape
+      ctx.beginPath();
+      for(let i=0;i<5;i++){
+        const a=i/5*Math.PI*2;const r2=10,r1=5;
+        ctx.ellipse(Math.cos(a)*r1,Math.sin(a)*r1,r2,r1,a,0,Math.PI*2);
+      }
+      ctx.fillStyle="rgba(220,80,100,0.8)";ctx.fill();
+      ctx.beginPath();ctx.arc(0,0,3,0,Math.PI*2);ctx.fillStyle="#ffddee";ctx.fill();
+    } else {
+      // Sparkle (4-pointed star)
+      ctx.beginPath();
+      for(let i=0;i<8;i++){
+        const a=i/8*Math.PI*2;const r2=i%2===0?12:5;
+        if(i===0)ctx.moveTo(Math.cos(a)*r2,Math.sin(a)*r2);
+        else ctx.lineTo(Math.cos(a)*r2,Math.sin(a)*r2);
+      }
+      ctx.closePath();ctx.fillStyle="rgba(210,170,20,0.9)";ctx.fill();
+    }
+    ctx.restore();
+  });
+
+  // Whirlpools
+  whirls.forEach(w=>drawWhirlpool(w.x,w.y,w.r,w.rot));
+
+  // Rocks
+  ctx.save();
+  rocks.forEach(r=>{
+    // Rock shadow
+    ctx.save();ctx.translate(5,5);
+    drawRock(r.x,r.y,r.r,r.shape,r.rot);
+    ctx.fillStyle="rgba(0,0,0,0.12)";ctx.fill();
+    ctx.restore();
+    // Rock body
+    drawRock(r.x,r.y,r.r,r.shape,r.rot);
+    const grad=ctx.createRadialGradient(r.x-r.r*0.3,r.y-r.r*0.3,r.r*0.1,r.x,r.y,r.r*1.1);
+    grad.addColorStop(0,"#4a4a4a");
+    grad.addColorStop(0.6,"#2a2a2a");
+    grad.addColorStop(1,"#111");
+    ctx.fillStyle=grad;ctx.fill();
+    // Moss/texture hint
+    ctx.strokeStyle="rgba(80,100,60,0.25)";ctx.lineWidth=1.5;ctx.stroke();
+  });
+  ctx.restore();
+
+  // Koi (only if not dead completely)
+  if(state==="playing"||(state==="dead"&&deathTimer>0.8)){
+    drawKoi(koi.x,koi.y,koi.angle,koi.bodySegs,globalTime);
+  }
+
+  // Particles
+  ctx.save();
+  particles.forEach(p=>{
+    const a=p.life*(p.type==="spark"?0.9:0.7);
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);
+    ctx.fillStyle=p.type==="spark"?`rgba(212,160,23,${a})`:`rgba(0,0,0,${a})`;
+    ctx.fill();
+  });
+  ctx.restore();
+
+  // Near-miss flash overlay
+  if(nearMissFlash>0){
+    ctx.save();
+    ctx.globalAlpha=nearMissFlash*0.3;
+    ctx.fillStyle="#ffd700";ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+
+  // HUD
+  drawHUD();
+
+  // Death screen
+  if(state==="dead"&&deathTimer<1.2){
+    drawDeathScreen(deathTimer);
+  }
+}
+
+function drawHUD(){
+  const top=12+((typeof window!=="undefined"&&CSS.supports("padding-top","env(safe-area-inset-top)"))?0:0);
+  // Score
+  ctx.save();
+  ctx.font=`bold ${W*0.048}px "Yuji Syuku", serif`;
+  ctx.textAlign="left";
+  ctx.fillStyle="rgba(30,15,5,0.85)";
+  ctx.fillText(Math.floor(score).toString().padStart(6,"0"),12,top+36);
+
+  // Distance
+  ctx.font=`${W*0.03}px "Zen Maru Gothic", sans-serif`;
+  ctx.fillStyle="rgba(60,30,10,0.65)";
+  ctx.fillText(`${Math.floor(dist)}m`,12,top+56);
+
+  // Combo
+  if(combo>0){
+    const comboAlpha=Math.min(1,comboTimer/1.5);
+    ctx.font=`bold ${W*0.055*(1+Math.min(combo,10)*0.03)}px "Yuji Syuku", serif`;
+    ctx.textAlign="center";
+    ctx.fillStyle=rushMode?`rgba(255,120,20,${comboAlpha})`:`rgba(180,30,10,${comboAlpha})`;
+    ctx.fillText(`×${combo}`,W/2,top+46);
+    ctx.font=`${W*0.025}px "Zen Maru Gothic", sans-serif`;
+    ctx.fillStyle=`rgba(100,40,10,${comboAlpha*0.8})`;
+    ctx.fillText("コンボ",W/2,top+64);
+  }
+
+  // Flow gauge
+  const gaugeW=W*0.28;const gaugeH=8;const gx=W-gaugeW-12;const gy=top+16;
+  ctx.fillStyle="rgba(0,0,0,0.12)";
+  ctx.roundRect(gx,gy,gaugeW,gaugeH,4);ctx.fill();
+  if(flowGauge>0){
+    const fillGrad=ctx.createLinearGradient(gx,0,gx+gaugeW,0);
+    fillGrad.addColorStop(0,"#e84020");fillGrad.addColorStop(1,"#ffd700");
+    ctx.fillStyle=fillGrad;
+    ctx.roundRect(gx,gy,gaugeW*flowGauge,gaugeH,4);ctx.fill();
+  }
+  // Gauge label
+  ctx.font=`${W*0.025}px "Zen Maru Gothic", sans-serif`;
+  ctx.textAlign="right";ctx.fillStyle="rgba(80,40,10,0.7)";
+  ctx.fillText(rushMode?"激流中！":"気の流れ",W-12,gy-2);
+
+  // Rush mode label
+  if(rushMode){
+    const pulse3=0.8+0.2*Math.sin(globalTime*8);
+    ctx.font=`bold ${W*0.062}px "Yuji Syuku", serif`;
+    ctx.textAlign="center";
+    ctx.globalAlpha=pulse3;
+    ctx.fillStyle="#cc4400";
+    ctx.fillText("激　流",W/2,H*0.18);
+    ctx.globalAlpha=1;
+  }
+
+  ctx.restore();
+}
+
+function drawDeathScreen(timer){
+  const fade=Math.max(0,Math.min(1,(1.2-timer)/0.8));
+  ctx.save();
+  ctx.globalAlpha=fade*0.85;
+  ctx.fillStyle="#f5f0e8";ctx.fillRect(0,0,W,H);
+  ctx.globalAlpha=fade;
+
+  ctx.textAlign="center";
+  ctx.font=`bold ${W*0.16}px "Yuji Syuku", serif`;
+  ctx.fillStyle="#1a0a00";
+  ctx.fillText("おわり",W/2,H*0.3);
+
+  ctx.font=`${W*0.042}px "Yuji Syuku", serif`;
+  ctx.fillStyle="#4a2c10";
+  ctx.fillText(`スコア　${Math.floor(score)}`,W/2,H*0.44);
+  ctx.fillText(`距離　${Math.floor(dist)}m`,W/2,H*0.52);
+  ctx.fillText(`最大コンボ　×${bestCombo}`,W/2,H*0.60);
+
+  ctx.font=`${W*0.034}px "Zen Maru Gothic", sans-serif`;
+  ctx.fillStyle="#8b4513";
+  ctx.fillText(`最高スコア　${Math.floor(bestScore)}`,W/2,H*0.7);
+
+  if(timer<0.3){
+    const tapPulse=0.7+0.3*Math.sin(globalTime*3);
+    ctx.globalAlpha=fade*tapPulse;
+    ctx.font=`${W*0.038}px "Zen Maru Gothic", sans-serif`;
+    ctx.fillStyle="#5c3d1e";
+    ctx.fillText("タップでもう一度",W/2,H*0.84);
+  }
+  ctx.restore();
+}
+
+// ===== INPUT =====
+// Double-tap prevention
+let lastTouch=0;
+document.addEventListener("touchend",e=>{
+  const n=Date.now();
+  if(n-lastTouch<=350&&e.cancelable){e.preventDefault();}
+  lastTouch=n;
+},{passive:false});
+document.addEventListener("dblclick",e=>e.preventDefault());
+document.addEventListener("gesturestart",e=>e.preventDefault());
+
+function getGameX(clientX){
+  const rect=canvas.getBoundingClientRect();
+  return (clientX-rect.left)*(W/rect.width);
+}
+
+canvas.addEventListener("pointerdown",e=>{
+  if(state==="title"){
+    initGame();return;
+  }
+  if(state==="dead"&&deathTimer<0.3){
+    initGame();return;
+  }
+  if(state==="playing"){
+    dragActive=true;
+    dragX=getGameX(e.clientX);
+    targetX=dragX;
+  }
+});
+canvas.addEventListener("pointermove",e=>{
+  if(dragActive&&state==="playing"){
+    targetX=getGameX(e.clientX);
+  }
+});
+canvas.addEventListener("pointerup",()=>{dragActive=false;});
+canvas.addEventListener("pointercancel",()=>{dragActive=false;});
+
+// Keyboard
+document.addEventListener("keydown",e=>{
+  if(state==="title"&&(e.key===" "||e.key==="Enter")){initGame();return;}
+  if(state==="dead"&&deathTimer<0.3&&(e.key===" "||e.key==="Enter")){initGame();return;}
+  if(state==="playing"){
+    if(e.key==="ArrowLeft"||e.key==="a"||e.key==="A") targetX=Math.max(18,koi.x-60);
+    if(e.key==="ArrowRight"||e.key==="d"||e.key==="D") targetX=Math.min(W-18,koi.x+60);
+  }
+});
+document.addEventListener("keyup",e=>{
+  if(state==="playing"){
+    if(e.key==="ArrowLeft"||e.key==="a"||e.key==="A"||e.key==="ArrowRight"||e.key==="d"||e.key==="D"){
+      targetX=koi.x;
+    }
+  }
+});
+
+// ===== KICK OFF =====
+// Initialize all loop state at declaration (already done above)
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

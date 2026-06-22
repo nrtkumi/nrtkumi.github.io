@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>花あわせ — 花札コンボ・デッキビルドローグライト</title>
+<meta name="description" content="花札の役でコンボを組み、文(点数)を稼ぐデッキビルドローグライト。12月のアンテを突破して伝説の花合わせ師を目指せ。">
+<meta property="og:title" content="花あわせ — 花札コンボ・デッキビルドローグライト">
+<meta property="og:description" content="花札の役でコンボを組み、文(点数)を稼ぐデッキビルドローグライト。12月のアンテを突破して伝説の花合わせ師を目指せ。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nrtkumi.github.io/games/hanaawase/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/hanaawase/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@400;700;800&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sumi: #0e0b08;
+  --lacquer: #1a1209;
+  --table: #2a1c0e;
+  --gold: #c8973a;
+  --gold-bright: #f5c842;
+  --gold-pale: #8a6520;
+  --red: #c0392b;
+  --red-bright: #e74c3c;
+  --cream: #f2e8d4;
+  --paper: #ede0c4;
+  --ink: #1a1209;
+  --muted: #8a7a5a;
+  --border: #3d2c14;
+  --card-bg: #f5edd8;
+  --card-border: #c8973a;
+  --selected-glow: #f5c842;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%;
+  background: #0a0806;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+body {
+  font-family: "Zen Maru Gothic", "Hiragino Kaku Gothic Pro", sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+#app {
+  position: relative;
+  width: min(100vw, calc(100dvh * 0.52), 420px);
+  height: 100dvh;
+  background: var(--lacquer);
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(200,151,58,0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(192,57,43,0.05) 0%, transparent 50%);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 0 60px rgba(0,0,0,0.8);
+}
+
+/* Gold line decorations */
+#app::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  z-index: 100;
+}
+
+/* ===== SCREEN BASE ===== */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  padding-top: calc(env(safe-area-inset-top) + 16px);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.screen.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ===== TITLE SCREEN ===== */
+#screen-title {
+  background: var(--lacquer);
+  gap: 20px;
+}
+.title-deco {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 4.5rem;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 30px rgba(200,151,58,0.5), 0 2px 4px rgba(0,0,0,0.8);
+  line-height: 1;
+}
+.title-sub {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 0.85rem;
+  color: var(--muted);
+  letter-spacing: 0.2em;
+}
+.title-cards {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 8px 0;
+}
+.title-card {
+  width: 52px;
+  height: 74px;
+  border-radius: 6px;
+  border: 2px solid var(--gold);
+  background: var(--card-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+  position: relative;
+  overflow: hidden;
+}
+.title-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+  border-radius: 4px;
+}
+.best-display {
+  background: rgba(200,151,58,0.08);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 20px;
+  text-align: center;
+  min-width: 200px;
+}
+.best-display .label {
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.2em;
+  margin-bottom: 2px;
+}
+.best-display .value {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 1.2rem;
+  color: var(--gold);
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold) 0%, #a07020 100%);
+  color: var(--sumi);
+  font-family: "Shippori Mincho B1", serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.15em;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 40px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(200,151,58,0.4);
+  transition: transform 0.1s, box-shadow 0.1s;
+  touch-action: manipulation;
+}
+.btn-primary:active { transform: scale(0.96); box-shadow: 0 2px 8px rgba(200,151,58,0.3); }
+.mute-btn {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  right: 12px;
+  background: rgba(200,151,58,0.1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 1.1rem;
+  padding: 6px 10px;
+  cursor: pointer;
+  touch-action: manipulation;
+  z-index: 200;
+}
+
+/* ===== GAME SCREEN ===== */
+#screen-game {
+  justify-content: flex-start;
+  padding: 8px;
+  padding-top: calc(env(safe-area-inset-top) + 8px);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
+  gap: 6px;
+}
+
+/* HUD */
+.hud {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--border);
+  border-radius: 8px;
+}
+.hud-month {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  flex: 1;
+}
+.hud-month b {
+  display: block;
+  font-size: 1rem;
+  color: var(--gold);
+  line-height: 1.2;
+}
+.hud-target {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: center;
+}
+.hud-target b {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--cream);
+}
+.hud-plays {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: right;
+}
+.hud-plays b {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--cream);
+}
+
+/* Progress bar */
+.progress-wrap {
+  width: 100%;
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-pale), var(--gold-bright));
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Score display */
+.score-display {
+  width: 100%;
+  background: rgba(200,151,58,0.06);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+}
+.score-total {
+  flex: 1;
+}
+.score-label {
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+.score-value {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--gold-bright);
+  line-height: 1;
+  transition: transform 0.15s;
+}
+.score-value.pop {
+  transform: scale(1.15);
+  color: #fff;
+}
+.score-formula {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: right;
+  line-height: 1.5;
+}
+.score-formula .base { color: var(--cream); }
+.score-formula .mult { color: var(--gold); font-weight: 700; }
+.score-formula .result { color: var(--gold-bright); font-size: 0.9rem; }
+
+/* Yaku announce */
+.yaku-announce {
+  width: 100%;
+  text-align: center;
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 1rem;
+  color: var(--gold-bright);
+  letter-spacing: 0.15em;
+  min-height: 24px;
+  text-shadow: 0 0 12px rgba(245,200,66,0.6);
+}
+
+/* Hand area */
+.hand-area {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.hand-label {
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  padding: 0 4px;
+}
+.hand-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 4px;
+}
+
+/* Card */
+.card {
+  width: calc((100% - 48px) / 5);
+  aspect-ratio: 0.68;
+  max-width: 68px;
+  border-radius: 6px;
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px; right: 3px; bottom: 3px;
+  border: 1px solid rgba(200,151,58,0.25);
+  border-radius: 3px;
+  pointer-events: none;
+}
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 40%);
+  pointer-events: none;
+}
+.card.selected {
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 16px rgba(245,200,66,0.6), 0 3px 8px rgba(0,0,0,0.4);
+  transform: translateY(-6px) scale(1.03);
+}
+.card:active { transform: translateY(-3px) scale(1.01); }
+.card.selected:active { transform: translateY(-4px) scale(1.02); }
+.card-flower {
+  font-size: 1.6rem;
+  line-height: 1;
+  pointer-events: none;
+}
+.card-type {
+  font-size: 0.5rem;
+  color: var(--gold-pale);
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  font-family: "Shippori Mincho B1", serif;
+}
+.card-month-dot {
+  position: absolute;
+  bottom: 3px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold-pale);
+  opacity: 0.5;
+  pointer-events: none;
+}
+/* Special card types */
+.card.hikari {
+  background: linear-gradient(135deg, #fdf6e3 60%, #f9e89a);
+  border-color: var(--gold-bright);
+}
+.card.hikari .card-type { color: var(--gold); font-weight: 700; }
+.card.tane {
+  background: linear-gradient(135deg, #f5edd8 60%, #e8f5d8);
+  border-color: #6a8a4a;
+}
+.card.tane .card-type { color: #4a7a2a; }
+.card.tan {
+  background: linear-gradient(135deg, #f5edd8 60%, #f5d8d8);
+  border-color: var(--red);
+}
+.card.tan .card-type { color: var(--red); }
+.card.kasu {
+  background: var(--card-bg);
+  opacity: 0.85;
+}
+
+/* Action buttons */
+.action-row {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+}
+.btn-awase {
+  flex: 2;
+  background: linear-gradient(135deg, var(--gold) 0%, #8a6020 100%);
+  color: var(--sumi);
+  font-family: "Shippori Mincho B1", serif;
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.2em;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 3px 12px rgba(200,151,58,0.4);
+  transition: transform 0.1s, opacity 0.1s;
+}
+.btn-awase:disabled { opacity: 0.4; transform: none !important; }
+.btn-awase:not(:disabled):active { transform: scale(0.97); }
+.btn-discard {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  border-radius: 10px;
+  padding: 14px 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.1s, opacity 0.1s;
+}
+.btn-discard:disabled { opacity: 0.3; transform: none !important; }
+.btn-discard:not(:disabled):active { transform: scale(0.97); }
+
+/* ===== SHOP SCREEN ===== */
+#screen-shop {
+  justify-content: flex-start;
+  padding: 12px;
+  padding-top: calc(env(safe-area-inset-top) + 12px);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
+  gap: 10px;
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+.shop-header {
+  width: 100%;
+  text-align: center;
+}
+.shop-title {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 0.2em;
+}
+.shop-subtitle {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.shop-mon {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 1rem;
+  color: var(--gold-bright);
+}
+.shop-section-title {
+  width: 100%;
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.shop-items {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.shop-item {
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 0.12s, background 0.12s;
+}
+.shop-item:active { background: rgba(200,151,58,0.08); border-color: var(--gold-pale); }
+.shop-item.purchased { opacity: 0.4; pointer-events: none; }
+.shop-item-icon {
+  font-size: 1.5rem;
+  width: 36px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.shop-item-info { flex: 1; }
+.shop-item-name {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 0.9rem;
+  color: var(--cream);
+  font-weight: 700;
+}
+.shop-item-desc {
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.shop-item-price {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 0.95rem;
+  color: var(--gold);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.shop-item-price.can-afford { color: var(--gold-bright); }
+.shop-item-price.cant-afford { color: var(--muted); }
+.btn-next-month {
+  width: 100%;
+  background: linear-gradient(135deg, var(--gold) 0%, #8a6020 100%);
+  color: var(--sumi);
+  font-family: "Shippori Mincho B1", serif;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.15em;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+  margin-top: 4px;
+}
+.btn-next-month:active { transform: scale(0.97); }
+
+/* Charms display */
+.charms-row {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.charm-badge {
+  background: rgba(200,151,58,0.12);
+  border: 1px solid var(--gold-pale);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 0.65rem;
+  color: var(--gold);
+}
+
+/* ===== RESULT SCREEN ===== */
+#screen-result {
+  gap: 16px;
+  background: var(--lacquer);
+}
+.result-title {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+.result-title.success { color: var(--gold-bright); text-shadow: 0 0 20px rgba(245,200,66,0.5); }
+.result-title.fail { color: var(--red-bright); }
+.result-stats {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 24px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.result-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.result-stat-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+.result-stat-value {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 1.1rem;
+  color: var(--cream);
+  font-weight: 700;
+}
+.result-stat-value.best { color: var(--gold-bright); }
+.result-msg {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ===== OVERLAYS ===== */
+.combo-popup {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--gold-bright);
+  text-shadow: 0 0 20px rgba(245,200,66,0.8), 0 2px 4px rgba(0,0,0,0.9);
+  pointer-events: none;
+  z-index: 500;
+  animation: popFloat 1s forwards;
+  white-space: nowrap;
+}
+@keyframes popFloat {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-50%) scale(0.8); }
+  20% { opacity: 1; transform: translateX(-50%) translateY(-50%) scale(1.1); }
+  60% { opacity: 1; transform: translateX(-50%) translateY(-60%) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-80%) scale(0.9); }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 340px) {
+  .card { width: calc((100% - 40px) / 5); }
+  .btn-awase { font-size: 0.95rem; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Mute button -->
+  <button class="mute-btn" id="muteBtn" aria-label="ミュート切替">🔊</button>
+
+  <!-- TITLE SCREEN -->
+  <div class="screen active" id="screen-title">
+    <div class="title-deco">花あわせ</div>
+    <div class="title-sub">HANA AWASE — 花札デッキビルド</div>
+    <div class="title-cards" id="titleCards"></div>
+    <div class="best-display" id="titleBest">
+      <div class="label">最高記録</div>
+      <div class="value" id="bestDisplay">—</div>
+    </div>
+    <button class="btn-primary" id="btnStart">はじめる</button>
+    <div class="title-sub" style="font-size:0.6rem;margin-top:4px">12ヶ月の月を越え、伝説の花合わせ師へ</div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div class="screen" id="screen-game">
+    <div class="hud">
+      <div class="hud-month">
+        <span>月</span>
+        <b id="hudMonth">一月</b>
+      </div>
+      <div class="hud-target">
+        目標
+        <b id="hudTarget">100文</b>
+      </div>
+      <div class="hud-plays">
+        手番<b id="hudPlays">4</b> 捨<b id="hudDiscards">3</b>
+      </div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBar" style="width:0%"></div>
+    </div>
+    <div class="score-display">
+      <div class="score-total">
+        <div class="score-label">獲得文</div>
+        <div class="score-value" id="scoreValue">0</div>
+      </div>
+      <div class="score-formula" id="scoreFormula">
+        役を選んであわせよ
+      </div>
+    </div>
+    <div class="yaku-announce" id="yakuAnnounce"></div>
+    <div class="hand-area">
+      <div class="hand-label">手札 — タップして選ぶ、役をあわせる</div>
+      <div class="hand-cards" id="handCards"></div>
+    </div>
+    <div class="action-row">
+      <button class="btn-awase" id="btnAwase" disabled>あわせる</button>
+      <button class="btn-discard" id="btnDiscard">捨てる</button>
+    </div>
+  </div>
+
+  <!-- SHOP SCREEN -->
+  <div class="screen" id="screen-shop">
+    <div class="shop-header">
+      <div class="shop-title">道具市</div>
+      <div class="shop-subtitle">お守りを買い、次の月へ</div>
+      <div class="shop-mon">所持文: <span id="shopMon">0</span>文</div>
+    </div>
+    <div class="shop-section-title">お守り (3つから選ぶ)</div>
+    <div class="shop-items" id="shopItems"></div>
+    <div class="shop-section-title">所持お守り</div>
+    <div class="charms-row" id="charmsRow"></div>
+    <button class="btn-next-month" id="btnNextMonth">次の月へ →</button>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div class="screen" id="screen-result">
+    <div class="result-title" id="resultTitle">ゲームオーバー</div>
+    <div class="result-stats">
+      <div class="result-stat-row">
+        <div class="result-stat-label">到達月</div>
+        <div class="result-stat-value" id="resultMonth">一月</div>
+      </div>
+      <div class="result-stat-row">
+        <div class="result-stat-label">累計得点</div>
+        <div class="result-stat-value" id="resultScore">0文</div>
+      </div>
+      <div class="result-stat-row">
+        <div class="result-stat-label">最高到達月 (ベスト)</div>
+        <div class="result-stat-value best" id="resultBestMonth">—</div>
+      </div>
+      <div class="result-stat-row">
+        <div class="result-stat-label">最高得点 (ベスト)</div>
+        <div class="result-stat-value best" id="resultBestScore">—</div>
+      </div>
+    </div>
+    <div class="result-msg" id="resultMsg"></div>
+    <button class="btn-primary" id="btnRestart">もう一度</button>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+
+// ===== iOS AUDIO =====
+let AC = null, muted = false;
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => {
+        if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch(e) {} }
+      };
+    } catch(e) {}
+  }
+  if (AC && AC.state !== "running") { try { AC.resume(); } catch(e) {} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
+  str(0,"RIFF"); v.setUint32(4,36+n,true); str(8,"WAVE"); str(12,"fmt ");
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr,true); v.setUint16(32,1,true);
+  v.setUint16(34,8,true); str(36,"data"); v.setUint32(40,n,true);
+  for(let i=0;i<n;i++) v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline","");
+    silentEl.loop = true; silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play();
+  if (p && p.catch) p.catch(()=>{});
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === "running")
+      ["pointerdown","pointerup","touchend"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+  };
+  try { AC.resume().then(done); } catch(e) { done(); }
+}
+["pointerdown","pointerup","touchend"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+// ===== DOUBLE-TAP ZOOM PREVENTION =====
+let lastTouch = 0;
+document.addEventListener("touchend", e => {
+  const n = Date.now();
+  if (n - lastTouch <= 350 && e.cancelable) { e.preventDefault(); }
+  lastTouch = n;
+}, {passive: false});
+document.addEventListener("dblclick", e => e.preventDefault());
+document.addEventListener("gesturestart", e => e.preventDefault());
+
+// ===== SOUND =====
+function playSound(type) {
+  if (muted) return;
+  const ac = audio();
+  if (!ac) return;
+  const t = ac.currentTime;
+  const g = ac.createGain();
+  g.connect(ac.destination);
+  if (type === "select") {
+    const o = ac.createOscillator();
+    o.connect(g); o.type = "sine";
+    o.frequency.setValueAtTime(880, t);
+    o.frequency.exponentialRampToValueAtTime(1100, t+0.06);
+    g.gain.setValueAtTime(0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t+0.12);
+    o.start(t); o.stop(t+0.12);
+  } else if (type === "play") {
+    const o = ac.createOscillator();
+    o.connect(g); o.type = "triangle";
+    o.frequency.setValueAtTime(440, t);
+    o.frequency.exponentialRampToValueAtTime(660, t+0.1);
+    g.gain.setValueAtTime(0.18, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t+0.2);
+    o.start(t); o.stop(t+0.2);
+  } else if (type === "bigplay") {
+    [220, 330, 440, 660].forEach((f, i) => {
+      const o = ac.createOscillator();
+      const g2 = ac.createGain();
+      o.connect(g2); g2.connect(ac.destination);
+      o.type = "triangle"; o.frequency.value = f;
+      g2.gain.setValueAtTime(0, t + i*0.05);
+      g2.gain.linearRampToValueAtTime(0.15, t + i*0.05 + 0.03);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + i*0.05 + 0.25);
+      o.start(t + i*0.05); o.stop(t + i*0.05 + 0.25);
+    });
+  } else if (type === "discard") {
+    const o = ac.createOscillator();
+    o.connect(g); o.type = "sawtooth";
+    o.frequency.setValueAtTime(300, t);
+    o.frequency.exponentialRampToValueAtTime(150, t+0.12);
+    g.gain.setValueAtTime(0.08, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t+0.12);
+    o.start(t); o.stop(t+0.12);
+  } else if (type === "buy") {
+    [523, 659, 784].forEach((f, i) => {
+      const o = ac.createOscillator();
+      const g2 = ac.createGain();
+      o.connect(g2); g2.connect(ac.destination);
+      o.type = "sine"; o.frequency.value = f;
+      g2.gain.setValueAtTime(0, t + i*0.07);
+      g2.gain.linearRampToValueAtTime(0.12, t + i*0.07 + 0.02);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + i*0.07 + 0.18);
+      o.start(t + i*0.07); o.stop(t + i*0.07 + 0.18);
+    });
+  } else if (type === "advance") {
+    [261, 329, 392, 523, 659].forEach((f, i) => {
+      const o = ac.createOscillator();
+      const g2 = ac.createGain();
+      o.connect(g2); g2.connect(ac.destination);
+      o.type = "sine"; o.frequency.value = f;
+      g2.gain.setValueAtTime(0, t + i*0.08);
+      g2.gain.linearRampToValueAtTime(0.15, t + i*0.08 + 0.03);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + i*0.08 + 0.3);
+      o.start(t + i*0.08); o.stop(t + i*0.08 + 0.3);
+    });
+  } else if (type === "fail") {
+    const o = ac.createOscillator();
+    o.connect(g); o.type = "sawtooth";
+    o.frequency.setValueAtTime(220, t);
+    o.frequency.exponentialRampToValueAtTime(80, t+0.4);
+    g.gain.setValueAtTime(0.15, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t+0.4);
+    o.start(t); o.stop(t+0.4);
+  }
+}
+
+// ===== HANAFUDA DATA =====
+// 12 months, each has 4 cards
+// Types: hikari(光), tane(タネ), tan(短冊), kasu(カス)
+// Special short: akatan(赤短), aotan(青短)
+const MONTHS = [
+  { name: "一月", kanji: "睦月", flower: "🌸", emoji: "🌸", romanji: "Mutsuki" },
+  { name: "二月", kanji: "如月", flower: "🌸", emoji: "🌺", romanji: "Kisaragi" },
+  { name: "三月", kanji: "弥生", flower: "🌸", emoji: "🌸", romanji: "Yayoi" },
+  { name: "四月", kanji: "卯月", flower: "🌿", emoji: "🌿", romanji: "Uzuki" },
+  { name: "五月", kanji: "皐月", flower: "🏔️", emoji: "🏔️", romanji: "Satsuki" },
+  { name: "六月", kanji: "水無月", flower: "🦋", emoji: "🦋", romanji: "Minazuki" },
+  { name: "七月", kanji: "文月", flower: "🐗", emoji: "🐗", romanji: "Fumizuki" },
+  { name: "八月", kanji: "葉月", flower: "🌕", emoji: "🌕", romanji: "Hazuki" },
+  { name: "九月", kanji: "長月", flower: "🍶", emoji: "🍶", romanji: "Nagatsuki" },
+  { name: "十月", kanji: "神無月", flower: "🦌", emoji: "🦌", romanji: "Kannazuki" },
+  { name: "十一月", kanji: "霜月", flower: "🌧️", emoji: "🌧️", romanji: "Shimotsuki" },
+  { name: "十二月", kanji: "師走", flower: "🌊", emoji: "🌊", romanji: "Shiwasu" },
+];
+
+// Card definitions: [month_index, type, display_name, emoji]
+// Types: hikari=光, tane=タネ, tan=短冊, kasu=カス
+// Special tags for yaku detection
+const CARD_DEFS = [
+  // 一月 松 (January Pine)
+  { m:0, t:"hikari", n:"松に鶴",     e:"🦅", special:["goko","shiko","sanko","tsukimizake_no"] },
+  { m:0, t:"tan",    n:"松の短冊",   e:"📜", special:["akatan"] },
+  { m:0, t:"kasu",   n:"松のカス",   e:"🌲" },
+  { m:0, t:"kasu",   n:"松のカス",   e:"🌲" },
+  // 二月 梅 (February Plum)
+  { m:1, t:"tane",   n:"梅に鴬",     e:"🐦", special:[] },
+  { m:1, t:"tan",    n:"梅の短冊",   e:"📜", special:["akatan"] },
+  { m:1, t:"kasu",   n:"梅のカス",   e:"🌸" },
+  { m:1, t:"kasu",   n:"梅のカス",   e:"🌸" },
+  // 三月 桜 (March Cherry)
+  { m:2, t:"hikari", n:"幕",         e:"🏮", special:["goko","shiko","sanko","hanamizake"] },
+  { m:2, t:"tan",    n:"桜の短冊",   e:"📜", special:["akatan"] },
+  { m:2, t:"kasu",   n:"桜のカス",   e:"🌸" },
+  { m:2, t:"kasu",   n:"桜のカス",   e:"🌸" },
+  // 四月 藤 (April Wisteria)
+  { m:3, t:"tane",   n:"藤に不如帰", e:"🐓", special:[] },
+  { m:3, t:"tan",    n:"藤の短冊",   e:"📜", special:["akatan"] },
+  { m:3, t:"kasu",   n:"藤のカス",   e:"💜" },
+  { m:3, t:"kasu",   n:"藤のカス",   e:"💜" },
+  // 五月 菖蒲 (May Iris)
+  { m:4, t:"tane",   n:"菖蒲に八橋", e:"🌉", special:[] },
+  { m:4, t:"tan",    n:"菖蒲の短冊", e:"📜", special:["aotan"] },
+  { m:4, t:"kasu",   n:"菖蒲のカス", e:"💐" },
+  { m:4, t:"kasu",   n:"菖蒲のカス", e:"💐" },
+  // 六月 牡丹 (June Peony)
+  { m:5, t:"tane",   n:"牡丹に蝶々", e:"🦋", special:["inoshikachou"] },
+  { m:5, t:"tan",    n:"牡丹の短冊", e:"📜", special:["aotan"] },
+  { m:5, t:"kasu",   n:"牡丹のカス", e:"🌹" },
+  { m:5, t:"kasu",   n:"牡丹のカス", e:"🌹" },
+  // 七月 萩 (July Bush Clover)
+  { m:6, t:"tane",   n:"萩に猪",     e:"🐗", special:["inoshikachou"] },
+  { m:6, t:"tan",    n:"萩の短冊",   e:"📜", special:["akatan"] },
+  { m:6, t:"kasu",   n:"萩のカス",   e:"🌾" },
+  { m:6, t:"kasu",   n:"萩のカス",   e:"🌾" },
+  // 八月 芒 (August Pampas Grass)
+  { m:7, t:"hikari", n:"芒に月",     e:"🌕", special:["goko","shiko","sanko","tsukimizake"] },
+  { m:7, t:"tane",   n:"芒に雁",     e:"🦢", special:[] },
+  { m:7, t:"kasu",   n:"芒のカス",   e:"🌾" },
+  { m:7, t:"kasu",   n:"芒のカス",   e:"🌾" },
+  // 九月 菊 (September Chrysanthemum)
+  { m:8, t:"tane",   n:"菊に盃",     e:"🍶", special:["tsukimizake_no","hanamizake_no"] },
+  { m:8, t:"tan",    n:"菊の短冊",   e:"📜", special:["aotan"] },
+  { m:8, t:"kasu",   n:"菊のカス",   e:"🌼" },
+  { m:8, t:"kasu",   n:"菊のカス",   e:"🌼" },
+  // 十月 紅葉 (October Maple)
+  { m:9, t:"tane",   n:"紅葉に鹿",   e:"🦌", special:["inoshikachou"] },
+  { m:9, t:"tan",    n:"紅葉の短冊", e:"📜", special:["aotan"] },
+  { m:9, t:"kasu",   n:"紅葉のカス", e:"🍁" },
+  { m:9, t:"kasu",   n:"紅葉のカス", e:"🍁" },
+  // 十一月 柳 (November Willow)
+  { m:10, t:"hikari", n:"小野道風",  e:"🐸", special:["goko","tsukimizake_no","hanamizake_no"] },
+  { m:10, t:"tane",   n:"柳に燕",   e:"🕊️", special:[] },
+  { m:10, t:"tan",    n:"柳の短冊",  e:"📜", special:[] },
+  { m:10, t:"kasu",   n:"柳のカス",  e:"🌿" },
+  // 十二月 桐 (December Paulownia)
+  { m:11, t:"hikari", n:"鳳凰",      e:"🦚", special:["goko","shiko"] },
+  { m:11, t:"kasu",   n:"桐のカス",  e:"🎋" },
+  { m:11, t:"kasu",   n:"桐のカス",  e:"🎋" },
+  { m:11, t:"kasu",   n:"桐のカス",  e:"🎋" },
+];
+
+// Assign IDs
+CARD_DEFS.forEach((c, i) => { c.id = i; });
+
+// ===== YAKU DEFINITIONS =====
+// Each yaku: { name, fn(cards) => boolean, base, mult_bonus, desc }
+const YAKU_DEFS = [
+  {
+    name: "五光",
+    desc: "5枚の光札",
+    base: 100,
+    mult: 10,
+    fn: (cards) => {
+      const h = cards.filter(c => c.t === "hikari");
+      return h.length >= 5 && h.some(c => c.special && c.special.includes("goko")) ? h.length >= 5 : false;
+    }
+  },
+  {
+    name: "四光",
+    desc: "4枚の光札(雨なし)",
+    base: 60,
+    mult: 8,
+    fn: (cards) => {
+      const h = cards.filter(c => c.t === "hikari" && c.special && c.special.includes("shiko"));
+      return h.length >= 4;
+    }
+  },
+  {
+    name: "雨四光",
+    desc: "小野道風を含む4枚の光",
+    base: 40,
+    mult: 6,
+    fn: (cards) => {
+      const h = cards.filter(c => c.t === "hikari");
+      const rain = cards.find(c => c.m === 10 && c.t === "hikari");
+      return h.length >= 4 && !!rain;
+    }
+  },
+  {
+    name: "三光",
+    desc: "3枚の光札(雨なし)",
+    base: 30,
+    mult: 5,
+    fn: (cards) => {
+      const h = cards.filter(c => c.t === "hikari" && c.special && c.special.includes("sanko"));
+      return h.length >= 3;
+    }
+  },
+  {
+    name: "猪鹿蝶",
+    desc: "猪・鹿・蝶のタネ3枚",
+    base: 30,
+    mult: 5,
+    fn: (cards) => {
+      const isc = cards.filter(c => c.special && c.special.includes("inoshikachou"));
+      return isc.length >= 3;
+    }
+  },
+  {
+    name: "花見で一杯",
+    desc: "桜の幕と菊の盃",
+    base: 20,
+    mult: 4,
+    fn: (cards) => {
+      return cards.some(c => c.special && c.special.includes("hanamizake")) &&
+             cards.some(c => (c.special && c.special.includes("hanamizake_no")) || (c.m === 8 && c.t === "tane"));
+    }
+  },
+  {
+    name: "月見で一杯",
+    desc: "芒の月と菊の盃",
+    base: 20,
+    mult: 4,
+    fn: (cards) => {
+      return cards.some(c => c.special && c.special.includes("tsukimizake")) &&
+             cards.some(c => (c.special && c.special.includes("tsukimizake_no")) || (c.m === 8 && c.t === "tane"));
+    }
+  },
+  {
+    name: "青短",
+    desc: "青の短冊3枚",
+    base: 20,
+    mult: 3,
+    fn: (cards) => {
+      return cards.filter(c => c.special && c.special.includes("aotan")).length >= 3;
+    }
+  },
+  {
+    name: "赤短",
+    desc: "赤の短冊3枚",
+    base: 20,
+    mult: 3,
+    fn: (cards) => {
+      return cards.filter(c => c.special && c.special.includes("akatan")).length >= 3;
+    }
+  },
+  {
+    name: "タネ",
+    desc: "タネ札5枚以上",
+    base: 10,
+    mult: 2,
+    fn: (cards) => cards.filter(c => c.t === "tane").length >= 5,
+    countBased: (cards) => {
+      const n = cards.filter(c => c.t === "tane").length - 4;
+      return n > 0 ? n : 0;
+    }
+  },
+  {
+    name: "タン",
+    desc: "短冊札5枚以上",
+    base: 10,
+    mult: 2,
+    fn: (cards) => cards.filter(c => c.t === "tan").length >= 5,
+    countBased: (cards) => {
+      const n = cards.filter(c => c.t === "tan").length - 4;
+      return n > 0 ? n : 0;
+    }
+  },
+  {
+    name: "カス",
+    desc: "カス札10枚以上",
+    base: 5,
+    mult: 1,
+    fn: (cards) => cards.filter(c => c.t === "kasu").length >= 10,
+    countBased: (cards) => {
+      const n = cards.filter(c => c.t === "kasu").length - 9;
+      return n > 0 ? n : 0;
+    }
+  }
+];
+
+// ===== SHOP CHARM DEFS =====
+const CHARM_POOL = [
+  { id:"ino_plus",   name:"猪鹿蝶の極意", icon:"🐗", desc:"猪鹿蝶の基礎点+30", cost:4, effect:{yakuBonus:{yaku:"猪鹿蝶",base:30}} },
+  { id:"hikari_add", name:"光集め",        icon:"💡", desc:"光札の倍率×1.5",    cost:5, effect:{typeMult:{type:"hikari",mult:1.5}} },
+  { id:"tane_add",   name:"タネ揃え",      icon:"🌱", desc:"タネの基礎点+2",   cost:3, effect:{typeBonus:{type:"tane",base:2}} },
+  { id:"tan_add",    name:"短冊彩り",      icon:"📜", desc:"短冊の基礎点+2",   cost:3, effect:{typeBonus:{type:"tan",base:2}} },
+  { id:"kasu_val",   name:"カスの道",      icon:"♻️",  desc:"カスも得点(×2倍)",  cost:2, effect:{kasuVal:2} },
+  { id:"hand_up",    name:"大きな手札",    icon:"🃏",  desc:"手札枚数+1",        cost:4, effect:{handSize:1} },
+  { id:"discard_up", name:"捨て上手",      icon:"🗑️",  desc:"捨て回数+1",        cost:3, effect:{discards:1} },
+  { id:"play_up",    name:"もう一手",      icon:"➕",  desc:"手番数+1",          cost:4, effect:{plays:1} },
+  { id:"mult_global",name:"絶対倍率",      icon:"⚡",  desc:"全役の倍率+1",      cost:6, effect:{globalMult:1} },
+  { id:"hanamizake_plus", name:"花見酒の徳", icon:"🌸", desc:"花見で一杯+20基礎", cost:4, effect:{yakuBonus:{yaku:"花見で一杯",base:20}} },
+  { id:"tsukimizake_plus", name:"月見酒の徳", icon:"🌕", desc:"月見で一杯+20基礎", cost:4, effect:{yakuBonus:{yaku:"月見で一杯",base:20}} },
+  { id:"akatan_plus",name:"赤短の誉",      icon:"🔴",  desc:"赤短の倍率+2",      cost:4, effect:{yakuBonus:{yaku:"赤短",mult:2}} },
+  { id:"aotan_plus", name:"青短の誉",      icon:"🔵",  desc:"青短の倍率+2",      cost:4, effect:{yakuBonus:{yaku:"青短",mult:2}} },
+  { id:"sanko_plus", name:"三光の誉",      icon:"☀️",  desc:"三光の基礎点+20",   cost:5, effect:{yakuBonus:{yaku:"三光",base:20}} },
+  { id:"goko_plus",  name:"五光の極み",    icon:"🌟",  desc:"五光の倍率+3",      cost:7, effect:{yakuBonus:{yaku:"五光",mult:3}} },
+];
+
+// ===== SAVE/LOAD =====
+function loadSave() {
+  try {
+    const s = localStorage.getItem("hanaawase_save");
+    if (s) {
+      const d = JSON.parse(s);
+      if (typeof d.bestMonth === "number" && typeof d.bestScore === "number") return d;
+    }
+  } catch(e) {}
+  return { bestMonth: 0, bestScore: 0, unlockedCharms: [] };
+}
+function writeSave(data) {
+  try { localStorage.setItem("hanaawase_save", JSON.stringify(data)); } catch(e) {}
+}
+
+let save = loadSave();
+
+// ===== GAME STATE =====
+let gs = {
+  screen: "title",
+  month: 0,           // 0-indexed, 0=一月
+  totalScore: 0,      // accumulated across rounds
+  roundScore: 0,      // current round score
+  target: 0,
+  playsLeft: 0,
+  discardsLeft: 0,
+  deck: [],           // card ids
+  hand: [],           // card ids
+  selected: [],       // card ids selected in hand
+  charms: [],         // purchased charm ids
+  shopMon: 0,         // money for shop (earned this round)
+  shopOffers: [],     // 3 charm offers for this shop
+  // Derived from charms:
+  handSize: 6,
+  maxPlays: 4,
+  maxDiscards: 3,
+  globalMult: 0,
+  kasuVal: 0,
+  yakuBonuses: {},    // yaku name -> {base, mult}
+  typeBonuses: {},    // type -> {base, mult}
+  lastYaku: [],
+  lastBase: 0,
+  lastMult: 0,
+  lastTotal: 0,
+};
+
+const MONTH_NAMES = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+const ANTE_TARGETS = [80, 160, 280, 440, 640, 900, 1200, 1600, 2100, 2700, 3400, 4200];
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i+1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function buildDeck() {
+  return shuffle(CARD_DEFS.map(c => c.id));
+}
+
+function applyCharms() {
+  // Reset derived stats
+  gs.handSize = 6;
+  gs.maxPlays = 4;
+  gs.maxDiscards = 3;
+  gs.globalMult = 0;
+  gs.kasuVal = 0;
+  gs.yakuBonuses = {};
+  gs.typeBonuses = {};
+
+  for (const cid of gs.charms) {
+    const ch = CHARM_POOL.find(c => c.id === cid);
+    if (!ch) continue;
+    const ef = ch.effect;
+    if (ef.handSize) gs.handSize += ef.handSize;
+    if (ef.plays) gs.maxPlays += ef.plays;
+    if (ef.discards) gs.maxDiscards += ef.discards;
+    if (ef.globalMult) gs.globalMult += ef.globalMult;
+    if (ef.kasuVal) gs.kasuVal += ef.kasuVal;
+    if (ef.yakuBonus) {
+      const yn = ef.yakuBonus.yaku;
+      if (!gs.yakuBonuses[yn]) gs.yakuBonuses[yn] = {base:0, mult:0};
+      if (ef.yakuBonus.base) gs.yakuBonuses[yn].base += ef.yakuBonus.base;
+      if (ef.yakuBonus.mult) gs.yakuBonuses[yn].mult += ef.yakuBonus.mult;
+    }
+    if (ef.typeMult) {
+      const tp = ef.typeMult.type;
+      if (!gs.typeBonuses[tp]) gs.typeBonuses[tp] = {base:0, mult:1};
+      gs.typeBonuses[tp].mult = (gs.typeBonuses[tp].mult || 1) * ef.typeMult.mult;
+    }
+    if (ef.typeBonus) {
+      const tp = ef.typeBonus.type;
+      if (!gs.typeBonuses[tp]) gs.typeBonuses[tp] = {base:0, mult:1};
+      gs.typeBonuses[tp].base = (gs.typeBonuses[tp].base || 0) + ef.typeBonus.base;
+    }
+  }
+}
+
+function startGame() {
+  gs.month = 0;
+  gs.totalScore = 0;
+  gs.charms = [];
+  startMonth();
+}
+
+function startMonth() {
+  applyCharms();
+  gs.target = ANTE_TARGETS[gs.month];
+  gs.roundScore = 0;
+  gs.playsLeft = gs.maxPlays;
+  gs.discardsLeft = gs.maxDiscards;
+  gs.deck = buildDeck();
+  gs.hand = [];
+  gs.selected = [];
+  gs.lastYaku = [];
+  gs.lastBase = 0;
+  gs.lastMult = 0;
+  gs.lastTotal = 0;
+  drawToFill();
+  showScreen("game");
+  renderGame();
+}
+
+function drawToFill() {
+  while (gs.hand.length < gs.handSize && gs.deck.length > 0) {
+    gs.hand.push(gs.deck.pop());
+  }
+}
+
+// ===== SCORING =====
+function scoreSelection(cards) {
+  // Find all active yaku
+  const activeYaku = YAKU_DEFS.filter(y => y.fn(cards));
+
+  if (activeYaku.length === 0) {
+    // Base points from card types
+    let base = 0;
+    for (const c of cards) {
+      const tb = gs.typeBonuses[c.t] || {base:0, mult:1};
+      if (c.t === "hikari") base += 20 + (tb.base || 0);
+      else if (c.t === "tane") base += 10 + (tb.base || 0);
+      else if (c.t === "tan") base += 5 + (tb.base || 0);
+      else if (c.t === "kasu") base += gs.kasuVal + (tb.base || 0);
+    }
+    return { yaku: [], base, mult: 1, total: Math.max(0, base * 1) };
+  }
+
+  let totalBase = 0;
+  let totalMult = 1;
+  const yakuNames = [];
+
+  for (const y of activeYaku) {
+    let ybase = y.base;
+    let ymult = y.mult;
+    const bonus = gs.yakuBonuses[y.name];
+    if (bonus) { ybase += (bonus.base || 0); ymult += (bonus.mult || 0); }
+    totalBase += ybase;
+    totalMult += ymult;
+    yakuNames.push(y.name);
+    // Count-based extras
+    if (y.countBased) {
+      const extra = y.countBased(cards);
+      totalBase += extra * ybase;
+      totalMult += extra;
+    }
+  }
+
+  // Type multipliers
+  let typeMult = 1;
+  for (const c of cards) {
+    const tb = gs.typeBonuses[c.t];
+    if (tb && tb.mult && tb.mult !== 1) typeMult *= tb.mult;
+  }
+  totalMult = totalMult * typeMult;
+
+  // Global mult from charms
+  totalMult += gs.globalMult;
+
+  return { yaku: yakuNames, base: totalBase, mult: totalMult, total: Math.floor(totalBase * totalMult) };
+}
+
+// ===== UI =====
+function showScreen(name) {
+  gs.screen = name;
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + name).classList.add("active");
+}
+
+function getCardById(id) { return CARD_DEFS[id]; }
+
+function renderGame() {
+  // HUD
+  document.getElementById("hudMonth").textContent = MONTH_NAMES[gs.month];
+  document.getElementById("hudTarget").textContent = gs.target + "文";
+  document.getElementById("hudPlays").textContent = gs.playsLeft;
+  document.getElementById("hudDiscards").textContent = gs.discardsLeft;
+
+  // Progress
+  const pct = Math.min(100, Math.round((gs.roundScore / gs.target) * 100));
+  document.getElementById("progressBar").style.width = pct + "%";
+
+  // Score
+  document.getElementById("scoreValue").textContent = gs.roundScore;
+
+  // Formula
+  const fEl = document.getElementById("scoreFormula");
+  if (gs.lastYaku.length > 0) {
+    fEl.innerHTML =
+      `<span class="base">${gs.lastBase}文</span> × <span class="mult">${gs.lastMult}倍</span><br><span class="result">= ${gs.lastTotal}文</span>`;
+  } else if (gs.selected.length > 0) {
+    const preview = scoreSelection(gs.selected.map(id => getCardById(id)));
+    if (preview.yaku.length > 0) {
+      fEl.innerHTML =
+        `<span class="base">${preview.base}</span> × <span class="mult">${preview.mult}</span><br><span class="result">= ${preview.total}文</span>`;
+    } else {
+      fEl.innerHTML = `<span style="color:var(--muted)">役なし</span>`;
+    }
+  } else {
+    fEl.innerHTML = `<span style="color:var(--muted)">役を選んであわせよ</span>`;
+  }
+
+  // Yaku announce
+  const ya = document.getElementById("yakuAnnounce");
+  ya.textContent = gs.lastYaku.length > 0 ? gs.lastYaku.join(" + ") : "";
+
+  // Hand
+  renderHand();
+
+  // Buttons
+  const selectedCards = gs.selected.map(id => getCardById(id));
+  const preview = gs.selected.length > 0 ? scoreSelection(selectedCards) : {yaku:[], total:0};
+  const hasYaku = preview.yaku.length > 0 || (gs.selected.length > 0 && preview.total > 0);
+  document.getElementById("btnAwase").disabled = gs.selected.length === 0 || gs.playsLeft === 0;
+  document.getElementById("btnDiscard").disabled = gs.selected.length === 0 || gs.discardsLeft === 0;
+}
+
+function renderHand() {
+  const el = document.getElementById("handCards");
+  el.innerHTML = "";
+  for (const cid of gs.hand) {
+    const c = getCardById(cid);
+    const div = document.createElement("div");
+    div.className = "card " + c.t;
+    div.dataset.cid = cid;
+    if (gs.selected.includes(cid)) div.classList.add("selected");
+
+    const flower = document.createElement("div");
+    flower.className = "card-flower";
+    flower.textContent = c.e;
+
+    const type = document.createElement("div");
+    type.className = "card-type";
+    type.textContent = { hikari:"光", tane:"タネ", tan:"短冊", kasu:"カス" }[c.t];
+
+    const dot = document.createElement("div");
+    dot.className = "card-month-dot";
+
+    div.appendChild(flower);
+    div.appendChild(type);
+    div.appendChild(dot);
+
+    div.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      toggleSelect(cid);
+    });
+
+    el.appendChild(div);
+  }
+}
+
+function toggleSelect(cid) {
+  const idx = gs.selected.indexOf(cid);
+  if (idx >= 0) {
+    gs.selected.splice(idx, 1);
+  } else {
+    gs.selected.push(cid);
+  }
+  playSound("select");
+  // Clear last result if re-selecting
+  gs.lastYaku = [];
+  gs.lastBase = 0;
+  gs.lastMult = 0;
+  gs.lastTotal = 0;
+  renderGame();
+}
+
+function doAwase() {
+  if (gs.selected.length === 0 || gs.playsLeft === 0) return;
+  const cards = gs.selected.map(id => getCardById(id));
+  const result = scoreSelection(cards);
+
+  gs.lastYaku = result.yaku;
+  gs.lastBase = result.base;
+  gs.lastMult = result.mult;
+  gs.lastTotal = result.total;
+  gs.roundScore += result.total;
+  gs.totalScore += result.total;
+  gs.playsLeft--;
+
+  // Remove selected from hand and draw
+  gs.hand = gs.hand.filter(id => !gs.selected.includes(id));
+  gs.selected = [];
+  drawToFill();
+
+  if (result.yaku.length > 0 || result.total >= 50) {
+    playSound(result.total >= 100 ? "bigplay" : "play");
+    showComboPopup("+" + result.total + "文!");
+  } else {
+    playSound("play");
+  }
+
+  // Check if round won
+  if (gs.roundScore >= gs.target) {
+    renderGame();
+    setTimeout(() => {
+      gs.shopMon = gs.roundScore;
+      enterShop();
+    }, 800);
+    return;
+  }
+
+  // Check if no plays/discards left
+  if (gs.playsLeft === 0 && gs.discardsLeft === 0) {
+    renderGame();
+    setTimeout(() => failRound(), 600);
+    return;
+  }
+
+  renderGame();
+}
+
+function doDiscard() {
+  if (gs.selected.length === 0 || gs.discardsLeft === 0) return;
+  gs.hand = gs.hand.filter(id => !gs.selected.includes(id));
+  gs.selected = [];
+  gs.discardsLeft--;
+  drawToFill();
+  playSound("discard");
+  gs.lastYaku = [];
+  renderGame();
+}
+
+function showComboPopup(text) {
+  const el = document.createElement("div");
+  el.className = "combo-popup";
+  el.textContent = text;
+  document.getElementById("app").appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
+// ===== SHOP =====
+function enterShop() {
+  playSound("advance");
+  // Generate 3 random charm offers (not already owned)
+  const available = CHARM_POOL.filter(c => !gs.charms.includes(c.id));
+  const offers = shuffle([...available]).slice(0, 3);
+  gs.shopOffers = offers;
+
+  document.getElementById("shopMon").textContent = gs.shopMon;
+
+  // Render offers
+  const container = document.getElementById("shopItems");
+  container.innerHTML = "";
+  for (const ch of offers) {
+    const div = document.createElement("div");
+    div.className = "shop-item";
+    const canAfford = gs.shopMon >= ch.cost;
+    div.innerHTML = `
+      <div class="shop-item-icon">${ch.icon}</div>
+      <div class="shop-item-info">
+        <div class="shop-item-name">${ch.name}</div>
+        <div class="shop-item-desc">${ch.desc}</div>
+      </div>
+      <div class="shop-item-price ${canAfford ? 'can-afford' : 'cant-afford'}">${ch.cost}文</div>
+    `;
+    div.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      buyCharm(ch, div);
+    });
+    container.appendChild(div);
+  }
+
+  // Render owned charms
+  const charmsRow = document.getElementById("charmsRow");
+  charmsRow.innerHTML = "";
+  for (const cid of gs.charms) {
+    const ch = CHARM_POOL.find(c => c.id === cid);
+    if (!ch) continue;
+    const badge = document.createElement("div");
+    badge.className = "charm-badge";
+    badge.textContent = ch.icon + " " + ch.name;
+    charmsRow.appendChild(badge);
+  }
+  if (gs.charms.length === 0) {
+    charmsRow.innerHTML = "<span style='font-size:0.65rem;color:var(--muted)'>なし</span>";
+  }
+
+  showScreen("shop");
+}
+
+function buyCharm(ch, el) {
+  if (gs.shopMon < ch.cost || gs.charms.includes(ch.id)) return;
+  gs.shopMon -= ch.cost;
+  gs.charms.push(ch.id);
+  el.classList.add("purchased");
+  document.getElementById("shopMon").textContent = gs.shopMon;
+  playSound("buy");
+
+  // Update offer affordability
+  document.querySelectorAll(".shop-item-price").forEach(p => {
+    const cost = parseInt(p.textContent);
+    p.className = "shop-item-price " + (gs.shopMon >= cost ? "can-afford" : "cant-afford");
+  });
+
+  // Refresh charms display
+  const charmsRow = document.getElementById("charmsRow");
+  charmsRow.innerHTML = "";
+  for (const cid of gs.charms) {
+    const charm = CHARM_POOL.find(c => c.id === cid);
+    if (!charm) continue;
+    const badge = document.createElement("div");
+    badge.className = "charm-badge";
+    badge.textContent = charm.icon + " " + charm.name;
+    charmsRow.appendChild(badge);
+  }
+}
+
+function nextMonth() {
+  gs.month++;
+  if (gs.month >= 12) {
+    // Victory!
+    endRun(true);
+    return;
+  }
+  startMonth();
+}
+
+function failRound() {
+  playSound("fail");
+  endRun(false);
+}
+
+function endRun(victory) {
+  // Update best
+  const prevBest = save.bestMonth;
+  const prevBestScore = save.bestScore;
+  if (gs.month > save.bestMonth || (gs.month === save.bestMonth && gs.totalScore > save.bestScore)) {
+    save.bestMonth = gs.month;
+    save.bestScore = gs.totalScore;
+    writeSave(save);
+  }
+
+  document.getElementById("resultTitle").textContent = victory ? "完全制覇！" : "花合わせ終了";
+  document.getElementById("resultTitle").className = "result-title " + (victory ? "success" : "fail");
+  document.getElementById("resultMonth").textContent = MONTH_NAMES[gs.month];
+  document.getElementById("resultScore").textContent = gs.totalScore + "文";
+  document.getElementById("resultBestMonth").textContent =
+    save.bestMonth > 0 ? MONTH_NAMES[save.bestMonth] : "—";
+  document.getElementById("resultBestScore").textContent =
+    save.bestScore > 0 ? save.bestScore + "文" : "—";
+
+  const msgs = [
+    "また来い、花合わせ師よ。",
+    "札の声を聞け。役は必ず来る。",
+    "一枚の差が、命運を分ける。",
+    "光を集め、役を積み上げろ。",
+  ];
+  document.getElementById("resultMsg").textContent = msgs[Math.floor(Math.random() * msgs.length)];
+
+  showScreen("result");
+}
+
+// ===== TITLE SCREEN =====
+function initTitle() {
+  // Show some cards
+  const titleCardsEl = document.getElementById("titleCards");
+  titleCardsEl.innerHTML = "";
+  const sampleCards = [CARD_DEFS[0], CARD_DEFS[8], CARD_DEFS[20], CARD_DEFS[28]]; // 鶴, 幕, 蝶, 月
+  for (const c of sampleCards) {
+    const div = document.createElement("div");
+    div.className = "title-card";
+    div.textContent = c.e;
+    titleCardsEl.appendChild(div);
+  }
+
+  // Best display
+  if (save.bestMonth > 0) {
+    document.getElementById("bestDisplay").textContent =
+      MONTH_NAMES[save.bestMonth] + " / " + save.bestScore + "文";
+  }
+}
+
+// ===== MUTE =====
+document.getElementById("muteBtn").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  muted = !muted;
+  document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔊";
+});
+
+// ===== EVENT LISTENERS =====
+document.getElementById("btnStart").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  startGame();
+});
+
+document.getElementById("btnAwase").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  doAwase();
+});
+
+document.getElementById("btnDiscard").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  doDiscard();
+});
+
+document.getElementById("btnNextMonth").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  nextMonth();
+});
+
+document.getElementById("btnRestart").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  startGame();
+});
+
+// ===== rAF TICK (safe from title screen) =====
+let animFrame = null;
+let scorePopPending = false;
+
+function tick() {
+  animFrame = requestAnimationFrame(tick);
+  // Animate score pop
+  if (scorePopPending) {
+    const el = document.getElementById("scoreValue");
+    if (el) {
+      el.classList.add("pop");
+      setTimeout(() => el.classList.remove("pop"), 200);
+    }
+    scorePopPending = false;
+  }
+}
+tick();
+
+// ===== INIT =====
+initTitle();
+</script>
+</body>
+</html>
