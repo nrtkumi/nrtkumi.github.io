@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>よみせ — 縁日屋台経営</title>
+<meta name="description" content="夜店通りの屋台をタップして稼いで、のれん分けで大繁盛!放置でもコインが貯まる縁日アイドルゲーム。">
+<meta property="og:title" content="よみせ — 縁日屋台経営">
+<meta property="og:description" content="夜店通りの屋台をタップして稼いで、のれん分けで大繁盛!放置でもコインが貯まる縁日アイドルゲーム。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/yomise/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/yomise/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Reggae+One&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ======= VARIABLES ======= */
+:root {
+  --night: #0d0a1a;
+  --night2: #160e2e;
+  --indigo: #1a1240;
+  --lantern-red: #c0392b;
+  --lantern-orange: #e05a00;
+  --gold: #f4b942;
+  --gold2: #ffe066;
+  --cream: #fff3d6;
+  --dim: #8c7a5a;
+  --panel: rgba(18, 10, 35, 0.92);
+  --stall-bg: #1e1030;
+  --stall-border: #4a2c60;
+  --btn-buy: #a8420a;
+  --btn-buy2: #e05a00;
+  --radius: 12px;
+  --font-disp: "Reggae One", serif;
+  --font-body: "Zen Maru Gothic", sans-serif;
+}
+
+/* ======= RESET ======= */
+* {
+  margin: 0; padding: 0; box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+}
+html, body { height: 100%; overscroll-behavior: none; }
+body {
+  background: #080510;
+  font-family: var(--font-body);
+  overflow: hidden;
+  color: var(--cream);
+}
+
+/* ======= APP WRAP ======= */
+#app {
+  position: fixed;
+  top: 0; bottom: 0;
+  left: 50%; transform: translateX(-50%);
+  width: min(100vw, calc(100dvh * 0.62), 480px);
+  display: flex; flex-direction: column;
+  box-shadow: 0 0 60px rgba(0,0,0,0.8);
+  overflow: hidden;
+}
+
+/* ======= CANVAS SKY ======= */
+#skyCanvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 0;
+  touch-action: none;
+}
+
+/* ======= HUD ======= */
+#hud {
+  position: relative; z-index: 10;
+  background: rgba(8,5,20,0.85);
+  border-bottom: 1px solid #2a1840;
+  padding: 10px 14px calc(10px + env(safe-area-inset-top));
+  padding-top: calc(10px + env(safe-area-inset-top));
+  display: flex; align-items: center; gap: 8px;
+}
+#hudTitle {
+  font-family: var(--font-disp);
+  font-size: 1.3rem;
+  color: var(--gold);
+  text-shadow: 0 0 12px #c8730050;
+  letter-spacing: 0.05em;
+  flex: 0 0 auto;
+}
+#hudCoins {
+  flex: 1;
+  text-align: right;
+  font-family: var(--font-disp);
+  font-size: 1.1rem;
+  color: var(--gold2);
+}
+#hudCoinsLabel {
+  font-size: 0.6rem;
+  color: var(--dim);
+  display: block;
+  text-align: right;
+}
+#hudCps {
+  font-size: 0.65rem;
+  color: var(--gold);
+  opacity: 0.75;
+  margin-left: 6px;
+  flex: 0 0 auto;
+}
+#muteBtn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid #3a2050;
+  color: var(--cream);
+  font-size: 1rem;
+  border-radius: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+/* ======= STALL LIST ======= */
+#stallList {
+  position: relative; z-index: 5;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: 10px 10px calc(60px + env(safe-area-inset-bottom)) 10px;
+}
+#stallList::-webkit-scrollbar { width: 4px; }
+#stallList::-webkit-scrollbar-thumb { background: #3a2050; border-radius: 4px; }
+
+/* ======= STALL CARD ======= */
+.stall-card {
+  background: var(--stall-bg);
+  border: 1.5px solid var(--stall-border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.stall-card.locked {
+  opacity: 0.45;
+  filter: grayscale(0.7);
+}
+.stall-card.unlocked {
+  border-color: #6a3c80;
+}
+
+.stall-inner {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+/* ======= TAP ZONE ======= */
+.stall-tap {
+  flex: 0 0 72px;
+  background: linear-gradient(160deg, #2a1545 0%, #1a0d30 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-right: 1px solid #3a1f55;
+  position: relative;
+  cursor: pointer;
+}
+.stall-tap:active { background: linear-gradient(160deg, #3a2060 0%, #2a1545 100%); }
+.stall-icon { font-size: 2rem; line-height: 1; }
+.stall-tap-earn {
+  font-family: var(--font-disp);
+  font-size: 0.6rem;
+  color: var(--gold);
+  text-align: center;
+}
+.stall-tap-label {
+  font-size: 0.55rem;
+  color: var(--dim);
+  text-align: center;
+}
+
+/* ======= STALL INFO ======= */
+.stall-info {
+  flex: 1;
+  padding: 8px 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stall-name {
+  font-family: var(--font-disp);
+  font-size: 0.95rem;
+  color: var(--gold);
+}
+.stall-stats {
+  font-size: 0.65rem;
+  color: var(--dim);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.stall-stats span { color: var(--cream); }
+.stall-progress {
+  height: 4px;
+  background: #2a1545;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.stall-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--gold2));
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* ======= BUY/UPGRADE BUTTONS ======= */
+.stall-btns {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.btn-upgrade, .btn-hire {
+  flex: 1;
+  background: var(--btn-buy);
+  border: none;
+  border-radius: 8px;
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 6px 4px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #5a1f00;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn-upgrade:active { transform: translateY(2px); box-shadow: 0 1px 0 #5a1f00; }
+.btn-hire {
+  background: #1a4a2a;
+  box-shadow: 0 3px 0 #0a2010;
+}
+.btn-hire:active { transform: translateY(2px); box-shadow: 0 1px 0 #0a2010; }
+.btn-upgrade.cant-afford, .btn-hire.cant-afford {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-upgrade.hired {
+  background: #2a3a1a;
+  color: #6a9a4a;
+  box-shadow: 0 3px 0 #102008;
+  cursor: default;
+}
+
+/* ======= BOTTOM BAR (Prestige) ======= */
+#bottomBar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  z-index: 20;
+  background: rgba(8,5,20,0.95);
+  border-top: 1px solid #2a1840;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#prestigeInfo {
+  flex: 1;
+  font-size: 0.6rem;
+  color: var(--dim);
+  line-height: 1.4;
+}
+#prestigeInfo strong { color: var(--gold); font-size: 0.7rem; }
+#prestigeBtn {
+  background: linear-gradient(135deg, #6a0080, #c0392b);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-family: var(--font-disp);
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #400050;
+  white-space: nowrap;
+}
+#prestigeBtn:active { transform: translateY(2px); box-shadow: 0 1px 0 #400050; }
+#prestigeBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ======= OVERLAYS ======= */
+.overlay {
+  position: absolute; inset: 0; z-index: 50;
+  background: rgba(5, 3, 15, 0.88);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.overlay.hidden { display: none; }
+.modal {
+  background: linear-gradient(160deg, #1e1040, #0d0820);
+  border: 2px solid #5a2080;
+  border-radius: 18px;
+  padding: 28px 22px;
+  max-width: 320px;
+  width: 100%;
+  text-align: center;
+}
+.modal h2 {
+  font-family: var(--font-disp);
+  font-size: 1.6rem;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+.modal h3 {
+  font-family: var(--font-disp);
+  font-size: 1.0rem;
+  color: var(--gold2);
+  margin-bottom: 12px;
+}
+.modal p {
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: var(--cream);
+  margin-bottom: 14px;
+}
+.modal .big-coin {
+  font-family: var(--font-disp);
+  font-size: 2rem;
+  color: var(--gold2);
+  margin: 10px 0;
+}
+.modal-btn {
+  background: linear-gradient(135deg, var(--btn-buy), var(--btn-buy2));
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-family: var(--font-disp);
+  font-size: 1.1rem;
+  padding: 12px 28px;
+  cursor: pointer;
+  margin-top: 6px;
+  width: 100%;
+  box-shadow: 0 4px 0 #5a1f00;
+}
+.modal-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #5a1f00; }
+.modal-btn.secondary {
+  background: #2a1545;
+  box-shadow: 0 4px 0 #0d0820;
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+.modal .lantern-emoji { font-size: 2.5rem; }
+
+/* ======= COIN FLOAT ANIMATION ======= */
+.coin-float {
+  position: absolute;
+  font-family: var(--font-disp);
+  color: var(--gold2);
+  font-size: 0.85rem;
+  pointer-events: none;
+  z-index: 30;
+  text-shadow: 0 0 8px #f4b94280;
+  animation: coinRise 0.9s ease-out forwards;
+}
+@keyframes coinRise {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  80%  { opacity: 0.8; }
+  100% { opacity: 0; transform: translateY(-48px) scale(0.8); }
+}
+
+/* ======= NOREN DECORATION ======= */
+.noren-row {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px 0;
+}
+.noren-strip {
+  width: 14px;
+  height: 20px;
+  border-radius: 0 0 7px 7px;
+  background: var(--lantern-red);
+  border-top: 2px solid #6a0010;
+}
+.noren-strip:nth-child(even) { background: #1a2a8a; }
+
+/* ======= PRESTIGE BADGE ======= */
+.prestige-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #6a0080, #c0392b);
+  color: #fff;
+  font-size: 0.55rem;
+  font-family: var(--font-disp);
+  border-radius: 6px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ======= AUTO INDICATOR ======= */
+.auto-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #4aff80;
+  box-shadow: 0 0 6px #4aff80;
+  margin-right: 3px;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+/* ======= WELCOME BACK POPUP ======= */
+#wbPopup {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 60;
+  background: linear-gradient(160deg, #1e1040, #0d0820);
+  border: 2px solid var(--gold);
+  border-radius: 18px;
+  padding: 24px 20px;
+  max-width: 290px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(244,185,66,0.25);
+}
+#wbPopup.hidden { display: none; }
+#wbPopup h3 {
+  font-family: var(--font-disp);
+  color: var(--gold);
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+}
+#wbPopup p { font-size: 0.8rem; color: var(--cream); line-height: 1.6; margin-bottom: 12px; }
+#wbPopup .wb-coins {
+  font-family: var(--font-disp);
+  font-size: 1.8rem;
+  color: var(--gold2);
+  margin: 8px 0;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Background canvas for night sky + lanterns -->
+  <canvas id="skyCanvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="hudTitle">よみせ</div>
+    <div>
+      <span id="hudCoinsLabel">コイン</span>
+      <span id="hudCoins">0</span>
+    </div>
+    <span id="hudCps">0/秒</span>
+    <button id="muteBtn" aria-label="ミュート">🔊</button>
+  </div>
+
+  <!-- Stall List -->
+  <div id="stallList"></div>
+
+  <!-- Bottom Bar -->
+  <div id="bottomBar">
+    <div id="prestigeInfo">
+      <strong id="prestigeMultiText">常連×1.0</strong><br>
+      <span id="prestigeNextText">のれん分けで永続ボーナス</span>
+    </div>
+    <button id="prestigeBtn" disabled>のれん分け</button>
+  </div>
+
+  <!-- Welcome Back Popup -->
+  <div id="wbPopup" class="hidden">
+    <div style="font-size:2rem">🏮</div>
+    <h3>おかえり!</h3>
+    <p id="wbText">留守中もお店は元気でした</p>
+    <div class="wb-coins" id="wbCoins">+0</div>
+    <button class="modal-btn" id="wbOkBtn">ありがとう!</button>
+  </div>
+
+  <!-- Title Overlay -->
+  <div class="overlay" id="titleOverlay">
+    <div class="modal">
+      <div class="lantern-emoji">🏮</div>
+      <h2>よみせ</h2>
+      <h3>縁日屋台経営</h3>
+      <p>
+        屋台をタップしてコインを稼ごう!<br>
+        店員を雇えば自動で稼いでくれる。<br>
+        のれん分けで常連ボーナスをゲット!<br>
+        <span style="color:var(--gold);font-size:0.75rem">放置してもコインが貯まるよ</span>
+      </p>
+      <button class="modal-btn" id="startBtn" data-tappable>はじめる</button>
+    </div>
+  </div>
+
+  <!-- Prestige Confirm Overlay -->
+  <div class="overlay hidden" id="prestigeOverlay">
+    <div class="modal">
+      <div class="lantern-emoji">🎆</div>
+      <h2>のれん分け</h2>
+      <p id="prestigeDesc">屋台をリセットして、永続の常連ボーナスを得ます。</p>
+      <div class="big-coin" id="prestigeGainText"></div>
+      <button class="modal-btn" id="prestigeConfirmBtn" data-tappable>のれん分けする</button>
+      <button class="modal-btn secondary" id="prestigeCancelBtn" data-tappable>もどる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   CONSTANTS & CONFIG
+   ============================================================ */
+const STALLS = [
+  { id:"takoyaki",  name:"たこ焼き",   icon:"🐙", baseCoin:1,  baseAuto:0.2,  baseCost:15,   hireBase:80,   tapLabel:"ジュー" },
+  { id:"ringo",     name:"りんご飴",   icon:"🍎", baseCoin:3,  baseAuto:0.6,  baseCost:80,   hireBase:400,  tapLabel:"ぱりっ" },
+  { id:"wata",      name:"わたあめ",   icon:"🍬", baseCoin:8,  baseAuto:1.5,  baseCost:350,  hireBase:1800, tapLabel:"ふわり" },
+  { id:"kakigori",  name:"かき氷",     icon:"🧊", baseCoin:20, baseAuto:4.0,  baseCost:1500, hireBase:8000, tapLabel:"シャリ" },
+  { id:"yakisoba",  name:"焼きそば",   icon:"🍜", baseCoin:60, baseAuto:12.0, baseCost:7000, hireBase:40000,tapLabel:"ジャカ" },
+  { id:"taiyaki",   name:"たい焼き",   icon:"🐟", baseCoin:200,baseAuto:40.0, baseCost:35000,hireBase:200000,tapLabel:"サクッ"},
+  { id:"funnel",    name:"ベビーカステラ",icon:"🧁",baseCoin:800,baseAuto:160.0,baseCost:200000,hireBase:1200000,tapLabel:"ふっくら"},
+  { id:"ikayaki",   name:"いか焼き",   icon:"🦑", baseCoin:3000,baseAuto:600.0,baseCost:1200000,hireBase:8000000,tapLabel:"プシュー"},
+];
+const COST_SCALE     = 1.15;
+const OFFLINE_CAP_S  = 7200;   // 2h cap for offline reward
+const OFFLINE_RATE   = 0.5;    // 50% rate while offline
+const PRESTIGE_REQ   = 5000;   // coins required to prestige (first time)
+const PRESTIGE_SCALE = 3.5;    // each prestige multiplies req
+const PRESTIGE_BONUS = 0.25;   // +25% multiplier per prestige
+const SAVE_KEY       = "yomise_v2";
+
+/* ============================================================
+   BIG NUMBER FORMATTING
+   ============================================================ */
+function fmt(n) {
+  if (n < 1000) return Math.floor(n).toString();
+  if (n < 1e6)  return (n/1000).toFixed(1).replace(/\.0$/,"") + "K";
+  if (n < 1e9)  return (n/1e6).toFixed(2).replace(/\.?0+$/,"") + "M";
+  if (n < 1e12) return (n/1e9).toFixed(2).replace(/\.?0+$/,"") + "B";
+  if (n < 1e15) return (n/1e12).toFixed(2).replace(/\.?0+$/,"") + "T";
+  return (n/1e15).toFixed(1) + "兆";
+}
+
+/* ============================================================
+   GAME STATE
+   ============================================================ */
+let coins        = 0;
+let totalEarned  = 0;
+let prestige     = 0;      // number of prestige resets
+let prestigeMult = 1.0;    // 1 + prestige * 0.25
+let lastSeen     = Date.now();
+let gameStarted  = false;
+
+// Per-stall state: level (0=locked), hired
+// Takoyaki starts at level 1 so the player can immediately tap to earn
+let stallState = STALLS.map((_, i) => ({ level: i === 0 ? 1 : 0, hired: false }));
+
+/* ============================================================
+   DERIVED HELPERS
+   ============================================================ */
+function stallCost(idx) {
+  const s  = STALLS[idx];
+  const lv = stallState[idx].level;
+  if (lv === 0) return s.baseCost;
+  return Math.ceil(s.baseCost * Math.pow(COST_SCALE, lv));
+}
+function hireCost(idx) {
+  const s  = STALLS[idx];
+  const lv = stallState[idx].level;
+  return Math.ceil(s.hireBase * Math.pow(COST_SCALE, lv));
+}
+function tapEarn(idx) {
+  const s  = STALLS[idx];
+  const lv = Math.max(1, stallState[idx].level);
+  return s.baseCoin * lv * prestigeMult;
+}
+function autoEarn(idx) {
+  const st = stallState[idx];
+  if (!st.hired || st.level === 0) return 0;
+  const s  = STALLS[idx];
+  return s.baseAuto * st.level * prestigeMult;
+}
+function totalCps() {
+  let c = 0;
+  for (let i = 0; i < STALLS.length; i++) c += autoEarn(i);
+  return c;
+}
+function prestigeReq() {
+  return Math.ceil(PRESTIGE_REQ * Math.pow(PRESTIGE_SCALE, prestige));
+}
+function canPrestige() {
+  return totalEarned >= prestigeReq();
+}
+
+/* ============================================================
+   PERSISTENCE
+   ============================================================ */
+function save() {
+  try {
+    const data = {
+      coins, totalEarned, prestige, prestigeMult, lastSeen: Date.now(),
+      stallState: stallState.map(s => ({ level: s.level, hired: s.hired }))
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch(e) {}
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    coins        = data.coins        || 0;
+    totalEarned  = data.totalEarned  || 0;
+    prestige     = data.prestige     || 0;
+    prestigeMult = data.prestigeMult || 1.0;
+    lastSeen     = data.lastSeen     || Date.now();
+    if (Array.isArray(data.stallState)) {
+      data.stallState.forEach((s, i) => {
+        if (i < stallState.length) {
+          // Index 0 always starts at min level 1
+          stallState[i].level  = (i === 0) ? Math.max(1, s.level || 0) : (s.level || 0);
+          stallState[i].hired  = s.hired  || false;
+        }
+      });
+    }
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+/* ============================================================
+   AUDIO
+   ============================================================ */
+let AC = null, muted = false;
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => {
+        if (AC.state !== "running" && !document.hidden) {
+          try { AC.resume(); } catch(e) {}
+        }
+      };
+    } catch(e) {}
+  }
+  if (AC && AC.state !== "running") { try { AC.resume(); } catch(e) {} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);
+  v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline","");
+    silentEl.loop = true; silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play();
+  if (p && p.catch) p.catch(()=>{});
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === "running")
+      ["pointerdown","pointerup","touchend"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true));
+  };
+  try { AC.resume().then(done); } catch(e) { done(); }
+}
+["pointerdown","pointerup","touchend"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) audio(); });
+
+function playNote(freq, dur=0.12, type="sine", vol=0.18) {
+  if (muted) return;
+  const ac = audio(); if (!ac || ac.state!=="running") return;
+  const o = ac.createOscillator();
+  const g = ac.createGain();
+  o.connect(g); g.connect(ac.destination);
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+  o.start(ac.currentTime);
+  o.stop(ac.currentTime + dur);
+}
+// Coin ちゃりん
+function sfxCoin() {
+  playNote(880, 0.07, "triangle", 0.15);
+  setTimeout(()=>playNote(1320, 0.09, "triangle", 0.12), 50);
+}
+// Buy/upgrade
+function sfxBuy() {
+  [440,554,659].forEach((f,i)=>setTimeout(()=>playNote(f,0.1,"sine",0.14),i*60));
+}
+// Prestige fanfare
+function sfxPrestige() {
+  [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playNote(f,0.2,"sine",0.2),i*80));
+}
+// Welcome back chime
+function sfxWelcome() {
+  [784,880,1047,880,784].forEach((f,i)=>setTimeout(()=>playNote(f,0.15,"sine",0.18),i*100));
+}
+
+/* ============================================================
+   CANVAS BACKDROP (Night Sky + Lanterns)
+   ============================================================ */
+const skyCv = document.getElementById("skyCanvas");
+const skyCtx = skyCv.getContext("2d");
+
+let stars = [];
+let lanterns = [];
+let particles = [];
+let skyW = 0, skyH = 0;
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+function initSky() {
+  const app = document.getElementById("app");
+  skyW = app.offsetWidth;
+  skyH = app.offsetHeight;
+  skyCv.width  = skyW * DPR;
+  skyCv.height = skyH * DPR;
+  skyCv.style.width  = skyW + "px";
+  skyCv.style.height = skyH + "px";
+
+  stars = [];
+  for (let i = 0; i < 80; i++) {
+    stars.push({
+      x: Math.random() * skyW,
+      y: Math.random() * skyH * 0.6,
+      r: Math.random() * 1.4 + 0.3,
+      tw: Math.random() * Math.PI * 2,
+      tws: 0.01 + Math.random() * 0.02
+    });
+  }
+
+  lanterns = [];
+  const cols = Math.floor(skyW / 60) + 1;
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < 3; r++) {
+      lanterns.push({
+        x: c * 60 + 10 + Math.random() * 20,
+        y: 30 + r * 28 + Math.random() * 10,
+        phase: Math.random() * Math.PI * 2,
+        spd: 0.02 + Math.random() * 0.02,
+        color: Math.random() > 0.5 ? "#c0392b" : "#1a2a8a"
+      });
+    }
+  }
+
+  particles = [];
+}
+
+function spawnParticle(x, y) {
+  for (let i = 0; i < 5; i++) {
+    const angle = (Math.PI * 2 * i / 5) + Math.random() * 0.5;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * (1 + Math.random() * 2),
+      vy: Math.sin(angle) * (1 + Math.random() * 2) - 1.5,
+      life: 1, decay: 0.06 + Math.random() * 0.04
+    });
+  }
+}
+
+let skyT = 0;
+function drawSky(dt) {
+  skyT += dt;
+  skyCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // Night gradient
+  const grad = skyCtx.createLinearGradient(0, 0, 0, skyH);
+  grad.addColorStop(0, "#0d0a1a");
+  grad.addColorStop(0.5, "#160e2e");
+  grad.addColorStop(1, "#1a0d30");
+  skyCtx.fillStyle = grad;
+  skyCtx.fillRect(0, 0, skyW, skyH);
+
+  // Stars
+  stars.forEach(s => {
+    s.tw += s.tws;
+    const alpha = 0.4 + 0.6 * Math.abs(Math.sin(s.tw));
+    skyCtx.save();
+    skyCtx.globalAlpha = alpha;
+    skyCtx.fillStyle = "#fff8e1";
+    skyCtx.beginPath();
+    skyCtx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    skyCtx.fill();
+    skyCtx.restore();
+  });
+
+  // Lanterns
+  lanterns.forEach(l => {
+    l.phase += l.spd;
+    const glowAlpha = 0.18 + 0.1 * Math.sin(l.phase);
+    const grad2 = skyCtx.createRadialGradient(l.x, l.y, 0, l.x, l.y, 18);
+    grad2.addColorStop(0, l.color === "#c0392b" ? "rgba(220,80,30,0.4)" : "rgba(40,80,180,0.3)");
+    grad2.addColorStop(1, "rgba(0,0,0,0)");
+    skyCtx.fillStyle = grad2;
+    skyCtx.beginPath();
+    skyCtx.arc(l.x, l.y, 18, 0, Math.PI*2);
+    skyCtx.fill();
+
+    // Lantern body
+    skyCtx.save();
+    skyCtx.globalAlpha = 0.8 + glowAlpha;
+    skyCtx.fillStyle = l.color;
+    skyCtx.beginPath();
+    skyCtx.roundRect(l.x - 5, l.y - 8, 10, 16, 3);
+    skyCtx.fill();
+    // Lantern string
+    skyCtx.strokeStyle = "rgba(200,160,60,0.5)";
+    skyCtx.lineWidth = 0.5;
+    skyCtx.beginPath();
+    skyCtx.moveTo(l.x, l.y - 8);
+    skyCtx.lineTo(l.x, l.y - 14);
+    skyCtx.stroke();
+    skyCtx.restore();
+  });
+
+  // Particles
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life -= p.decay;
+    skyCtx.save();
+    skyCtx.globalAlpha = p.life;
+    skyCtx.fillStyle = "#ffe066";
+    skyCtx.beginPath();
+    skyCtx.arc(p.x, p.y, 2, 0, Math.PI*2);
+    skyCtx.fill();
+    skyCtx.restore();
+  });
+}
+
+/* ============================================================
+   DOM BUILDING
+   ============================================================ */
+function buildStallCards() {
+  const list = document.getElementById("stallList");
+  list.innerHTML = "";
+  STALLS.forEach((s, idx) => {
+    const card = document.createElement("div");
+    card.className = "stall-card";
+    card.id = "stall-" + s.id;
+    card.innerHTML = `
+      <div class="noren-row" id="noren-${s.id}"></div>
+      <div class="stall-inner">
+        <div class="stall-tap" data-tappable data-idx="${idx}" id="tap-${s.id}">
+          <div class="stall-icon">${s.icon}</div>
+          <div class="stall-tap-earn" id="tapEarn-${s.id}">+0</div>
+          <div class="stall-tap-label">${s.tapLabel}</div>
+        </div>
+        <div class="stall-info">
+          <div class="stall-name" id="stallName-${s.id}">${s.name}</div>
+          <div class="stall-stats">
+            <span id="stallLv-${s.id}">Lv.0</span>
+            <span id="stallAuto-${s.id}">自動:なし</span>
+          </div>
+          <div class="stall-progress">
+            <div class="stall-progress-fill" id="prog-${s.id}" style="width:0%"></div>
+          </div>
+          <div class="stall-btns">
+            <button class="btn-upgrade" id="btn-upgrade-${s.id}" data-idx="${idx}" data-tappable>出店 <span id="upgCost-${s.id}">…</span></button>
+            <button class="btn-hire" id="btn-hire-${s.id}" data-idx="${idx}" data-tappable>店員 <span id="hireCostSpan-${s.id}">…</span></button>
+          </div>
+        </div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+/* Build noren decoration */
+function buildNoren(sid) {
+  const row = document.getElementById("noren-" + sid);
+  if (!row) return;
+  row.innerHTML = "";
+  const n = 6 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < n; i++) {
+    const strip = document.createElement("div");
+    strip.className = "noren-strip";
+    row.appendChild(strip);
+  }
+}
+
+/* ============================================================
+   UI UPDATE
+   ============================================================ */
+function updateHUD() {
+  document.getElementById("hudCoins").textContent = fmt(coins);
+  const cps = totalCps();
+  document.getElementById("hudCps").textContent = fmt(cps) + "/秒";
+
+  // Prestige
+  const req   = prestigeReq();
+  const pBtn  = document.getElementById("prestigeBtn");
+  pBtn.disabled = !canPrestige();
+  document.getElementById("prestigeMultiText").textContent =
+    "常連×" + prestigeMult.toFixed(2);
+  document.getElementById("prestigeNextText").textContent =
+    canPrestige()
+      ? "のれん分けで +25% ボーナス!"
+      : "累計 " + fmt(req) + " コインでのれん分け";
+}
+
+function updateStallUI(idx) {
+  const s   = STALLS[idx];
+  const st  = stallState[idx];
+  const lv  = st.level;
+  const card = document.getElementById("stall-" + s.id);
+  if (!card) return;
+
+  const locked = (lv === 0);
+  card.classList.toggle("locked", locked);
+  card.classList.toggle("unlocked", !locked);
+
+  document.getElementById("stallLv-" + s.id).textContent = "Lv." + lv;
+  document.getElementById("tapEarn-" + s.id).textContent = "+" + fmt(tapEarn(idx));
+
+  // Auto
+  const auto = autoEarn(idx);
+  const autoEl = document.getElementById("stallAuto-" + s.id);
+  if (st.hired && lv > 0) {
+    autoEl.innerHTML = `<span class="auto-dot"></span>${fmt(auto)}/秒`;
+  } else if (lv > 0) {
+    autoEl.textContent = "自動:なし";
+  } else {
+    autoEl.textContent = "未出店";
+  }
+
+  // Progress bar (next level cost progress)
+  const cost = stallCost(idx);
+  const prog = Math.min(100, (coins / cost) * 100);
+  document.getElementById("prog-" + s.id).style.width = prog + "%";
+
+  // Upgrade button
+  const upBtn = document.getElementById("btn-upgrade-" + s.id);
+  const label = lv === 0 ? "出店" : "強化";
+  upBtn.innerHTML = label + ' <span id="upgCost-'+s.id+'">' + fmt(cost) + '</span>';
+  upBtn.classList.toggle("cant-afford", coins < cost);
+
+  // Hire button
+  const hireBtn = document.getElementById("btn-hire-" + s.id);
+  if (st.hired) {
+    hireBtn.textContent = "✓店員";
+    hireBtn.classList.add("hired");
+    hireBtn.classList.remove("cant-afford");
+    hireBtn.disabled = true;
+  } else {
+    const hc = hireCost(idx);
+    hireBtn.innerHTML = "店員 " + fmt(hc);
+    hireBtn.classList.remove("hired");
+    hireBtn.disabled = false;
+    hireBtn.classList.toggle("cant-afford", coins < hc || lv === 0);
+  }
+
+  // Noren (build once)
+  const norenRow = document.getElementById("noren-" + s.id);
+  if (norenRow && norenRow.children.length === 0 && lv > 0) {
+    buildNoren(s.id);
+  }
+}
+
+function updateAllUI() {
+  updateHUD();
+  STALLS.forEach((_, idx) => updateStallUI(idx));
+}
+
+/* ============================================================
+   COIN FLOAT ANIMATION
+   ============================================================ */
+function spawnCoinFloat(el, amount) {
+  const rect = el.getBoundingClientRect();
+  const appRect = document.getElementById("app").getBoundingClientRect();
+  const floater = document.createElement("div");
+  floater.className = "coin-float";
+  floater.textContent = "+" + fmt(amount);
+  floater.style.left = (rect.left - appRect.left + rect.width / 2 - 20) + "px";
+  floater.style.top  = (rect.top  - appRect.top  + rect.height / 2) + "px";
+  document.getElementById("app").appendChild(floater);
+  spawnParticle(rect.left - appRect.left + rect.width/2, rect.top - appRect.top + rect.height/2);
+  floater.addEventListener("animationend", () => floater.remove());
+}
+
+/* ============================================================
+   TAP SERVE
+   ============================================================ */
+function onTapStall(idx, tapEl) {
+  const lv = stallState[idx].level;
+  if (lv === 0) return;
+  const earn = tapEarn(idx);
+  coins += earn;
+  totalEarned += earn;
+  sfxCoin();
+  spawnCoinFloat(tapEl, earn);
+  updateAllUI();
+  save();
+}
+
+/* ============================================================
+   BUY / HIRE
+   ============================================================ */
+function onUpgrade(idx) {
+  const cost = stallCost(idx);
+  if (coins < cost) return;
+  coins -= cost;
+  stallState[idx].level++;
+  sfxBuy();
+  updateAllUI();
+  save();
+}
+
+function onHire(idx) {
+  if (stallState[idx].hired || stallState[idx].level === 0) return;
+  const hc = hireCost(idx);
+  if (coins < hc) return;
+  coins -= hc;
+  stallState[idx].hired = true;
+  sfxBuy();
+  updateAllUI();
+  save();
+}
+
+/* ============================================================
+   PRESTIGE
+   ============================================================ */
+function doPrestige() {
+  prestige++;
+  prestigeMult = 1 + prestige * PRESTIGE_BONUS;
+  coins = 0;
+  totalEarned = 0;
+  stallState = STALLS.map((_, i) => ({ level: i === 0 ? 1 : 0, hired: false }));
+  sfxPrestige();
+  updateAllUI();
+  save();
+}
+
+/* ============================================================
+   OFFLINE REWARD
+   ============================================================ */
+function checkOffline() {
+  const now = Date.now();
+  const elapsed = Math.min((now - lastSeen) / 1000, OFFLINE_CAP_S);
+  lastSeen = now;
+  if (elapsed < 30) return; // less than 30s — skip
+  const cps = totalCps();
+  if (cps <= 0) return;
+  const reward = cps * elapsed * OFFLINE_RATE;
+  if (reward < 1) return;
+  coins      += reward;
+  totalEarned+= reward;
+
+  const mins = Math.floor(elapsed / 60);
+  const secs = Math.floor(elapsed % 60);
+  const timeStr = mins > 0 ? `${mins}分${secs}秒` : `${secs}秒`;
+
+  document.getElementById("wbText").textContent =
+    `留守中 ${timeStr} のあいだ、${fmt(reward)} コイン稼ぎました！`;
+  document.getElementById("wbCoins").textContent = "+" + fmt(reward);
+  document.getElementById("wbPopup").classList.remove("hidden");
+  sfxWelcome();
+  updateAllUI();
+  save();
+}
+
+/* ============================================================
+   GAME LOOP (rAF)
+   ============================================================ */
+let prevTime = 0;
+let incomeAccum = 0;
+let uiUpdateAccum = 0;
+
+function tick(ts) {
+  requestAnimationFrame(tick);
+
+  const dt = Math.min((ts - prevTime) / 1000, 0.2); // cap at 200ms
+  prevTime = ts;
+
+  drawSky(dt);
+
+  if (!gameStarted) return;
+
+  // Income
+  incomeAccum += dt;
+  if (incomeAccum >= 0.1) {
+    const cps = totalCps();
+    const earned = cps * incomeAccum;
+    if (earned > 0) {
+      coins += earned;
+      totalEarned += earned;
+    }
+    incomeAccum = 0;
+  }
+
+  // UI refresh every 250ms
+  uiUpdateAccum += dt;
+  if (uiUpdateAccum >= 0.25) {
+    updateAllUI();
+    uiUpdateAccum = 0;
+  }
+}
+requestAnimationFrame(tick);
+
+/* ============================================================
+   EVENT BINDING
+   ============================================================ */
+function bindEvents() {
+  // Start
+  document.getElementById("startBtn").addEventListener("pointerdown", () => {
+    document.getElementById("titleOverlay").classList.add("hidden");
+    gameStarted = true;
+    checkOffline();
+  });
+
+  // Mute
+  document.getElementById("muteBtn").addEventListener("pointerdown", () => {
+    muted = !muted;
+    document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔊";
+  });
+
+  // Stall list (event delegation)
+  const list = document.getElementById("stallList");
+  list.addEventListener("pointerdown", e => {
+    const tapEl = e.target.closest(".stall-tap[data-idx]");
+    if (tapEl) {
+      onTapStall(parseInt(tapEl.dataset.idx), tapEl);
+      return;
+    }
+    const upBtn = e.target.closest(".btn-upgrade[data-idx]");
+    if (upBtn) { onUpgrade(parseInt(upBtn.dataset.idx)); return; }
+    const hireBtn = e.target.closest(".btn-hire[data-idx]");
+    if (hireBtn) { onHire(parseInt(hireBtn.dataset.idx)); return; }
+  });
+
+  // Prestige
+  document.getElementById("prestigeBtn").addEventListener("pointerdown", () => {
+    if (!canPrestige()) return;
+    const nextMult = 1 + (prestige + 1) * PRESTIGE_BONUS;
+    document.getElementById("prestigeDesc").textContent =
+      `屋台をリセットして常連ボーナスを得ます。現在: ×${prestigeMult.toFixed(2)} → ×${nextMult.toFixed(2)}`;
+    document.getElementById("prestigeGainText").textContent = `常連 ×${nextMult.toFixed(2)}`;
+    document.getElementById("prestigeOverlay").classList.remove("hidden");
+  });
+  document.getElementById("prestigeConfirmBtn").addEventListener("pointerdown", () => {
+    document.getElementById("prestigeOverlay").classList.add("hidden");
+    doPrestige();
+  });
+  document.getElementById("prestigeCancelBtn").addEventListener("pointerdown", () => {
+    document.getElementById("prestigeOverlay").classList.add("hidden");
+  });
+
+  // Welcome back OK
+  document.getElementById("wbOkBtn").addEventListener("pointerdown", () => {
+    document.getElementById("wbPopup").classList.add("hidden");
+  });
+
+  // Save on visibility change / pagehide
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && gameStarted) save();
+  });
+  window.addEventListener("pagehide", () => { if (gameStarted) save(); });
+}
+
+/* ============================================================
+   DOUBLE-TAP ZOOM PREVENTION
+   ============================================================ */
+let lastTouch = 0;
+document.addEventListener("touchend", e => {
+  const n = Date.now();
+  if (n - lastTouch <= 350 && e.cancelable && e.target && !e.target.closest("[data-tappable]")) {
+    e.preventDefault();
+  }
+  lastTouch = n;
+}, { passive: false });
+document.addEventListener("dblclick", e => e.preventDefault());
+document.addEventListener("gesturestart", e => e.preventDefault());
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init() {
+  initSky();
+  const hasSave = load();
+  buildStallCards();
+  updateAllUI();
+  bindEvents();
+
+  // If returning with save, skip title and check offline
+  if (hasSave && (stallState.some(s => s.level > 0) || coins > 0)) {
+    document.getElementById("titleOverlay").classList.add("hidden");
+    gameStarted = true;
+    checkOffline();
+  }
+}
+
+window.addEventListener("load", () => {
+  init();
+});
+window.addEventListener("resize", () => {
+  initSky();
+});
+</script>
+</body>
+</html>

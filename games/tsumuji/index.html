@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>つむじ — 吸い込め、でっかくなれ！</title>
+<meta name="description" content="つむじ風を操って落ち葉やゴミを吸い込み、どんどんでっかくなれ！お祭り広場を席巻する60秒アーケード。">
+<meta property="og:title" content="つむじ — 吸い込め、でっかくなれ！">
+<meta property="og:description" content="つむじ風を操って落ち葉やゴミを吸い込み、どんどんでっかくなれ！お祭り広場を席巻する60秒アーケード。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/tsumuji/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/tsumuji/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%;
+  background: #3a2a10;
+  font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+body {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+#app {
+  position: fixed;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: min(100vw, calc(100dvh * 0.56), 420px);
+  height: 100dvh;
+  background: #f5e8c0;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* HUD */
+#hud {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 4px;
+  background: #e8d49a;
+  border-bottom: 2px solid #c9a84c;
+  flex-shrink: 0;
+  min-height: 44px;
+}
+.hstat {
+  font-size: 0.62rem;
+  color: #7a5c20;
+  line-height: 1.2;
+  font-weight: 700;
+}
+.hstat b { display: block; font-size: 1rem; color: #3a2200; }
+.hstat.grow { flex: 1; }
+#timerDisp b { font-size: 1.1rem; }
+#muteBtn {
+  background: #c9a84c;
+  border: none;
+  border-radius: 8px;
+  width: 32px; height: 32px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation;
+  flex-shrink: 0;
+}
+/* Canvas */
+canvas {
+  display: block;
+  width: 100%;
+  flex: 1;
+  touch-action: none;
+  cursor: crosshair;
+}
+/* Overlays */
+.ov {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  gap: 12px;
+  background: rgba(245, 232, 192, 0.92);
+  backdrop-filter: blur(4px);
+}
+.ov.hidden { display: none; }
+.ov h1 {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #3a2200;
+  text-shadow: 2px 3px 0 #c9a84c;
+  letter-spacing: 0.05em;
+}
+.ov h2 {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #3a2200;
+  text-shadow: 1px 2px 0 #c9a84c;
+}
+.ov p {
+  font-size: 0.85rem;
+  color: #7a5c20;
+  text-align: center;
+  line-height: 1.6;
+  max-width: 320px;
+}
+.ov .coins-disp {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #b8860b;
+  background: #fff7d6;
+  border: 2px solid #c9a84c;
+  border-radius: 20px;
+  padding: 4px 16px;
+}
+.btn {
+  background: #e85d04;
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  padding: 14px 36px;
+  font-size: 1.1rem;
+  font-weight: 900;
+  font-family: 'Zen Maru Gothic', sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 4px 0 #a33900;
+  transition: transform 0.08s, box-shadow 0.08s;
+  letter-spacing: 0.05em;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a33900; }
+.btn.secondary {
+  background: #c9a84c;
+  box-shadow: 0 4px 0 #8a6f20;
+  font-size: 0.9rem;
+  padding: 10px 24px;
+}
+.btn.secondary:active { box-shadow: 0 1px 0 #8a6f20; }
+/* Shop */
+#shopOv {
+  overflow-y: auto;
+  justify-content: flex-start;
+  padding-top: 32px;
+}
+#shopOv h2 { margin-bottom: 4px; }
+.shop-coins {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #b8860b;
+  margin-bottom: 8px;
+}
+.shop-items {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+.shop-item {
+  background: #fff7d6;
+  border: 2px solid #c9a84c;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.1s;
+}
+.shop-item:active { background: #fde68a; }
+.shop-item.maxed { opacity: 0.55; cursor: default; }
+.shop-item-icon { font-size: 1.5rem; }
+.shop-item-info { flex: 1; }
+.shop-item-name { font-size: 0.85rem; font-weight: 700; color: #3a2200; }
+.shop-item-desc { font-size: 0.72rem; color: #7a5c20; }
+.shop-item-cost {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #b8860b;
+  white-space: nowrap;
+}
+.shop-btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+/* Combo flash */
+#comboFlash {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #e85d04;
+  text-shadow: 2px 2px 0 #fff, -1px -1px 0 #c9a84c;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+  z-index: 10;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="hstat grow" id="scoreDisp"><span>スコア</span><b>0</b></div>
+    <div class="hstat" id="comboDisp"><span>コンボ</span><b>x1</b></div>
+    <div class="hstat" id="timerDisp"><span>残り</span><b>60</b></div>
+    <div class="hstat" id="coinsDisp"><span>コイン</span><b>0</b></div>
+    <button id="muteBtn" aria-label="ミュート切替">🔊</button>
+  </div>
+  <canvas id="gc"></canvas>
+  <div id="comboFlash"></div>
+
+  <!-- Title overlay -->
+  <div class="ov" id="titleOv">
+    <h1>つむじ</h1>
+    <p>お祭り広場のつむじ風を操って<br>落ち葉・ゴミ・屋台をぜーんぶ吸い込め！<br>小さいものから順番に吸い込んで<br>どんどん大きくなろう</p>
+    <div class="coins-disp" id="titleCoins">🪙 0 コイン</div>
+    <button class="btn" id="startBtn">あそぶ！</button>
+    <button class="btn secondary" id="shopBtn">強化ショップ</button>
+  </div>
+
+  <!-- Result overlay -->
+  <div class="ov hidden" id="resultOv">
+    <h2>終了！</h2>
+    <div id="resultScore" style="font-size:1.4rem;font-weight:900;color:#3a2200;"></div>
+    <div id="resultBest" style="font-size:0.85rem;color:#7a5c20;"></div>
+    <div class="coins-disp" id="resultCoins">🪙 +0 コイン</div>
+    <button class="btn" id="retryBtn">もう一回！</button>
+    <button class="btn secondary" id="toShopBtn">ショップへ</button>
+  </div>
+
+  <!-- Shop overlay -->
+  <div class="ov hidden" id="shopOv">
+    <h2>強化ショップ</h2>
+    <div class="shop-coins" id="shopCoins">🪙 0 コイン</div>
+    <div class="shop-items" id="shopItems"></div>
+    <div class="shop-btn-row">
+      <button class="btn secondary" id="shopBackBtn">もどる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ============================================================
+// PERSISTENCE
+// ============================================================
+const SAVE_KEY = "tsumuji_v1";
+function loadSave() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
+    return {
+      coins: d.coins || 0,
+      best: d.best || 0,
+      upgrades: d.upgrades || {}
+    };
+  } catch(e) { return { coins: 0, best: 0, upgrades: {} }; }
+}
+function writeSave(s) {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch(e) {}
+}
+let save = loadSave();
+
+// ============================================================
+// UPGRADES CONFIG
+// ============================================================
+const UPGRADE_DEFS = [
+  { id:"startSize",  icon:"🌀", name:"開始サイズ+",  desc:"最初のつむじ風が少し大きくなる",         costs:[50,120,250,450],  max:4 },
+  { id:"time",       icon:"⏱",  name:"制限時間+",    desc:"1ラウンドが10秒延長",                    costs:[80,200,400],       max:3 },
+  { id:"radius",     icon:"⭕",  name:"吸い込み半径+", desc:"吸い込める距離が広がる",                costs:[60,150,300,500],  max:4 },
+  { id:"growth",     icon:"📈", name:"成長率+",       desc:"吸い込んだとき大きくなりやすい",        costs:[70,160,320,560],  max:4 },
+  { id:"magnet",     icon:"🧲", name:"コインマグネット", desc:"コインがより多く手に入る",            costs:[100,250,500],      max:3 },
+];
+
+function upgLevel(id) { return save.upgrades[id] || 0; }
+
+function getUpgradeValues() {
+  return {
+    startRadius: 18 + upgLevel("startSize") * 6,
+    timeBonus: upgLevel("time") * 10,
+    suctionMult: 1 + upgLevel("radius") * 0.2,
+    growthMult: 1 + upgLevel("growth") * 0.15,
+    coinMult: 1 + upgLevel("magnet") * 0.4,
+  };
+}
+
+// ============================================================
+// AUDIO
+// ============================================================
+let AC = null, muted = false;
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => {
+        if (AC.state !== "running" && !document.hidden) {
+          try { AC.resume(); } catch(e) {}
+        }
+      };
+    } catch(e) {}
+  }
+  if (AC && AC.state !== "running") { try { AC.resume(); } catch(e) {} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const sr=8000, n=800, buf=new ArrayBuffer(44+n), v=new DataView(buf);
+  const str=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
+  str(0,"RIFF"); v.setUint32(4,36+n,true); str(8,"WAVE"); str(12,"fmt ");
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr,true); v.setUint16(32,1,true);
+  v.setUint16(34,8,true); str(36,"data"); v.setUint32(40,n,true);
+  for(let i=0;i<n;i++) v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline","");
+    silentEl.loop = true;
+    silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play();
+  if (p && p.catch) p.catch(()=>{});
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === "running")
+      ["pointerdown","pointerup","touchend"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true));
+  };
+  try { AC.resume().then(done); } catch(e) { done(); }
+}
+["pointerdown","pointerup","touchend"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) audio(); });
+
+function playTone(freq, type="sine", duration=0.12, gain=0.18, startFreq=null) {
+  if (muted) return;
+  const ctx = audio(); if (!ctx) return;
+  try {
+    const g = ctx.createGain();
+    const o = ctx.createOscillator();
+    o.type = type;
+    if (startFreq) {
+      o.frequency.setValueAtTime(startFreq, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(freq, ctx.currentTime + duration * 0.6);
+    } else {
+      o.frequency.setValueAtTime(freq, ctx.currentTime);
+    }
+    g.gain.setValueAtTime(gain, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+
+function sfxEat(comboN) {
+  const base = 300 + Math.min(comboN, 8) * 80;
+  playTone(base, "triangle", 0.18, 0.22, base * 0.5);
+}
+function sfxBigEat() {
+  playTone(600, "sawtooth", 0.25, 0.25, 200);
+  setTimeout(()=>playTone(800,"triangle",0.2,0.2),80);
+}
+function sfxBounce() { playTone(120, "square", 0.1, 0.1); }
+function sfxBuy() {
+  playTone(523,"triangle",0.12,0.18);
+  setTimeout(()=>playTone(659,"triangle",0.12,0.18),120);
+  setTimeout(()=>playTone(784,"triangle",0.18,0.22),240);
+}
+function sfxFanfare() {
+  const notes = [523,659,784,1046];
+  notes.forEach((f,i) => setTimeout(()=>playTone(f,"triangle",0.22,0.22),i*110));
+}
+
+// ============================================================
+// GAME STATE
+// ============================================================
+const canvas = document.getElementById("gc");
+const ctx = canvas.getContext("2d");
+
+// State vars — all initialized so first frame never throws
+let phase = "title"; // title | play | result
+let wirl = { x: 0, y: 0, r: 20, angle: 0 };
+let objects = [];
+let particles = [];
+let score = 0;
+let combo = 0;
+let comboTimer = 0;
+let roundTimer = 60;
+let roundStart = 0;
+let earnedCoins = 0;
+let pointerX = null, pointerY = null;
+let keys = { up:false, down:false, left:false, right:false };
+
+// Canvas sizing
+let CW = 0, CH = 0, DPR = 1;
+function resizeCanvas() {
+  DPR = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  CW = rect.width; CH = rect.height;
+  canvas.width = Math.round(CW * DPR);
+  canvas.height = Math.round(CH * DPR);
+}
+
+// ============================================================
+// OBJECT TYPES
+// Objects have: x, y, r (size), type, emoji, mass, vx, vy, angle, spin
+// ============================================================
+const OBJ_TYPES = [
+  { type:"leaf",    emoji:"🍂", mass:1,   minR:5,  maxR:9  },
+  { type:"cup",     emoji:"🥤", mass:2,   minR:8,  maxR:12 },
+  { type:"popcorn", emoji:"🍿", mass:3,   minR:10, maxR:14 },
+  { type:"balloon", emoji:"🎈", mass:4,   minR:12, maxR:17 },
+  { type:"umbrella",emoji:"☂",  mass:6,   minR:16, maxR:20 },
+  { type:"bench",   emoji:"🪑", mass:10,  minR:20, maxR:26 },
+  { type:"trash",   emoji:"🗑",  mass:16,  minR:25, maxR:32 },
+  { type:"cart",    emoji:"🛒", mass:24,  minR:30, maxR:38 },
+  { type:"kiosk",   emoji:"🏮", mass:36,  minR:38, maxR:48 },
+  { type:"tent",    emoji:"⛺", mass:55,  minR:50, maxR:65 },
+  { type:"tree",    emoji:"🌳", mass:80,  minR:65, maxR:80 },
+  { type:"shrine",  emoji:"⛩", mass:120, minR:80, maxR:100 },
+];
+
+function spawnObjects(count) {
+  objects = [];
+  // Weighted: lots of small stuff, sparse big stuff
+  for (let i = 0; i < count; i++) {
+    const weightedIdx = Math.floor(Math.pow(Math.random(), 1.8) * OBJ_TYPES.length);
+    const def = OBJ_TYPES[Math.min(weightedIdx, OBJ_TYPES.length - 1)];
+    const r = def.minR + Math.random() * (def.maxR - def.minR);
+    const margin = r + 10;
+    let ox, oy;
+    // Try to avoid spawning on top of wirl start position (center)
+    let tries = 0;
+    do {
+      ox = margin + Math.random() * (CW - margin * 2);
+      oy = margin + Math.random() * (CH - margin * 2);
+      tries++;
+    } while (tries < 10 && Math.hypot(ox - CW/2, oy - CH/2) < 60);
+    objects.push({
+      x: ox, y: oy, r,
+      type: def.type, emoji: def.emoji, mass: def.mass,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      angle: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.04,
+      wobble: Math.random() * Math.PI * 2,
+    });
+  }
+}
+
+// ============================================================
+// PARTICLES
+// ============================================================
+function spawnEatParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.5 + Math.random() * 3;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      r: 2 + Math.random() * 4,
+      life: 1,
+      decay: 0.04 + Math.random() * 0.03,
+      color,
+    });
+  }
+}
+
+function spawnSwirlParticles(x, y) {
+  for (let i = 0; i < 3; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = wirl.r * (0.5 + Math.random() * 0.8);
+    particles.push({
+      x: x + Math.cos(angle) * dist,
+      y: y + Math.sin(angle) * dist,
+      vx: (Math.random()-0.5)*0.8,
+      vy: -0.5 - Math.random(),
+      r: 1.5 + Math.random() * 2,
+      life: 0.7,
+      decay: 0.06,
+      color: `hsla(${30+Math.random()*40},80%,60%,`,
+    });
+  }
+}
+
+// ============================================================
+// GAME LOGIC
+// ============================================================
+function startRound() {
+  const upv = getUpgradeValues();
+  const totalTime = 60 + upv.timeBonus;
+
+  wirl.x = CW / 2;
+  wirl.y = CH / 2;
+  wirl.r = upv.startRadius;
+  wirl.angle = 0;
+  pointerX = null; pointerY = null;
+
+  score = 0;
+  combo = 0;
+  comboTimer = 0;
+  earnedCoins = 0;
+  roundTimer = totalTime;
+  roundStart = performance.now();
+
+  particles = [];
+  const objCount = 70 + Math.floor(wirl.r / 5);
+  spawnObjects(objCount);
+
+  phase = "play";
+  updateHUD();
+}
+
+function endRound() {
+  phase = "result";
+  if (score > save.best) save.best = score;
+  // Coins: base from score, multiplied by magnet
+  const upv = getUpgradeValues();
+  earnedCoins = Math.floor(score / 8 * upv.coinMult);
+  save.coins += earnedCoins;
+  writeSave(save);
+  sfxFanfare();
+  showResult();
+}
+
+function updateHUD() {
+  document.querySelector("#scoreDisp b").textContent = score;
+  document.querySelector("#comboDisp b").textContent = "x" + Math.max(1,combo);
+  const elapsed = phase === "play" ? (performance.now() - roundStart) / 1000 : 0;
+  const upv = getUpgradeValues();
+  const totalTime = 60 + upv.timeBonus;
+  const remaining = Math.max(0, totalTime - elapsed);
+  document.querySelector("#timerDisp b").textContent = Math.ceil(remaining);
+  document.querySelector("#coinsDisp b").textContent = save.coins;
+}
+
+function tryEatObject(obj) {
+  const dist = Math.hypot(wirl.x - obj.x, wirl.y - obj.y);
+  const upv = getUpgradeValues();
+  const suctionRange = wirl.r * 1.4 * upv.suctionMult;
+
+  if (dist < suctionRange) {
+    if (obj.r <= wirl.r * 1.05) {
+      // Eat it
+      combo++;
+      comboTimer = 90; // frames
+      const pts = Math.round(obj.mass * Math.max(1, combo * 0.5));
+      score += pts;
+
+      // Grow
+      const growFactor = (obj.mass / (wirl.r * wirl.r)) * 60 * upv.growthMult;
+      wirl.r = Math.min(wirl.r + growFactor, Math.min(CW, CH) * 0.45);
+
+      const isBig = obj.r > 25;
+      spawnEatParticles(obj.x, obj.y, isBig ? "#e85d04" : "#f9c74f", isBig ? 14 : 8);
+      if (isBig) sfxBigEat();
+      else sfxEat(combo);
+
+      showComboFlash(combo, pts);
+      return true; // remove
+    } else {
+      // Too big — bounce player back
+      const nx = (wirl.x - obj.x) / (dist || 1);
+      const ny = (wirl.y - obj.y) / (dist || 1);
+      wirl.x += nx * 8;
+      wirl.y += ny * 8;
+      sfxBounce();
+      spawnEatParticles(wirl.x, wirl.y, "#888", 4);
+      return false;
+    }
+  } else if (dist < suctionRange * 1.8 && obj.r <= wirl.r) {
+    // Pull toward wirl (suction)
+    const nx = (wirl.x - obj.x) / (dist || 1);
+    const ny = (wirl.y - obj.y) / (dist || 1);
+    const pull = (1.8 - dist / (suctionRange * 1.8)) * 2;
+    obj.vx += nx * pull * 0.1;
+    obj.vy += ny * pull * 0.1;
+  }
+  return false;
+}
+
+let comboFlashTimer = 0;
+function showComboFlash(combo, pts) {
+  const el = document.getElementById("comboFlash");
+  if (combo >= 3) {
+    el.textContent = combo >= 6 ? `${combo} COMBO!! +${pts}` : `${combo} COMBO! +${pts}`;
+    el.style.opacity = "1";
+    comboFlashTimer = 80;
+  }
+}
+
+// ============================================================
+// DRAW
+// ============================================================
+const GRASS_COLORS = ["#8fc26a","#7db55a","#9ace74","#72a84e"];
+let bgPatternGenerated = false;
+let bgData = null; // offscreen
+
+function generateBg() {
+  // Generate a grassy park-ground pattern once
+  const oc = document.createElement("canvas");
+  oc.width = Math.round(CW * DPR);
+  oc.height = Math.round(CH * DPR);
+  const octx = oc.getContext("2d");
+
+  // Base grass
+  octx.fillStyle = "#8fc26a";
+  octx.fillRect(0, 0, oc.width, oc.height);
+
+  // Subtle patches
+  for (let i = 0; i < 60; i++) {
+    const px = Math.random() * oc.width;
+    const py = Math.random() * oc.height;
+    const pr = 20 + Math.random() * 60;
+    octx.save();
+    octx.globalAlpha = 0.18 + Math.random() * 0.15;
+    octx.fillStyle = GRASS_COLORS[Math.floor(Math.random() * GRASS_COLORS.length)];
+    octx.beginPath();
+    octx.ellipse(px, py, pr, pr * 0.6, Math.random() * Math.PI, 0, Math.PI * 2);
+    octx.fill();
+    octx.restore();
+  }
+
+  // Footpath — sandy diagonal stripe
+  octx.save();
+  octx.globalAlpha = 0.25;
+  octx.fillStyle = "#d4a55a";
+  octx.beginPath();
+  octx.moveTo(oc.width * 0.3, 0);
+  octx.lineTo(oc.width * 0.7, 0);
+  octx.lineTo(oc.width * 0.55, oc.height);
+  octx.lineTo(oc.width * 0.15, oc.height);
+  octx.closePath();
+  octx.fill();
+  octx.restore();
+
+  // Festival light strings (dots)
+  octx.save();
+  octx.globalAlpha = 0.4;
+  for (let j = 0; j < 3; j++) {
+    const y0 = oc.height * (0.25 + j * 0.25);
+    for (let i = 0; i < 12; i++) {
+      const xp = (oc.width / 11) * i;
+      const yp = y0 + Math.sin(i * 0.9) * 12 * DPR;
+      const colors = ["#ffd166","#ef476f","#06d6a0","#118ab2"];
+      octx.fillStyle = colors[i % 4];
+      octx.beginPath();
+      octx.arc(xp, yp, 3 * DPR, 0, Math.PI * 2);
+      octx.fill();
+    }
+  }
+  octx.restore();
+
+  bgData = oc;
+  bgPatternGenerated = true;
+}
+
+function drawBg() {
+  if (!bgPatternGenerated || bgData.width !== canvas.width || bgData.height !== canvas.height) {
+    bgPatternGenerated = false;
+    generateBg();
+  }
+  ctx.drawImage(bgData, 0, 0);
+}
+
+function drawObject(obj, t) {
+  const fs = Math.round(obj.r * 1.8 * DPR);
+  ctx.save();
+  ctx.translate(Math.round(obj.x * DPR), Math.round(obj.y * DPR));
+  ctx.rotate(obj.angle);
+  ctx.font = `${fs}px serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  // Gentle wobble for floating objects (balloons, leaves)
+  const wy = (obj.type === "balloon") ? Math.sin(t * 0.003 + obj.wobble) * 2 * DPR : 0;
+  ctx.fillText(obj.emoji, 0, wy);
+  ctx.restore();
+}
+
+function drawWhirlwind(t) {
+  const cx = wirl.x * DPR;
+  const cy = wirl.y * DPR;
+  const r = wirl.r * DPR;
+
+  // Outer glow
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.4);
+  grd.addColorStop(0, "rgba(255,250,200,0.35)");
+  grd.addColorStop(0.5, "rgba(255,200,80,0.18)");
+  grd.addColorStop(1, "rgba(255,150,50,0)");
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 1.4, 0, Math.PI * 2);
+  ctx.fillStyle = grd;
+  ctx.fill();
+  ctx.restore();
+
+  // Spiral arms — 3 arcs rotating
+  for (let arm = 0; arm < 3; arm++) {
+    const baseAngle = wirl.angle + (arm / 3) * Math.PI * 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(baseAngle);
+    ctx.strokeStyle = `hsla(${30 + arm*20},90%,55%,0.7)`;
+    ctx.lineWidth = r * 0.18;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    // Spiral: parametric
+    const steps = 24;
+    for (let s = 0; s <= steps; s++) {
+      const frac = s / steps;
+      const a = frac * Math.PI * 1.5;
+      const rad = frac * r;
+      const px = Math.cos(a) * rad;
+      const py = Math.sin(a) * rad;
+      if (s === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Center core
+  const coreGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.55);
+  coreGrd.addColorStop(0, "rgba(255,255,240,0.95)");
+  coreGrd.addColorStop(0.6, "rgba(255,220,80,0.6)");
+  coreGrd.addColorStop(1, "rgba(255,150,30,0)");
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.55, 0, Math.PI * 2);
+  ctx.fillStyle = coreGrd;
+  ctx.fill();
+  ctx.restore();
+
+  // Sparkle dots
+  for (let i = 0; i < 5; i++) {
+    const sa = wirl.angle * 2 + (i / 5) * Math.PI * 2;
+    const sr = r * (0.5 + 0.5 * Math.sin(t * 0.005 + i));
+    const sx = cx + Math.cos(sa) * sr;
+    const sy = cy + Math.sin(sa) * sr;
+    const ssize = (1.5 + Math.random()) * DPR;
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,200,0.9)";
+    ctx.beginPath();
+    ctx.arc(sx, sy, ssize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = p.life * 0.85;
+    if (p.color.startsWith("hsla")) {
+      ctx.fillStyle = p.color + p.life + ")";
+    } else {
+      ctx.fillStyle = p.color;
+    }
+    ctx.beginPath();
+    ctx.arc(p.x * DPR, p.y * DPR, p.r * DPR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawSizeHint() {
+  // Faint ring showing eat threshold
+  const upv = getUpgradeValues();
+  ctx.save();
+  ctx.globalAlpha = 0.25;
+  ctx.strokeStyle = "#e85d04";
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();
+  ctx.arc(wirl.x * DPR, wirl.y * DPR, wirl.r * 1.05 * DPR, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+let lastT = 0;
+function loop(t) {
+  requestAnimationFrame(loop);
+
+  const dt = Math.min(t - lastT, 50); // clamp to 50ms
+  lastT = t;
+
+  // Re-apply DPR every frame (iOS context loss guard)
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // --- Phase: title / result => just draw bg + idle whirl ---
+  if (phase === "title" || phase === "result") {
+    drawBg();
+    wirl.angle += 0.04;
+    drawWhirlwind(t);
+    return;
+  }
+
+  // --- Phase: play ---
+  const upv = getUpgradeValues();
+  const totalTime = 60 + upv.timeBonus;
+  const elapsed = (t - roundStart) / 1000;
+  roundTimer = Math.max(0, totalTime - elapsed);
+
+  if (roundTimer <= 0) {
+    endRound();
+    return;
+  }
+
+  // Move whirlwind — pointer chase
+  const speed = 3.5;
+  if (pointerX !== null && pointerY !== null) {
+    const dx = pointerX - wirl.x;
+    const dy = pointerY - wirl.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 2) {
+      const move = Math.min(dist, speed);
+      wirl.x += (dx / dist) * move;
+      wirl.y += (dy / dist) * move;
+    }
+  }
+  // Keyboard
+  if (keys.left)  wirl.x -= speed;
+  if (keys.right) wirl.x += speed;
+  if (keys.up)    wirl.y -= speed;
+  if (keys.down)  wirl.y += speed;
+
+  // Clamp to canvas
+  wirl.x = Math.max(wirl.r, Math.min(CW - wirl.r, wirl.x));
+  wirl.y = Math.max(wirl.r, Math.min(CH - wirl.r, wirl.y));
+
+  wirl.angle += 0.07;
+
+  // Combo timer
+  if (comboTimer > 0) {
+    comboTimer--;
+  } else {
+    combo = 0;
+  }
+
+  // ComboFlash fade
+  if (comboFlashTimer > 0) {
+    comboFlashTimer--;
+    if (comboFlashTimer === 0) {
+      document.getElementById("comboFlash").style.opacity = "0";
+    }
+  }
+
+  // Update objects
+  const toRemove = new Set();
+  for (let i = 0; i < objects.length; i++) {
+    const obj = objects[i];
+    obj.x += obj.vx;
+    obj.y += obj.vy;
+    obj.vx *= 0.99;
+    obj.vy *= 0.99;
+    obj.angle += obj.spin;
+    // Bounce off walls
+    if (obj.x < obj.r) { obj.x = obj.r; obj.vx *= -0.5; }
+    if (obj.x > CW - obj.r) { obj.x = CW - obj.r; obj.vx *= -0.5; }
+    if (obj.y < obj.r) { obj.y = obj.r; obj.vy *= -0.5; }
+    if (obj.y > CH - obj.r) { obj.y = CH - obj.r; obj.vy *= -0.5; }
+
+    if (tryEatObject(obj)) {
+      toRemove.add(i);
+    }
+  }
+  if (toRemove.size > 0) {
+    objects = objects.filter((_,i) => !toRemove.has(i));
+  }
+
+  // Spawn swirl trail
+  if (t % 3 < 2) spawnSwirlParticles(wirl.x, wirl.y);
+
+  // Update particles
+  for (const p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.05;
+    p.life -= p.decay;
+  }
+  particles = particles.filter(p => p.life > 0);
+
+  // Respawn objects if too few remain
+  if (objects.length < 15 && phase === "play") {
+    const def = OBJ_TYPES[Math.floor(Math.random() * Math.min(5, OBJ_TYPES.length))];
+    const r = def.minR + Math.random() * (def.maxR - def.minR);
+    const edge = Math.random() < 0.5 ? 0 : CW;
+    const ey = Math.random() * CH;
+    objects.push({
+      x: edge === 0 ? r : CW - r, y: ey, r,
+      type: def.type, emoji: def.emoji, mass: def.mass,
+      vx: (edge === 0 ? 1 : -1) * (0.5 + Math.random()),
+      vy: (Math.random() - 0.5) * 0.5,
+      angle: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.04,
+      wobble: Math.random() * Math.PI * 2,
+    });
+  }
+
+  // --- Draw ---
+  drawBg();
+
+  // Draw objects (behind whirl)
+  for (const obj of objects) {
+    drawObject(obj, t);
+  }
+
+  drawParticles();
+  drawSizeHint();
+  drawWhirlwind(t);
+
+  // HUD refresh
+  updateHUD();
+}
+
+// ============================================================
+// UI
+// ============================================================
+function showTitle() {
+  document.getElementById("titleOv").classList.remove("hidden");
+  document.getElementById("resultOv").classList.add("hidden");
+  document.getElementById("shopOv").classList.add("hidden");
+  document.getElementById("titleCoins").textContent = `🪙 ${save.coins} コイン`;
+}
+function showResult() {
+  document.getElementById("resultOv").classList.remove("hidden");
+  document.getElementById("titleOv").classList.add("hidden");
+  document.getElementById("shopOv").classList.add("hidden");
+  document.getElementById("resultScore").textContent = `スコア: ${score}`;
+  const isBest = score >= save.best;
+  document.getElementById("resultBest").textContent = isBest && score > 0 ? "★ ベストスコア更新！" : `ベスト: ${save.best}`;
+  document.getElementById("resultCoins").textContent = `🪙 +${earnedCoins} コイン（合計 ${save.coins}）`;
+}
+function showShop() {
+  document.getElementById("shopOv").classList.remove("hidden");
+  document.getElementById("titleOv").classList.add("hidden");
+  document.getElementById("resultOv").classList.add("hidden");
+  renderShop();
+}
+function renderShop() {
+  document.getElementById("shopCoins").textContent = `🪙 ${save.coins} コイン`;
+  const container = document.getElementById("shopItems");
+  container.innerHTML = "";
+  for (const def of UPGRADE_DEFS) {
+    const lvl = upgLevel(def.id);
+    const maxed = lvl >= def.max;
+    const cost = maxed ? null : def.costs[lvl];
+    const div = document.createElement("div");
+    div.className = "shop-item" + (maxed ? " maxed" : "");
+    div.innerHTML = `
+      <div class="shop-item-icon">${def.icon}</div>
+      <div class="shop-item-info">
+        <div class="shop-item-name">${def.name} <small style="opacity:.6">Lv${lvl}/${def.max}</small></div>
+        <div class="shop-item-desc">${def.desc}</div>
+      </div>
+      <div class="shop-item-cost">${maxed ? "MAX" : `🪙${cost}`}</div>
+    `;
+    if (!maxed) {
+      div.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        if (save.coins >= cost) {
+          save.coins -= cost;
+          save.upgrades[def.id] = lvl + 1;
+          writeSave(save);
+          sfxBuy();
+          renderShop();
+        } else {
+          div.style.background = "#ffc0c0";
+          setTimeout(() => div.style.background = "", 300);
+        }
+      });
+    }
+    container.appendChild(div);
+  }
+}
+
+// Button wiring
+document.getElementById("startBtn").addEventListener("pointerdown", e => {
+  e.preventDefault();
+  document.getElementById("titleOv").classList.add("hidden");
+  resizeCanvas();
+  bgPatternGenerated = false;
+  startRound();
+});
+document.getElementById("retryBtn").addEventListener("pointerdown", e => {
+  e.preventDefault();
+  document.getElementById("resultOv").classList.add("hidden");
+  resizeCanvas();
+  bgPatternGenerated = false;
+  startRound();
+});
+document.getElementById("shopBtn").addEventListener("pointerdown", e => {
+  e.preventDefault();
+  showShop();
+});
+document.getElementById("toShopBtn").addEventListener("pointerdown", e => {
+  e.preventDefault();
+  showShop();
+});
+document.getElementById("shopBackBtn").addEventListener("pointerdown", e => {
+  e.preventDefault();
+  phase === "result" ? showResult() : showTitle();
+});
+document.getElementById("muteBtn").addEventListener("pointerdown", e => {
+  e.preventDefault();
+  muted = !muted;
+  document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔊";
+});
+
+// Canvas pointer events (play)
+let isPointerDown = false;
+canvas.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  isPointerDown = true;
+  const rect = canvas.getBoundingClientRect();
+  pointerX = e.clientX - rect.left;
+  pointerY = e.clientY - rect.top;
+});
+canvas.addEventListener("pointermove", e => {
+  if (!isPointerDown) return;
+  const rect = canvas.getBoundingClientRect();
+  pointerX = e.clientX - rect.left;
+  pointerY = e.clientY - rect.top;
+});
+canvas.addEventListener("pointerup", () => { isPointerDown = false; pointerX = null; });
+canvas.addEventListener("pointercancel", () => { isPointerDown = false; pointerX = null; });
+
+// Keyboard
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft"  || e.key === "a" || e.key === "A") keys.left = true;
+  if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.right = true;
+  if (e.key === "ArrowUp"    || e.key === "w" || e.key === "W") keys.up = true;
+  if (e.key === "ArrowDown"  || e.key === "s" || e.key === "S") keys.down = true;
+});
+document.addEventListener("keyup", e => {
+  if (e.key === "ArrowLeft"  || e.key === "a" || e.key === "A") keys.left = false;
+  if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.right = false;
+  if (e.key === "ArrowUp"    || e.key === "w" || e.key === "W") keys.up = false;
+  if (e.key === "ArrowDown"  || e.key === "s" || e.key === "S") keys.down = false;
+});
+
+// Double-tap zoom prevention
+let lastTouch = 0;
+document.addEventListener("touchend", e => {
+  const n = Date.now();
+  if (n - lastTouch <= 350 && e.cancelable) { e.preventDefault(); }
+  lastTouch = n;
+}, {passive: false});
+document.addEventListener("dblclick", e => e.preventDefault());
+document.addEventListener("gesturestart", e => e.preventDefault());
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener("resize", () => {
+  resizeCanvas();
+  bgPatternGenerated = false;
+});
+
+resizeCanvas();
+showTitle();
+
+// rAF loop starts from title screen
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
