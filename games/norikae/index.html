@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>のりかえ百科 — ことばの路線図でゴールへ</title>
+
+<!-- ---------- OGP / メタ ---------- -->
+<meta name="description" content="Wikipediaのリンクだけを乗り継いで、スタートの言葉からゴールの言葉へ。最少の乗り換えでたどり着け。ことばの路線図を旅するWikiRaceパズル。">
+<meta property="og:title" content="のりかえ百科 — ことばの路線図でゴールへ">
+<meta property="og:description" content="Wikipediaのリンクだけを乗り継いで、スタートの言葉からゴールの言葉へ最少手でたどり着け。ことばの路線図を旅するWikiRace。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nrtkumi.github.io/games/norikae/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/norikae/">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic:wght@700;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f5f3ec; --paper2:#eceadf; --card:#ffffff;
+    --ink:#1b2530; --ink2:#5a6675; --line:#d8d4c6;
+    --r:#e0483b; --b:#2a72c4; --g:#2f9e5e; --o:#ef8a2b; --p:#8a55c4;
+    --goal:#e0483b; --start:#2f9e5e;
+    --shadow:rgba(27,37,48,.16);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  html,body{height:100%;}
+  body{background:#10161d;color:var(--ink);font-family:"Zen Kaku Gothic New",sans-serif;overflow:hidden;overscroll-behavior:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;}
+  .app{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:min(100vw, calc(100dvh * 0.62), 480px);display:flex;flex-direction:column;background:var(--paper);box-shadow:0 0 60px rgba(0,0,0,.6);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);overflow:hidden;}
+
+  .hud{display:flex;align-items:center;gap:8px;padding:8px 12px 6px;background:var(--ink);color:var(--paper);}
+  .brand{font-family:"Zen Maru Gothic";font-weight:900;font-size:1rem;letter-spacing:.04em;}
+  .brand small{display:block;font-family:"Roboto Mono";font-size:.48rem;letter-spacing:.18em;color:#9fb0c0;margin-top:-2px;}
+  .hud .sp{flex:1;}
+  .stat{font-family:"Roboto Mono";font-size:.55rem;color:#9fb0c0;text-align:right;line-height:1.15;}
+  .stat b{display:block;font-size:1.05rem;color:#fff;}
+  .iconbtn{width:32px;height:32px;border-radius:8px;border:1.5px solid #44515f;background:#27323f;color:#dfe7ee;font-size:.95rem;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .iconbtn:active{transform:scale(.92);}
+
+  /* route bar */
+  .route{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--paper2);border-bottom:1px solid var(--line);}
+  .node{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 auto;max-width:38%;}
+  .node .dot{width:14px;height:14px;border-radius:50%;border:3px solid var(--ink);background:#fff;}
+  .node.s .dot{border-color:var(--start);} .node.gl .dot{border-color:var(--goal);background:var(--goal);}
+  .node .lab{font-size:.62rem;font-weight:700;color:var(--ink);text-align:center;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .node .tag{font-family:"Roboto Mono";font-size:.46rem;letter-spacing:.1em;}
+  .node.s .tag{color:var(--start);} .node.gl .tag{color:var(--goal);}
+  .rline{flex:1;height:0;border-top:3px dotted var(--ink2);position:relative;min-width:24px;}
+  .rline .hops{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--paper2);font-family:"Roboto Mono";font-size:.56rem;color:var(--ink2);padding:0 4px;white-space:nowrap;}
+
+  .stage{flex:1;min-height:0;display:flex;flex-direction:column;}
+
+  /* current station */
+  .station{padding:10px 12px 6px;}
+  .stitle{display:flex;align-items:center;gap:10px;}
+  .stitle .th{width:52px;height:52px;border-radius:10px;object-fit:cover;background:var(--paper2);border:1px solid var(--line);flex:0 0 auto;}
+  .stitle .nm{font-family:"Zen Maru Gothic";font-weight:900;font-size:1.32rem;color:var(--ink);line-height:1.15;}
+  .sdesc{font-size:.74rem;color:var(--ink2);line-height:1.5;margin-top:6px;max-height:3em;overflow:hidden;}
+  .goalhint{margin-top:7px;font-size:.7rem;color:var(--goal);font-weight:700;background:#fff;border:1.5px dashed var(--goal);border-radius:9px;padding:5px 9px;display:flex;align-items:center;gap:6px;}
+
+  .search{padding:4px 12px 6px;display:flex;gap:8px;align-items:center;}
+  .search input{flex:1;border:2px solid var(--line);border-radius:10px;padding:8px 11px;font-family:inherit;font-size:.85rem;color:var(--ink);background:#fff;outline:none;}
+  .search input:focus{border-color:var(--b);}
+  .search .cnt{font-family:"Roboto Mono";font-size:.56rem;color:var(--ink2);white-space:nowrap;}
+
+  .links{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:2px 12px 12px;display:flex;flex-wrap:wrap;gap:7px;align-content:flex-start;touch-action:pan-y;}
+  .chip{border:2px solid var(--ink);border-radius:20px;background:#fff;padding:7px 13px;font-size:.86rem;font-weight:700;color:var(--ink);cursor:pointer;box-shadow:0 2px 0 var(--shadow);line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .chip:active{transform:translateY(2px);box-shadow:0 0 0 var(--shadow);}
+  .chip.c0{border-color:var(--b);} .chip.c1{border-color:var(--g);} .chip.c2{border-color:var(--o);} .chip.c3{border-color:var(--p);} .chip.c4{border-color:var(--r);}
+  .chip.goalish{background:var(--goal);color:#fff;border-color:var(--goal);}
+  .empty{width:100%;text-align:center;color:var(--ink2);font-size:.78rem;padding:24px 0;}
+
+  .toolbar{display:flex;gap:8px;padding:6px 12px;border-top:1px solid var(--line);background:var(--paper2);}
+  .tbtn{flex:1;border:2px solid var(--ink);border-radius:10px;background:#fff;padding:9px;font-family:"Zen Maru Gothic";font-weight:700;font-size:.82rem;color:var(--ink);cursor:pointer;}
+  .tbtn:active{transform:translateY(1px);}
+  .tbtn.dim{opacity:.4;pointer-events:none;}
+
+  .loadbar{position:absolute;left:0;right:0;top:0;height:3px;background:transparent;z-index:20;overflow:hidden;}
+  .loadbar.on::after{content:"";position:absolute;left:-40%;width:40%;height:100%;background:var(--b);animation:slide .9s linear infinite;}
+  @keyframes slide{to{left:110%;}}
+  .toast{position:absolute;left:50%;bottom:78px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-size:.78rem;padding:8px 16px;border-radius:20px;opacity:0;transition:.25s;z-index:18;pointer-events:none;white-space:nowrap;}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .overlay{position:absolute;inset:0;z-index:25;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px 24px;gap:14px;background:rgba(245,243,236,.97);}
+  .overlay.hidden{display:none;}
+  .title{font-family:"Zen Maru Gothic";font-weight:900;font-size:2.5rem;color:var(--ink);line-height:1.05;}
+  .title small{display:block;font-family:"Roboto Mono";font-size:.6rem;letter-spacing:.24em;color:var(--ink2);margin-top:8px;font-weight:500;}
+  .lead{font-size:.85rem;color:var(--ink2);line-height:1.7;max-width:310px;}
+  .lead b{color:var(--b);}
+  .pair{display:flex;align-items:center;gap:12px;justify-content:center;background:#fff;border:2px solid var(--line);border-radius:14px;padding:12px 16px;}
+  .pair .w{font-family:"Zen Maru Gothic";font-weight:900;font-size:1.15rem;color:var(--ink);}
+  .pair .ar{color:var(--ink2);font-size:1.2rem;}
+  .pair .from{color:var(--start);} .pair .to{color:var(--goal);}
+  .bigbtn{border:none;border-radius:28px;background:var(--ink);color:#fff;font-family:"Zen Maru Gothic";font-weight:900;font-size:1.15rem;letter-spacing:.05em;padding:14px 42px;cursor:pointer;box-shadow:0 5px 0 #0a1016;}
+  .bigbtn:active{transform:translateY(3px);box-shadow:0 2px 0 #0a1016;}
+  .bigbtn.dim{opacity:.5;pointer-events:none;}
+  .tlink{font-size:.66rem;color:var(--ink2);text-decoration:underline;background:none;border:none;font-family:inherit;cursor:pointer;}
+  .result .big{font-family:"Zen Maru Gothic";font-weight:900;font-size:1.7rem;color:var(--g);display:block;line-height:1.2;}
+  .pathline{font-family:"Roboto Mono";font-size:.66rem;color:var(--ink2);line-height:1.7;max-width:320px;word-break:break-all;}
+  .loadnote{font-family:"Roboto Mono";font-size:.6rem;color:var(--ink2);min-height:1.1em;}
+  .attrib{position:absolute;bottom:5px;left:0;right:0;text-align:center;font-family:"Roboto Mono";font-size:.5rem;color:var(--ink2);opacity:.7;z-index:26;}
+  .howto{font-size:.74rem;color:var(--ink2);line-height:1.75;text-align:left;max-width:310px;background:#fff;border:1.5px dashed var(--line);border-radius:10px;padding:11px 14px;}
+  .howto b{color:var(--b);}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="loadbar" id="loadbar"></div>
+  <div class="hud">
+    <div class="brand">のりかえ百科<small>WIKI ROUTE</small></div>
+    <div class="sp"></div>
+    <div class="stat">のりかえ<b id="hops">0</b></div>
+    <div class="stat">じかん<b id="timer">0:00</b></div>
+    <button class="iconbtn" id="mute" aria-label="音">🔊</button>
+  </div>
+
+  <div class="route" id="routebar">
+    <div class="node s"><div class="dot"></div><div class="lab" id="rStart">—</div><div class="tag">START</div></div>
+    <div class="rline"><span class="hops" id="rHops">0のりかえ</span></div>
+    <div class="node gl"><div class="dot"></div><div class="lab" id="rGoal">—</div><div class="tag">GOAL</div></div>
+  </div>
+
+  <div class="stage">
+    <div class="station">
+      <div class="stitle"><img class="th" id="sThumb" alt="" style="display:none"><div class="nm" id="sName">—</div></div>
+      <div class="sdesc" id="sDesc"></div>
+      <div class="goalhint" id="goalHint">🎯 ゴール「<b id="ghName">—</b>」へのリンクを探そう</div>
+    </div>
+    <div class="search">
+      <input id="filter" type="text" placeholder="行き先をしぼりこむ…" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <span class="cnt" id="linkCnt">0件</span>
+    </div>
+    <div class="links" id="links"></div>
+    <div class="toolbar">
+      <button class="tbtn" id="backBtn">↩ もどる</button>
+      <button class="tbtn" id="skipBtn">⤳ 新しいお題</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- title -->
+  <div class="overlay" id="ovTitle">
+    <div class="title">のりかえ百科<small>★ WIKI ROUTE ★</small></div>
+    <div class="lead"><b>Wikipediaのリンクだけ</b>を乗り継いで、スタートの言葉から<b>ゴールの言葉</b>へ。<br>できるだけ<b>少ない乗り換え</b>でたどり着こう。</div>
+    <div class="pair"><span class="w from" id="tStart">—</span><span class="ar">→→</span><span class="w to" id="tGoal">—</span></div>
+    <button class="bigbtn" id="startBtn">この路線で出発</button>
+    <button class="tlink" id="howBtn">▸ あそびかた</button>
+    <div class="loadnote" id="loadnote"></div>
+  </div>
+
+  <!-- howto -->
+  <div class="overlay hidden" id="ovHow">
+    <div class="title" style="font-size:1.6rem">あそびかた</div>
+    <div class="howto">
+      ・今いる言葉の記事にある<b>リンク(行き先)をタップ</b>すると、その言葉へ「乗り換え」。<br>
+      ・これを繰り返して<b>ゴールの言葉</b>にたどり着けばクリア!<br>
+      ・<b>乗り換え回数が少ないほど高評価</b>。検索ボックスで行き先を絞り込めます。<br>
+      ・「もどる」で1つ前へ。「新しいお題」で別の路線に。<br><br>
+      コツ: ゴールに関係しそうな<b>大きな言葉(国・分野・有名な物事)</b>を経由すると近道。
+    </div>
+    <button class="bigbtn" id="howClose">とじる</button>
+  </div>
+
+  <!-- error -->
+  <div class="overlay hidden" id="ovErr">
+    <div class="title" style="font-size:1.5rem">📡 つながりません</div>
+    <div class="lead">Wikipediaからデータを取得できませんでした。通信環境を確認して再試行してください。</div>
+    <button class="bigbtn" id="retryBtn">再試行</button>
+  </div>
+
+  <!-- win -->
+  <div class="overlay hidden" id="ovWin">
+    <div class="result">
+      <span style="font-size:.9rem">🏁 ゴール!</span>
+      <span class="big" id="winLine">—</span>
+    </div>
+    <div class="pathline" id="winPath"></div>
+    <div class="lead" id="winRank" style="font-weight:700"></div>
+    <button class="bigbtn" id="nextBtn">つぎのお題へ</button>
+    <button class="tlink" id="winTitle">タイトルへ</button>
+  </div>
+
+  <div class="attrib">Content: Wikipedia (CC BY-SA) via MediaWiki API</div>
+</div>
+
+<script>
+"use strict";
+/* ===== お題プール(広く繋がりやすい言葉) ===== */
+const POOL=["日本","アメリカ合衆国","フランス","東京","パリ","富士山","インターネット","音楽","映画","サッカー","野球","寿司","ラーメン","猫","犬","桜","太陽","月","地球","宇宙","コーヒー","ピアノ","ギター","鉄道","自動車","飛行機","数学","物理学","言語","日本語","英語","漫画","アニメ","テレビゲーム","オリンピック","ノーベル賞","人工知能","ロボット","電気","水","塩","砂糖","チョコレート","ワイン","ビール","犬","ネコ","恐竜","ピラミッド","城","王","女王","戦争","平和","医学","料理","祭り","花火","海","山","川","森林","砂漠","北極","南極","ロンドン","ニューヨーク","中国","インド","エジプト","ギリシャ","ローマ帝国"];
+
+const API="https://ja.wikipedia.org";
+
+/* ===== 状態(ループが触る値は宣言時に初期化) ===== */
+const G={
+  scene:"title", start:"", goal:"", goalCanon:"", goalThumb:"",
+  current:"", path:[], links:[], filter:"",
+  startMs:0, elapsed:0, busy:false, best:0, solved:0, t:0,
+};
+const cache=new Map(); // title -> {summary, links}
+
+/* ===== オーディオ(iOS消音対策込み) ===== */
+let AC=null, muted=false;
+function audio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); AC.onstatechange=()=>{ if(AC.state!=="running"&&!document.hidden){ try{AC.resume();}catch(e){} } }; }catch(e){} } if(AC&&AC.state!=="running"){ try{AC.resume();}catch(e){} } return AC; }
+let silentEl=null;
+function silentWavUrl(){ const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf); const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}; str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true); for(let i=0;i<n;i++)v.setUint8(44+i,0x80); return URL.createObjectURL(new Blob([buf],{type:"audio/wav"})); }
+function unlockAudio(){ if(!silentEl){ silentEl=document.createElement("audio"); silentEl.setAttribute("playsinline",""); silentEl.loop=true; silentEl.volume=0.01; silentEl.src=silentWavUrl(); } const p=silentEl.play(); if(p&&p.catch)p.catch(()=>{}); audio(); if(!AC)return; const done=()=>{ if(AC.state==="running")["pointerdown","pointerup","touchend"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true)); }; try{ AC.resume().then(done); }catch(e){ done(); } }
+["pointerdown","pointerup","touchend"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) audio(); });
+function tone(f,d,type,vol,slideTo){ if(muted||!audio())return; try{ const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime; o.type=type||"sine"; o.frequency.setValueAtTime(f,t); if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+d); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.15,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+d); o.connect(g);g.connect(AC.destination); o.start(t);o.stop(t+d+0.02);}catch(e){} }
+const sHop=()=>tone(440,.07,"sine",.12,620);
+const sBack=()=>tone(360,.07,"sine",.1,260);
+const sWin=()=>{ tone(523,.1,"triangle",.2); setTimeout(()=>tone(659,.1,"triangle",.2),100); setTimeout(()=>tone(784,.1,"triangle",.2),200); setTimeout(()=>tone(1047,.3,"triangle",.22),300); };
+const sNg=()=>tone(200,.18,"sawtooth",.14,150);
+
+/* ===== DOM ===== */
+const $=id=>document.getElementById(id);
+const el={app:$("app"),loadbar:$("loadbar"),hops:$("hops"),timer:$("timer"),mute:$("mute"),
+  rStart:$("rStart"),rGoal:$("rGoal"),rHops:$("rHops"),
+  sThumb:$("sThumb"),sName:$("sName"),sDesc:$("sDesc"),goalHint:$("goalHint"),ghName:$("ghName"),
+  filter:$("filter"),linkCnt:$("linkCnt"),links:$("links"),backBtn:$("backBtn"),skipBtn:$("skipBtn"),
+  toast:$("toast"),ovTitle:$("ovTitle"),ovHow:$("ovHow"),ovErr:$("ovErr"),ovWin:$("ovWin"),
+  tStart:$("tStart"),tGoal:$("tGoal"),startBtn:$("startBtn"),howBtn:$("howBtn"),howClose:$("howClose"),
+  retryBtn:$("retryBtn"),winLine:$("winLine"),winPath:$("winPath"),winRank:$("winRank"),nextBtn:$("nextBtn"),winTitle:$("winTitle"),loadnote:$("loadnote")};
+
+/* ===== 永続化 ===== */
+function loadSave(){ try{ const s=JSON.parse(localStorage.getItem("norikae_save")||"null"); if(s){ G.best=s.best||0; G.solved=s.solved||0; } }catch(e){} }
+function save(){ try{ localStorage.setItem("norikae_save",JSON.stringify({best:G.best,solved:G.solved})); }catch(e){} }
+
+/* ===== 通信 ===== */
+function loading(on){ el.loadbar.classList.toggle("on",on); }
+let toastTimer=0;
+function toast(msg){ el.toast.textContent=msg; el.toast.classList.add("on"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.toast.classList.remove("on"),1600); }
+
+async function getSummary(title){
+  const url=API+"/api/rest_v1/page/summary/"+encodeURIComponent(title)+"?redirect=true";
+  const r=await fetch(url);
+  if(!r.ok){ if(r.status===404) return {missing:true}; throw new Error("sum "+r.status); }
+  const j=await r.json();
+  if(j.type&&j.type.indexOf("not_found")>=0) return {missing:true};
+  return {title:j.title, extract:j.extract||"", thumb:(j.thumbnail&&j.thumbnail.source)||""};
+}
+function isJunk(t){
+  return /^\d{1,4}年$/.test(t)||/^\d{2,4}年代$/.test(t)||/^\d{1,2}月\d{1,2}日/.test(t)||/^\d{1,2}月$/.test(t)
+    ||/^\d+$/.test(t)||/^紀元前/.test(t)||/^\d{1,2}世紀/.test(t)||/千年紀/.test(t)||/^\d{1,4}年の/.test(t)
+    ||/\(識別子\)/.test(t)||/\(旧暦\)/.test(t)||/曖昧さ回避/.test(t)||/^[A-Za-z]$/.test(t);
+}
+async function getLinks(title){
+  let links=[], cont=null, pages=0;
+  do{
+    let url=API+"/w/api.php?action=query&prop=links&plnamespace=0&pllimit=max&format=json&origin=*&titles="+encodeURIComponent(title);
+    if(cont) url+="&plcontinue="+encodeURIComponent(cont);
+    const r=await fetch(url); if(!r.ok) throw new Error("links "+r.status);
+    const j=await r.json();
+    const pg=Object.values(j.query.pages)[0];
+    (pg.links||[]).forEach(l=>{ if(!isJunk(l.title)) links.push(l.title); });
+    cont=j.continue&&j.continue.plcontinue; pages++;
+  }while(cont && pages<2 && links.length<900);
+  // dedupe, drop self
+  const seen=new Set(); const out=[];
+  for(const t of links){ if(t===title||seen.has(t))continue; seen.add(t); out.push(t); }
+  return out;
+}
+async function loadArticle(title){
+  if(cache.has(title)) return cache.get(title);
+  const [sum, links]=await Promise.all([getSummary(title), getLinks(title)]);
+  const data={summary:sum, links};
+  cache.set(title,data);
+  return data;
+}
+
+/* ===== お題 ===== */
+function pickPair(){
+  let a=POOL[(Math.random()*POOL.length)|0], b;
+  do{ b=POOL[(Math.random()*POOL.length)|0]; }while(b===a);
+  return [a,b];
+}
+async function newPuzzle(){
+  G.scene="title";
+  const [a,b]=pickPair();
+  G.start=a; G.goal=b;
+  el.tStart.textContent=a; el.tGoal.textContent=b;
+  el.startBtn.classList.remove("dim");
+  el.loadnote.textContent="";
+}
+
+async function beginRun(){
+  el.startBtn.classList.add("dim"); el.loadnote.textContent="路線を準備中…"; loading(true);
+  try{
+    // ゴールの正式名称・サムネ
+    const gs=await getSummary(G.goal);
+    G.goalCanon = gs.missing?G.goal:gs.title;
+    G.goalThumb = gs.thumb||"";
+    const startData=await loadArticle(G.start);
+    if(startData.summary.missing) throw new Error("start missing");
+    loading(false); el.loadnote.textContent="";
+    G.path=[]; G.busy=false; G.scene="playing";
+    G.startMs=performance.now(); G.elapsed=0;
+    hide(el.ovTitle); hide(el.ovWin); hide(el.ovErr);
+    el.rStart.textContent=G.start; el.rGoal.textContent=G.goalCanon;
+    el.ghName.textContent=G.goalCanon;
+    setCurrent(G.start, startData, true);
+  }catch(e){ loading(false); el.startBtn.classList.remove("dim"); show(el.ovErr); }
+}
+
+function setCurrent(title, data, isFirst){
+  G.current=title;
+  if(isFirst) G.path=[title];
+  const s=data.summary;
+  el.sName.textContent=s.title||title;
+  el.sDesc.textContent=s.extract||"(説明なし)";
+  if(s.thumb){ el.sThumb.src=s.thumb; el.sThumb.style.display="block"; el.sThumb.onerror=()=>{el.sThumb.style.display="none";}; }
+  else el.sThumb.style.display="none";
+  G.links=data.links;
+  G.filter=""; el.filter.value="";
+  updateRoute();
+  renderLinks();
+  el.backBtn.classList.toggle("dim", G.path.length<=1);
+  el.links.scrollTop=0;
+}
+function updateRoute(){
+  const hops=G.path.length-1;
+  el.hops.textContent=hops; el.rHops.textContent=hops+"のりかえ";
+  el.timer.textContent=fmtTime(G.elapsed);
+  // ルートバーの現在地ラベル(start側に現在地を出す)
+  el.rStart.textContent=G.current;
+}
+function fmtTime(ms){ const s=Math.floor(ms/1000); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+
+function renderLinks(){
+  const f=G.filter.trim();
+  let list=G.links;
+  if(f) list=list.filter(t=>t.indexOf(f)>=0);
+  el.linkCnt.textContent=list.length+"件";
+  el.links.innerHTML="";
+  if(!list.length){ el.links.innerHTML='<div class="empty">行き先が見つかりません</div>'; return; }
+  const frag=document.createDocumentFragment();
+  const goalC=G.goalCanon;
+  const N=Math.min(list.length, 400);
+  for(let i=0;i<N;i++){
+    const t=list[i];
+    const c=document.createElement("button");
+    c.className="chip c"+(i%5);
+    if(t===goalC || t===G.goal) c.classList.add("goalish");
+    c.textContent=t; c.dataset.t=t;
+    frag.appendChild(c);
+  }
+  el.links.appendChild(frag);
+  if(list.length>N){ const more=document.createElement("div"); more.className="empty"; more.textContent="ほか"+(list.length-N)+"件 — 検索でしぼりこんでね"; el.links.appendChild(more); }
+}
+
+async function hopTo(title){
+  if(G.busy||G.scene!=="playing") return;
+  G.busy=true; loading(true); sHop();
+  try{
+    const data=await loadArticle(title);
+    if(data.summary.missing){ toast("「"+title+"」は行き止まり"); sNg(); G.busy=false; loading(false); return; }
+    const canon=data.summary.title||title;
+    G.path.push(canon);
+    loading(false); G.busy=false;
+    if(canon===G.goalCanon || title===G.goalCanon || title===G.goal){ win(); return; }
+    setCurrent(canon, data, false);
+  }catch(e){ loading(false); G.busy=false; toast("読み込みに失敗"); }
+}
+
+function back(){
+  if(G.busy||G.path.length<=1) return;
+  sBack();
+  G.path.pop();
+  const prev=G.path[G.path.length-1];
+  const data=cache.get(prev);
+  if(data){ G.current=prev; setCurrentNoPath(prev,data); }
+}
+function setCurrentNoPath(title,data){
+  G.current=title; const s=data.summary;
+  el.sName.textContent=s.title||title; el.sDesc.textContent=s.extract||"";
+  if(s.thumb){el.sThumb.src=s.thumb;el.sThumb.style.display="block";}else el.sThumb.style.display="none";
+  G.links=data.links; G.filter=""; el.filter.value="";
+  updateRoute(); renderLinks(); el.backBtn.classList.toggle("dim",G.path.length<=1); el.links.scrollTop=0;
+}
+
+function win(){
+  G.scene="won"; loading(false);
+  const hops=G.path.length-1;
+  sWin();
+  el.winLine.textContent=hops+"のりかえ / "+fmtTime(G.elapsed);
+  el.winPath.textContent=G.path.join(" → ");
+  G.solved++;
+  let rank;
+  if(hops<=2) rank="🏆 達人級! 最短ルート!";
+  else if(hops<=4) rank="✨ お見事!";
+  else rank="🚶 ゴール!";
+  if(G.best===0||hops<G.best){ G.best=hops; rank="🎉 自己ベスト("+hops+"のりかえ)!"; }
+  el.winRank.textContent=rank;
+  save();
+  show(el.ovWin);
+}
+
+/* ===== overlay ===== */
+function show(o){o.classList.remove("hidden");}
+function hide(o){o.classList.add("hidden");}
+
+/* ===== 入力(Pointer Events / clickに依存しない) ===== */
+function bindTap(node,fn){ node.addEventListener("pointerdown",e=>{ e.preventDefault(); fn(e); }); }
+el.links.addEventListener("pointerdown",e=>{ const c=e.target.closest(".chip"); if(c){ e.preventDefault(); hopTo(c.dataset.t); } });
+el.filter.addEventListener("input",()=>{ G.filter=el.filter.value; renderLinks(); });
+bindTap(el.backBtn,back);
+bindTap(el.skipBtn,()=>{ if(G.busy)return; newPuzzle().then(()=>beginRun()); });
+bindTap(el.startBtn,beginRun);
+bindTap(el.howBtn,()=>show(el.ovHow));
+bindTap(el.howClose,()=>hide(el.ovHow));
+bindTap(el.retryBtn,()=>{ hide(el.ovErr); beginRun(); });
+bindTap(el.nextBtn,()=>{ hide(el.ovWin); newPuzzle().then(()=>beginRun()); });
+bindTap(el.winTitle,()=>{ G.scene="title"; hide(el.ovWin); newPuzzle(); show(el.ovTitle); });
+bindTap(el.mute,()=>{ muted=!muted; el.mute.textContent=muted?"🔇":"🔊"; if(!muted)audio(); });
+
+/* ダブルタップズーム無効化(入力欄のフォーカスは妨げない) */
+let lastTouch=0;
+document.addEventListener("touchend",e=>{ const n=Date.now(); if(n-lastTouch<=350 && e.cancelable && e.target && e.target.tagName!=="INPUT"){ e.preventDefault(); } lastTouch=n; },{passive:false});
+document.addEventListener("dblclick",e=>e.preventDefault());
+document.addEventListener("gesturestart",e=>e.preventDefault());
+
+/* ===== メインループ(タイトルから回る・タイマー更新) ===== */
+let prev=0;
+function loop(ts){
+  const dt=ts-prev||16; prev=ts; G.t+=dt;
+  if(G.scene==="playing"){ G.elapsed=performance.now()-G.startMs; el.timer.textContent=fmtTime(G.elapsed); }
+  requestAnimationFrame(loop);
+}
+
+/* ===== 起動 ===== */
+function init(){
+  loadSave();
+  newPuzzle();
+  requestAnimationFrame(loop);
+}
+init();
+</script>
+</body>
+</html>
