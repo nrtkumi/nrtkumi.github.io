@@ -386,6 +386,20 @@
     flash: 0, shake: 0, t: 0,
   };
 
+  /* ---------- スプライト画像(読み込み失敗時はベクター描画にフォールバック) ---------- */
+  const IMG = {};
+  (function(){
+    const list = { ground:"assets/spr/ground.jpg", wood:"assets/spr/wood.jpg",
+                   player:"assets/spr/player.png", oni:"assets/spr/oni.png",
+                   bush:"assets/spr/bush.png", pole:"assets/spr/pole.png" };
+    for (const k in list){ const im=new Image(); im.onload=()=>{IMG[k]=im;}; im.onerror=()=>{}; im.src=list[k]; }
+  })();
+  function tileImg(im, x, y, w, h, ts){
+    ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+    for(let yy=y; yy<y+h; yy+=ts) for(let xx=x; xx<x+w; xx+=ts) ctx.drawImage(im, xx, yy, ts, ts);
+    ctx.restore();
+  }
+
   // 描画スケール(ロットを画面にフィット)
   let scale = 1, offX = 0, offY = 0;
   function recomputeFit() {
@@ -794,13 +808,20 @@
   }
 
   function drawGround(){
-    const g=ctx.createRadialGradient(G.lotW*0.5,G.lotH*0.32,60, G.lotW*0.5,G.lotH*0.5,G.lotH*0.8);
-    g.addColorStop(0,"#d9ab6e"); g.addColorStop(0.6,"#c0915a"); g.addColorStop(1,"#9a7144");
-    ctx.fillStyle=g; ctx.fillRect(0,0,G.lotW,G.lotH);
-    // 砂目テクスチャ
-    ctx.globalAlpha=0.06;
-    for(let i=0;i<60;i++){ const x=(i*97.13)%G.lotW, y=(i*53.7*2.1)%G.lotH; ctx.fillStyle= i%2?"#5a3f22":"#fff2d0"; ctx.fillRect(x,y,3,3); }
-    ctx.globalAlpha=1;
+    if(IMG.ground){
+      tileImg(IMG.ground, 0,0, G.lotW, G.lotH, 300);
+    } else {
+      const g=ctx.createRadialGradient(G.lotW*0.5,G.lotH*0.32,60, G.lotW*0.5,G.lotH*0.5,G.lotH*0.8);
+      g.addColorStop(0,"#d9ab6e"); g.addColorStop(0.6,"#c0915a"); g.addColorStop(1,"#9a7144");
+      ctx.fillStyle=g; ctx.fillRect(0,0,G.lotW,G.lotH);
+      ctx.globalAlpha=0.06;
+      for(let i=0;i<60;i++){ const x=(i*97.13)%G.lotW, y=(i*53.7*2.1)%G.lotH; ctx.fillStyle= i%2?"#5a3f22":"#fff2d0"; ctx.fillRect(x,y,3,3); }
+      ctx.globalAlpha=1;
+    }
+    // 夕日のヴィネット(温かみと中央への視線誘導)
+    const vg=ctx.createRadialGradient(G.lotW*0.5,G.lotH*0.4,G.lotH*0.2, G.lotW*0.5,G.lotH*0.5,G.lotH*0.75);
+    vg.addColorStop(0,"rgba(255,210,140,0.10)"); vg.addColorStop(1,"rgba(60,40,46,0.30)");
+    ctx.fillStyle=vg; ctx.fillRect(0,0,G.lotW,G.lotH);
     // 外枠(塀)
     ctx.strokeStyle="#7a5a36"; ctx.lineWidth=8; ctx.strokeRect(4,4,G.lotW-8,G.lotH-8);
   }
@@ -810,19 +831,28 @@
     const hiding = G.player.hidden && dist2(G.player.x,G.player.y,b.x,b.y)<(b.r*0.92)**2;
     // 影
     ctx.fillStyle="rgba(40,30,60,0.28)"; ctx.beginPath(); ctx.ellipse(b.x+8,b.y+10,b.r,b.r*0.7,0,0,7); ctx.fill();
-    const lobes=6;
-    for(let i=0;i<lobes;i++){
-      const a=i/lobes*Math.PI*2; const lx=b.x+Math.cos(a)*b.r*0.5, ly=b.y+Math.sin(a)*b.r*0.5;
-      ctx.fillStyle= i%2?"#6f8043":"#5d6e36"; ctx.beginPath(); ctx.arc(lx,ly,b.r*0.52,0,7); ctx.fill();
+    if(IMG.bush){
+      const s=b.r*2.55; ctx.drawImage(IMG.bush, b.x-s/2, b.y-s/2, s, s);
+    } else {
+      const lobes=6;
+      for(let i=0;i<lobes;i++){
+        const a=i/lobes*Math.PI*2; const lx=b.x+Math.cos(a)*b.r*0.5, ly=b.y+Math.sin(a)*b.r*0.5;
+        ctx.fillStyle= i%2?"#6f8043":"#5d6e36"; ctx.beginPath(); ctx.arc(lx,ly,b.r*0.52,0,7); ctx.fill();
+      }
+      ctx.fillStyle="#7c8d4c"; ctx.beginPath(); ctx.arc(b.x,b.y-2,b.r*0.5,0,7); ctx.fill();
     }
-    ctx.fillStyle="#7c8d4c"; ctx.beginPath(); ctx.arc(b.x,b.y-2,b.r*0.5,0,7); ctx.fill();
     if(hiding){ ctx.strokeStyle="rgba(255,230,160,0.8)"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(b.x,b.y,b.r+3,0,7); ctx.stroke(); }
     ctx.restore();
   }
 
   function drawWall(w){
     ctx.save();
-    if(w.kind==="fence"){
+    if(IMG.wood){
+      tileImg(IMG.wood, w.x, w.y, w.w, w.h, 130);
+      if(w.kind==="fence"){ ctx.fillStyle="rgba(30,22,30,0.20)"; ctx.fillRect(w.x,w.y,w.w,w.h); } // 板塀は少し暗く
+      else { ctx.fillStyle="rgba(255,205,130,0.20)"; ctx.fillRect(w.x,w.y,w.w,Math.min(11,w.h*0.4)); } // 物置は上面に夕日
+      ctx.strokeStyle="#4a2f18"; ctx.lineWidth=2.5; ctx.strokeRect(w.x,w.y,w.w,w.h);
+    } else if(w.kind==="fence"){
       ctx.fillStyle="#9a6a3c"; ctx.fillRect(w.x,w.y,w.w,w.h);
       ctx.fillStyle="#7a5430"; for(let x=w.x;x<w.x+w.w-4;x+=12) ctx.fillRect(x+2,w.y,2,w.h);
       ctx.strokeStyle="#5d3f22"; ctx.lineWidth=2; ctx.strokeRect(w.x,w.y,w.w,w.h);
@@ -842,10 +872,14 @@
     g.addColorStop(0,"rgba(255,225,140,0.85)"); g.addColorStop(0.5,"rgba(240,168,60,0.4)"); g.addColorStop(1,"rgba(240,168,60,0)");
     ctx.fillStyle=g; ctx.beginPath(); ctx.arc(b.x,b.y,b.r+18+pulse*8,0,7); ctx.fill();
     // 電柱
-    ctx.fillStyle="rgba(40,30,60,0.3)"; ctx.fillRect(b.x-6+10,b.y-4+8,12,30);
-    ctx.fillStyle="#8c8c92"; ctx.fillRect(b.x-6,b.y-30,12,52);
-    ctx.fillStyle="#6f6f76"; ctx.fillRect(b.x-6,b.y-30,4,52);
-    ctx.fillStyle="#3a3a40"; ctx.fillRect(b.x-16,b.y-26,32,5);
+    if(IMG.pole){
+      const s=b.r*2.7; ctx.drawImage(IMG.pole, b.x-s/2, b.y-s*0.62, s, s);
+    } else {
+      ctx.fillStyle="rgba(40,30,60,0.3)"; ctx.fillRect(b.x-6+10,b.y-4+8,12,30);
+      ctx.fillStyle="#8c8c92"; ctx.fillRect(b.x-6,b.y-30,12,52);
+      ctx.fillStyle="#6f6f76"; ctx.fillRect(b.x-6,b.y-30,4,52);
+      ctx.fillStyle="#3a3a40"; ctx.fillRect(b.x-16,b.y-26,32,5);
+    }
     // ベースの輪
     ctx.strokeStyle="rgba(255,235,170,"+(0.6+pulse*0.4)+")"; ctx.lineWidth=3;
     ctx.beginPath(); ctx.arc(b.x,b.y+8,b.r,0,7); ctx.stroke();
@@ -874,14 +908,15 @@
     ctx.save();
     // 影
     ctx.fillStyle="rgba(40,30,60,0.32)"; ctx.beginPath(); ctx.ellipse(o.x+8,o.y+12,13,8,0,0,7); ctx.fill();
-    // 体
-    ctx.fillStyle="#c64b3a"; ctx.beginPath(); ctx.arc(o.x,o.y,12,0,7); ctx.fill();
-    ctx.fillStyle="#e2654f"; ctx.beginPath(); ctx.arc(o.x-3,o.y-3,5,0,7); ctx.fill();
-    // 頭(向き)
-    ctx.fillStyle="#f0d3b0"; ctx.beginPath(); ctx.arc(o.x+Math.cos(o.face)*5,o.y+Math.sin(o.face)*5,7,0,7); ctx.fill();
-    // 目
-    const ex=o.x+Math.cos(o.face)*9, ey=o.y+Math.sin(o.face)*9;
-    ctx.fillStyle="#2a2030"; ctx.beginPath(); ctx.arc(ex,ey,2.2,0,7); ctx.fill();
+    if(IMG.oni){
+      const s=44; ctx.save(); ctx.translate(o.x,o.y); ctx.rotate(o.face+Math.PI/2); ctx.drawImage(IMG.oni,-s/2,-s/2,s,s); ctx.restore();
+    } else {
+      ctx.fillStyle="#c64b3a"; ctx.beginPath(); ctx.arc(o.x,o.y,12,0,7); ctx.fill();
+      ctx.fillStyle="#e2654f"; ctx.beginPath(); ctx.arc(o.x-3,o.y-3,5,0,7); ctx.fill();
+      ctx.fillStyle="#f0d3b0"; ctx.beginPath(); ctx.arc(o.x+Math.cos(o.face)*5,o.y+Math.sin(o.face)*5,7,0,7); ctx.fill();
+      const ex=o.x+Math.cos(o.face)*9, ey=o.y+Math.sin(o.face)*9;
+      ctx.fillStyle="#2a2030"; ctx.beginPath(); ctx.arc(ex,ey,2.2,0,7); ctx.fill();
+    }
     // マーク
     if(o.susp>0.06){
       const m = o.susp>=0.6?"!":"?";
@@ -906,11 +941,13 @@
     // 影
     ctx.globalAlpha *= 1;
     ctx.fillStyle="rgba(40,30,60,0.3)"; ctx.beginPath(); ctx.ellipse(p.x+6,p.y+11,12,7,0,0,7); ctx.fill();
-    // 体
-    ctx.fillStyle="#3f6e8c"; ctx.beginPath(); ctx.arc(p.x,p.y,11,0,7); ctx.fill();
-    ctx.fillStyle="#5a93b3"; ctx.beginPath(); ctx.arc(p.x-2,p.y-3,5,0,7); ctx.fill();
-    // 頭
-    ctx.fillStyle="#f2d6b3"; ctx.beginPath(); ctx.arc(p.x+Math.cos(p.face)*4,p.y+Math.sin(p.face)*4,6.5,0,7); ctx.fill();
+    if(IMG.player){
+      const s=40; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.face+Math.PI/2); ctx.drawImage(IMG.player,-s/2,-s/2,s,s); ctx.restore();
+    } else {
+      ctx.fillStyle="#3f6e8c"; ctx.beginPath(); ctx.arc(p.x,p.y,11,0,7); ctx.fill();
+      ctx.fillStyle="#5a93b3"; ctx.beginPath(); ctx.arc(p.x-2,p.y-3,5,0,7); ctx.fill();
+      ctx.fillStyle="#f2d6b3"; ctx.beginPath(); ctx.arc(p.x+Math.cos(p.face)*4,p.y+Math.sin(p.face)*4,6.5,0,7); ctx.fill();
+    }
     if(p.hidden){
       ctx.globalAlpha=0.9; ctx.font="14px 'Yusei Magic'"; ctx.textAlign="center"; ctx.fillStyle="#dff0c0";
       ctx.fillText("…",p.x,p.y-16);
