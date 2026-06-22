@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="description" content="ネジを色ごとにツールボックスへ仕分けるパズル。重なったネジの順番を読んでクリアせよ。">
+<meta property="og:title" content="ねじポン — ブリキ工房のネジ仕分けパズル">
+<meta property="og:description" content="色ネジをタップしてツールボックスへ。重なりの順番を読み解く決定論パズル。クリアごとに強化を選ぶローグライト。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nrtkumi.github.io/games/nejipon/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/nejipon/">
+<meta name="twitter:card" content="summary_large_image">
+<title>ねじポン — ブリキ工房のネジ仕分けパズル</title>
+<link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:#0d1824;overflow:hidden}
+body{user-select:none;-webkit-user-select:none;overscroll-behavior:none;touch-action:manipulation;overflow:hidden;display:flex;justify-content:center;align-items:center}
+#app{position:fixed;left:50%;top:0;transform:translateX(-50%);width:min(100vw, calc(100dvh * 0.6), 480px);height:100dvh;overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:crisp-edges}
+</style>
+</head>
+<body>
+<div id="app"><canvas id="c"></canvas></div>
+<script>
+// ===== DOUBLE-TAP / GESTURE PREVENTION =====
+let lastTouch = 0;
+document.addEventListener("touchend", e => {
+  const n = Date.now();
+  if (n - lastTouch <= 350 && e.cancelable) { e.preventDefault(); }
+  lastTouch = n;
+}, {passive: false});
+document.addEventListener("dblclick", e => e.preventDefault());
+document.addEventListener("gesturestart", e => e.preventDefault());
+
+// ===== AUDIO =====
+let AC = null, muted = false;
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      AC.onstatechange = () => {
+        if (AC.state !== "running" && !document.hidden) { try { AC.resume(); } catch(e) {} }
+      };
+    } catch(e) {}
+  }
+  if (AC && AC.state !== "running") { try { AC.resume(); } catch(e) {} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl() {
+  const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);
+  v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio() {
+  if (!silentEl) {
+    silentEl = document.createElement("audio");
+    silentEl.setAttribute("playsinline","");
+    silentEl.loop = true; silentEl.volume = 0.01;
+    silentEl.src = silentWavUrl();
+  }
+  const p = silentEl.play();
+  if (p && p.catch) p.catch(()=>{});
+  audio();
+  if (!AC) return;
+  const done = () => {
+    if (AC.state === "running")
+      ["pointerdown","pointerup","touchend"].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+  };
+  try { AC.resume().then(done); } catch(e) { done(); }
+}
+["pointerdown","pointerup","touchend"].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) audio(); });
+
+function playTone(freq, type, dur, vol, startFreq) {
+  if (muted) return;
+  const ac = audio(); if (!ac) return;
+  const g = ac.createGain();
+  const o = ac.createOscillator();
+  o.type = type || 'sine';
+  if (startFreq) {
+    o.frequency.setValueAtTime(startFreq, ac.currentTime);
+    o.frequency.exponentialRampToValueAtTime(freq, ac.currentTime + dur * 0.3);
+  } else {
+    o.frequency.setValueAtTime(freq, ac.currentTime);
+  }
+  g.gain.setValueAtTime(vol || 0.3, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(ac.currentTime); o.stop(ac.currentTime + dur);
+}
+function sfxClick() { playTone(880, 'square', 0.08, 0.15); }
+function sfxPop() {
+  playTone(523, 'sine', 0.3, 0.25);
+  setTimeout(() => playTone(659, 'sine', 0.3, 0.2), 60);
+  setTimeout(() => playTone(784, 'sine', 0.4, 0.3), 120);
+}
+function sfxUpgrade() {
+  playTone(440, 'sine', 0.15, 0.2);
+  setTimeout(() => playTone(550, 'sine', 0.15, 0.2), 100);
+  setTimeout(() => playTone(660, 'sine', 0.3, 0.25), 200);
+}
+function sfxError() { playTone(80, 'sawtooth', 0.3, 0.3, 200); }
+function sfxLand() { playTone(330, 'triangle', 0.12, 0.15); }
+
+// ===== CANVAS SETUP =====
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  const app = document.getElementById('app');
+  const rect = app.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 3);
+  W = rect.width;
+  H = rect.height;
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+}
+resize();
+window.addEventListener('resize', () => { resize(); });
+
+// ===== CONSTANTS =====
+const SCREW_COLORS = ['#c0392b','#2980b9','#27ae60','#f39c12','#8e44ad','#e67e22'];
+const COLOR_NAMES  = ['赤','青','緑','黄','紫','橙'];
+const SCREW_PER_BOX = 3;
+const HUD_H = 56;
+const TRAY_H = 62;
+const BOX_AREA_H = 114;
+const SCREW_RADIUS = 15;
+
+// ===== PERSISTENCE =====
+let bestStage = 0, totalSorted = 0;
+try { bestStage = parseInt(localStorage.getItem('nejipon_best') || '0') || 0; } catch(e) {}
+try { totalSorted = parseInt(localStorage.getItem('nejipon_total') || '0') || 0; } catch(e) {}
+function savePersist() {
+  try { localStorage.setItem('nejipon_best', bestStage); localStorage.setItem('nejipon_total', totalSorted); } catch(e) {}
+}
+
+// ===== GAME STATE =====
+let screen = 'title';
+let stage = 1;
+
+// Upgrades
+let maxBoxes = 3;
+let maxTray = 5;
+let colorSense = false;
+let undoCharges = 0;
+let magnetActive = false;
+
+// Board
+let plates = [];
+let screws = [];
+let selectedColor = null;
+
+// Toolboxes
+let toolboxes = [];
+let boxQueue = 0;
+
+// Holding tray
+let tray = [];
+
+// Animations
+let flyAnimations = [];
+let popParticles = [];
+
+// Undo
+let undoSnapshot = null;
+
+// Upgrade cards
+let upgradeChoices = [];
+
+// Title animation
+let titleT = 0;
+
+// Game over anim
+let gameoverT = 0;
+
+// Win check
+let winPending = false;
+let winTimer = 0;
+
+// ===== UPGRADE POOL =====
+const UPGRADE_POOL = [
+  { id:'tray',   label:'+1 トレイスロット',  desc:'持ち場を1つ増やす',      icon:'🗃️' },
+  { id:'box',    label:'+1 ツールボックス', desc:'工具箱を1つ追加する',      icon:'🧰' },
+  { id:'sense',  label:'カラーセンス',       desc:'タップで同色を強調',       icon:'🔍' },
+  { id:'undo',   label:'アンドゥ',           desc:'1回分の取消チャージ',      icon:'↩️' },
+  { id:'magnet', label:'マグネット',         desc:'同色自動収集 ON',          icon:'🧲' },
+];
+
+// ===== HELPERS =====
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function roundRect(x, y, w, h, r) {
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+// ===== BOARD GENERATION =====
+function stageConfig(s) {
+  if (s <= 1) return { colors: 3, screwsPerColor: 3, plates: 3, layers: 2 };
+  if (s <= 3) return { colors: 4, screwsPerColor: 3, plates: 5, layers: 3 };
+  if (s <= 5) return { colors: 5, screwsPerColor: 3, plates: 6, layers: 3 };
+  return    { colors: 6, screwsPerColor: 3, plates: 7, layers: 4 };
+}
+
+function generateBoard() {
+  const cfg = stageConfig(stage);
+  // Board drawing area
+  const boardMargin = 12;
+  const boardX = boardMargin;
+  const boardY = HUD_H + boardMargin;
+  const boardW = W - boardMargin * 2;
+  const boardH = H - HUD_H - TRAY_H - BOX_AREA_H - boardMargin * 2;
+
+  plates = [];
+  screws = [];
+
+  const numColors = cfg.colors;
+  const numScrewsPerColor = cfg.screwsPerColor;
+  const totalScrews = numColors * numScrewsPerColor;
+  const numPlates = cfg.plates;
+
+  // Layout plates in a grid with layering
+  // We use a layered approach: some plates overlap others
+  const maxCols = Math.min(numPlates, 3);
+  const rows = Math.ceil(numPlates / maxCols);
+  const cellW = boardW / maxCols;
+  const cellH = boardH / rows;
+  const plateW = cellW * 0.88;
+  const plateH = cellH * 0.88;
+
+  // Create plates with z-ordering for layering
+  // Higher index = higher z = on top visually
+  let plateLayerAssignments = [];
+  for (let i = 0; i < numPlates; i++) {
+    plateLayerAssignments.push(Math.floor(i / maxCols)); // row = base layer
+  }
+  // Add some cross-layer plates for interest in later stages
+  if (cfg.layers >= 3 && numPlates >= 5) {
+    // A couple plates span layers
+    plateLayerAssignments[2] = 1;
+    if (numPlates > 4) plateLayerAssignments[4] = 2;
+  }
+
+  for (let i = 0; i < numPlates; i++) {
+    const col = i % maxCols;
+    const row = Math.floor(i / maxCols);
+    const baseX = boardX + col * cellW + (cellW - plateW) / 2;
+    const baseY = boardY + row * cellH + (cellH - plateH) / 2;
+    // Small jitter for natural look
+    const jx = (Math.random() - 0.5) * cellW * 0.15;
+    const jy = (Math.random() - 0.5) * cellH * 0.15;
+    plates.push({
+      id: i,
+      x: Math.max(boardX, Math.min(boardX + boardW - plateW, baseX + jx)),
+      y: Math.max(boardY, Math.min(boardY + boardH - plateH, baseY + jy)),
+      w: plateW,
+      h: plateH,
+      color: SCREW_COLORS[i % numColors],
+      screwIds: [],
+      removed: false,
+      zOrder: plateLayerAssignments[i]
+    });
+  }
+
+  // Sort plates by zOrder for consistent layering
+  plates.sort((a, b) => a.zOrder !== b.zOrder ? a.zOrder - b.zOrder : a.id - b.id);
+
+  // Distribute screws across plates
+  // Build color list: numColors * numScrewsPerColor
+  let colorList = [];
+  for (let c = 0; c < numColors; c++) {
+    for (let s = 0; s < numScrewsPerColor; s++) {
+      colorList.push(SCREW_COLORS[c]);
+    }
+  }
+  shuffle(colorList);
+
+  // Assign screws to plates round-robin for balance
+  let sid = 0;
+  for (let ci = 0; ci < colorList.length; ci++) {
+    const plateIdx = ci % numPlates;
+    const plate = plates[plateIdx];
+    const margin = SCREW_RADIUS + 4;
+    let attempts = 0, sx, sy;
+    do {
+      sx = plate.x + margin + Math.random() * (plate.w - margin * 2);
+      sy = plate.y + margin + Math.random() * (plate.h - margin * 2);
+      attempts++;
+    } while (attempts < 20 && screws.some(sc => {
+      const dx = sc.x - sx, dy = sc.y - sy;
+      return Math.sqrt(dx*dx + dy*dy) < SCREW_RADIUS * 2.5;
+    }));
+
+    screws.push({
+      id: sid,
+      plateId: plate.id,
+      x: sx, y: sy,
+      color: colorList[ci],
+      removed: false,
+      locked: false,
+      flying: false
+    });
+    plate.screwIds.push(sid);
+    sid++;
+  }
+
+  // Compute locked state
+  updateLocking();
+  ensureSolvable();
+}
+
+function getScrewsOnPlate(plateId) {
+  return screws.filter(s => s.plateId === plateId && !s.removed);
+}
+
+function updateLocking() {
+  for (const screw of screws) {
+    if (screw.removed || screw.flying) { screw.locked = false; continue; }
+    const myPlate = plates.find(p => p.id === screw.plateId);
+    if (!myPlate || myPlate.removed) { screw.locked = false; continue; }
+
+    let locked = false;
+    // Check all plates with higher zOrder that overlap screw and are still pinned
+    for (const plate of plates) {
+      if (plate.removed || plate.id === screw.plateId) continue;
+      if (plate.zOrder <= myPlate.zOrder) continue;
+      // Does this plate visually cover the screw position?
+      if (screw.x >= plate.x && screw.x <= plate.x + plate.w &&
+          screw.y >= plate.y && screw.y <= plate.y + plate.h) {
+        // Is plate still pinned (has at least one screw)?
+        if (getScrewsOnPlate(plate.id).length > 0) {
+          locked = true;
+          break;
+        }
+      }
+    }
+    screw.locked = locked;
+  }
+}
+
+function ensureSolvable() {
+  const hasUnlocked = screws.some(s => !s.removed && !s.locked);
+  if (!hasUnlocked) {
+    // Force unlock all screws on the topmost non-removed plate
+    const activePlates = plates.filter(p => !p.removed && getScrewsOnPlate(p.id).length > 0);
+    if (activePlates.length > 0) {
+      activePlates.sort((a,b) => b.zOrder - a.zOrder);
+      const top = activePlates[0];
+      for (const s of screws) {
+        if (s.plateId === top.id && !s.removed) s.locked = false;
+      }
+    }
+  }
+}
+
+// ===== TOOLBOX LOGIC =====
+function initToolboxes() {
+  toolboxes = [];
+  for (let i = 0; i < maxBoxes; i++) {
+    toolboxes.push(makeBox());
+  }
+  boxQueue = 0;
+  tray = [];
+}
+
+function makeBox() {
+  return { color: null, count: 0, popping: false, popT: 0 };
+}
+
+function findMatchingBox(color) {
+  for (const box of toolboxes) {
+    if (box.color === color && box.count < SCREW_PER_BOX) return box;
+  }
+  return null;
+}
+function findEmptyBox() {
+  for (const box of toolboxes) {
+    if (box.color === null) return box;
+  }
+  return null;
+}
+
+// Returns true if added successfully
+function addScrewToBox(color) {
+  let box = findMatchingBox(color);
+  if (!box) box = findEmptyBox();
+  if (!box) return false;
+  if (!box.color) box.color = color;
+  box.count++;
+  totalSorted++;
+  if (box.count >= SCREW_PER_BOX) {
+    triggerPop(box);
+  } else {
+    sfxLand();
+  }
+  return true;
+}
+
+function triggerPop(box) {
+  const idx = toolboxes.indexOf(box);
+  const pos = getBoxPosition(idx);
+  const cx = pos.x + pos.w / 2;
+  const cy = pos.y + pos.h / 2;
+  for (let i = 0; i < 20; i++) {
+    const angle = (i / 20) * Math.PI * 2;
+    const speed = 2 + Math.random() * 4;
+    popParticles.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      color: box.color,
+      alpha: 1,
+      r: 3 + Math.random() * 4,
+      t: 0
+    });
+  }
+  box.color = null;
+  box.count = 0;
+  box.popping = true;
+  box.popT = 0;
+  sfxPop();
+  // Drain tray after a tick
+  setTimeout(() => drainTray(), 80);
+}
+
+function drainTray() {
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = tray.length - 1; i >= 0; i--) {
+      const item = tray[i];
+      const box = findMatchingBox(item.color) || findEmptyBox();
+      if (box) {
+        tray.splice(i, 1);
+        addScrewToBox(item.color);
+        changed = true;
+        break; // restart loop
+      }
+    }
+  }
+}
+
+// ===== POSITIONS =====
+function getBoxPosition(idx) {
+  const count = toolboxes.length;
+  const totalW = W - 16;
+  const bw = Math.min(totalW / count, 108);
+  const bh = BOX_AREA_H - 18;
+  const actualTotalW = count * bw;
+  const startX = (W - actualTotalW) / 2;
+  const by = H - BOX_AREA_H + 8;
+  return { x: startX + idx * bw + 2, y: by, w: bw - 4, h: bh };
+}
+
+function getTraySlotPos(idx) {
+  const totalW = W - 16;
+  const slotW = Math.min(totalW / maxTray, 64);
+  const actualW = maxTray * slotW;
+  const startX = (W - actualW) / 2;
+  const sy = H - BOX_AREA_H - TRAY_H + 6;
+  return { x: startX + idx * slotW + 2, y: sy, w: slotW - 4, h: TRAY_H - 12 };
+}
+
+// ===== FLY ANIMATION =====
+function startFly(screw, boxIdx, onDone) {
+  const pos = getBoxPosition(boxIdx);
+  const tx = pos.x + pos.w / 2;
+  const ty = pos.y + pos.h / 2;
+  const sx = screw.x, sy = screw.y;
+  const cpX = (sx + tx) / 2 + (Math.random() - 0.5) * 80;
+  const cpY = Math.min(sy, ty) - 50 - Math.random() * 50;
+  screw.flying = true;
+  flyAnimations.push({
+    screw, targetX: tx, targetY: ty,
+    startX: sx, startY: sy,
+    cpX, cpY,
+    t: 0, dur: 400, onDone
+  });
+}
+
+// ===== SCREW TAP LOGIC =====
+function tapScrew(screw) {
+  if (screw.removed || screw.locked || screw.flying) return;
+  if (colorSense) selectedColor = screw.color;
+  saveUndoSnapshot();
+  sfxClick();
+
+  const box = findMatchingBox(screw.color) || findEmptyBox();
+  if (box) {
+    const boxIdx = toolboxes.indexOf(box);
+    screw.removed = true; // logically remove now so plate can free
+    startFly(screw, boxIdx, () => {
+      addScrewToBox(screw.color);
+      checkPlateFreed(screw.plateId);
+      updateLocking();
+      if (magnetActive) doMagnet();
+    });
+  } else if (tray.length < maxTray) {
+    tray.push({ color: screw.color, screwId: screw.id });
+    screw.removed = true;
+    sfxLand();
+    checkPlateFreed(screw.plateId);
+    updateLocking();
+  } else {
+    // No room anywhere
+    sfxError();
+    doGameOver();
+  }
+}
+
+function checkPlateFreed(plateId) {
+  const plate = plates.find(p => p.id === plateId);
+  if (!plate) return;
+  if (getScrewsOnPlate(plateId).length === 0) {
+    plate.removed = true;
+    updateLocking();
+  }
+}
+
+function doMagnet() {
+  for (const screw of screws) {
+    if (screw.removed || screw.locked || screw.flying) continue;
+    const box = findMatchingBox(screw.color);
+    if (box) {
+      const boxIdx = toolboxes.indexOf(box);
+      screw.removed = true;
+      startFly(screw, boxIdx, () => {
+        addScrewToBox(screw.color);
+        checkPlateFreed(screw.plateId);
+        updateLocking();
+      });
+    }
+  }
+}
+
+// ===== WIN/LOSE =====
+function checkWin() {
+  const allRemoved = screws.every(s => s.removed);
+  if (allRemoved && flyAnimations.length === 0) {
+    if (screen === 'game') {
+      if (stage > bestStage) { bestStage = stage; savePersist(); }
+      savePersist();
+      setTimeout(() => { if (screen === 'game') showUpgradeScreen(); }, 500);
+    }
+  }
+}
+
+function doGameOver() {
+  if (stage > bestStage) { bestStage = stage; savePersist(); }
+  savePersist();
+  screen = 'gameover';
+  gameoverT = 0;
+}
+
+// ===== UNDO =====
+function saveUndoSnapshot() {
+  if (undoCharges <= 0) return;
+  undoSnapshot = {
+    screws: screws.map(s => ({...s})),
+    plates: plates.map(p => ({...p, screwIds: [...p.screwIds]})),
+    tray: tray.map(t => ({...t})),
+    toolboxes: toolboxes.map(b => ({...b})),
+    totalSorted
+  };
+}
+
+function doUndo() {
+  if (!undoSnapshot || undoCharges <= 0) return;
+  screws = undoSnapshot.screws.map(s => ({...s}));
+  plates = undoSnapshot.plates.map(p => ({...p, screwIds: [...p.screwIds]}));
+  tray = undoSnapshot.tray.map(t => ({...t}));
+  toolboxes = undoSnapshot.toolboxes.map(b => ({...b}));
+  totalSorted = undoSnapshot.totalSorted;
+  flyAnimations = [];
+  popParticles = [];
+  undoSnapshot = null;
+  undoCharges--;
+  selectedColor = null;
+  updateLocking();
+}
+
+// ===== UPGRADE SCREEN =====
+function showUpgradeScreen() {
+  stage++;
+  const pool = [...UPGRADE_POOL];
+  shuffle(pool);
+  upgradeChoices = pool.slice(0, 3);
+  screen = 'upgrade';
+}
+
+function applyUpgrade(choice) {
+  sfxUpgrade();
+  switch(choice.id) {
+    case 'tray':   maxTray++; break;
+    case 'box':    maxBoxes++; toolboxes.push(makeBox()); break;
+    case 'sense':  colorSense = true; break;
+    case 'undo':   undoCharges++; break;
+    case 'magnet': magnetActive = true; break;
+  }
+  generateBoard();
+  tray = [];
+  flyAnimations = [];
+  popParticles = [];
+  selectedColor = null;
+  screen = 'game';
+}
+
+// ===== INPUT =====
+let upgradeCardRects = [];
+let muteBtn = { x:0,y:0,w:0,h:0 };
+let undoBtn  = { x:0,y:0,w:0,h:0 };
+
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  if (screen === 'title') {
+    screen = 'game';
+    initGame();
+    return;
+  }
+  if (screen === 'gameover') {
+    screen = 'title';
+    return;
+  }
+  if (screen === 'upgrade') {
+    for (let i = 0; i < upgradeCardRects.length; i++) {
+      const r = upgradeCardRects[i];
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+        applyUpgrade(upgradeChoices[i]);
+        return;
+      }
+    }
+    return;
+  }
+  if (screen === 'game') {
+    // Mute
+    if (x >= muteBtn.x && x <= muteBtn.x+muteBtn.w && y >= muteBtn.y && y <= muteBtn.y+muteBtn.h) {
+      muted = !muted; return;
+    }
+    // Undo
+    if (undoCharges > 0 && x >= undoBtn.x && x <= undoBtn.x+undoBtn.w && y >= undoBtn.y && y <= undoBtn.y+undoBtn.h) {
+      doUndo(); return;
+    }
+    // Find tapped screw — pick topmost (highest plate zOrder) under finger
+    const HIT_R2 = (SCREW_RADIUS * 1.7) * (SCREW_RADIUS * 1.7);
+    let best = null, bestZ = -Infinity;
+    for (const screw of screws) {
+      if (screw.removed || screw.flying) continue;
+      const dx = screw.x - x, dy = screw.y - y;
+      if (dx*dx + dy*dy <= HIT_R2) {
+        const z = getPlateZ(screw.plateId);
+        if (z > bestZ) { bestZ = z; best = screw; }
+      }
+    }
+    if (best) {
+      if (!best.locked) tapScrew(best);
+      else sfxError();
+    }
+  }
+});
+
+function getPlateZ(plateId) {
+  const p = plates.find(pl => pl.id === plateId);
+  return p ? p.zOrder : 0;
+}
+
+// ===== INIT GAME =====
+function initGame() {
+  stage = 1;
+  maxBoxes = 3;
+  maxTray = 5;
+  colorSense = false;
+  undoCharges = 0;
+  magnetActive = false;
+  selectedColor = null;
+  undoSnapshot = null;
+  flyAnimations = [];
+  popParticles = [];
+  generateBoard();
+  initToolboxes();
+}
+
+// ===== DRAWING =====
+let lastTime = 0;
+
+function drawBlueprintGrid() {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.055)';
+  ctx.lineWidth = 0.5;
+  const gs = 32;
+  for (let x = 0; x < W; x += gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.restore();
+}
+
+function drawPlate(plate) {
+  if (plate.removed) return;
+  const {x,y,w,h,color} = plate;
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = color;
+  roundRect(x,y,w,h,10); ctx.fill();
+  ctx.globalAlpha = 0.85;
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([7,4]);
+  roundRect(x,y,w,h,10); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawScrew(x, y, color, locked, highlighted) {
+  const R = SCREW_RADIUS;
+  ctx.save();
+  if (locked) ctx.globalAlpha = 0.38;
+
+  // Brass body
+  const g = ctx.createRadialGradient(x - R*0.32, y - R*0.32, 1, x, y, R);
+  g.addColorStop(0,  '#f7df80');
+  g.addColorStop(0.55,'#c8993a');
+  g.addColorStop(1,  '#6e4e10');
+  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI*2);
+  ctx.fillStyle = g; ctx.fill();
+
+  // Color ring
+  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI*2);
+  ctx.strokeStyle = color; ctx.lineWidth = 3.5; ctx.stroke();
+
+  // Phillips slot
+  ctx.strokeStyle = 'rgba(40,25,0,0.75)';
+  ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  const sl = R * 0.58;
+  ctx.beginPath(); ctx.moveTo(x-sl, y); ctx.lineTo(x+sl, y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y-sl); ctx.lineTo(x, y+sl); ctx.stroke();
+
+  // Highlight
+  ctx.beginPath(); ctx.arc(x - R*0.3, y - R*0.3, R*0.22, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,255,210,0.55)'; ctx.fill();
+
+  // ColorSense ring
+  if (highlighted && !locked) {
+    ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.arc(x, y, R + 4 + Math.sin(titleT * 6) * 1.5, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(255,255,0,0.85)'; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  // Lock overlay
+  if (locked) {
+    ctx.globalAlpha = 0.9;
+    // Draw X instead of emoji for crispness
+    ctx.strokeStyle = '#888'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    const s = R * 0.4;
+    ctx.beginPath(); ctx.moveTo(x-s,y-s); ctx.lineTo(x+s,y+s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+s,y-s); ctx.lineTo(x-s,y+s); ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawToolbox(box, idx) {
+  const {x,y,w,h} = getBoxPosition(idx);
+  ctx.save();
+
+  const isPopping = box.popping && box.popT < 1;
+  if (isPopping) {
+    const scale = 1 + (1 - box.popT) * 0.35;
+    ctx.translate(x + w/2, y + h/2);
+    ctx.scale(scale, scale);
+    ctx.translate(-(x+w/2), -(y+h/2));
+  }
+
+  // Background
+  ctx.fillStyle = box.color ? box.color + '28' : 'rgba(255,255,255,0.04)';
+  roundRect(x,y,w,h,8); ctx.fill();
+  ctx.strokeStyle = box.color ? box.color : 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = isPopping ? 2.5 : 1.5;
+  roundRect(x,y,w,h,8); ctx.stroke();
+
+  // Color name
+  if (box.color) {
+    const ci = SCREW_COLORS.indexOf(box.color);
+    ctx.fillStyle = box.color;
+    ctx.font = `bold ${Math.max(10, Math.floor(w*0.26))}px 'Yusei Magic', serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(ci >= 0 ? COLOR_NAMES[ci] : '?', x+w/2, y + h*0.3);
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.font = `${Math.max(10, Math.floor(w*0.25))}px 'Yusei Magic', serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('空', x+w/2, y+h/2);
+  }
+
+  // Count dots
+  const dotY = y + h * 0.68;
+  const sp = w / (SCREW_PER_BOX + 1);
+  for (let i = 0; i < SCREW_PER_BOX; i++) {
+    const dx = x + sp * (i+1);
+    ctx.beginPath(); ctx.arc(dx, dotY, 5, 0, Math.PI*2);
+    ctx.fillStyle = i < box.count ? (box.color || '#aaa') : 'rgba(255,255,255,0.15)';
+    ctx.fill();
+    if (i < box.count) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawTray() {
+  const trayY = H - BOX_AREA_H - TRAY_H;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(0, trayY, W, TRAY_H);
+  // Border lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0,trayY); ctx.lineTo(W,trayY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,trayY+TRAY_H); ctx.lineTo(W,trayY+TRAY_H); ctx.stroke();
+  // Label
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = `10px 'Space Mono', monospace`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(`トレイ ${tray.length}/${maxTray}`, 8, trayY+3);
+
+  for (let i = 0; i < maxTray; i++) {
+    const sp = getTraySlotPos(i);
+    ctx.strokeStyle = i < tray.length ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+    roundRect(sp.x, sp.y, sp.w, sp.h, 5); ctx.stroke();
+    ctx.setLineDash([]);
+    if (i < tray.length) {
+      drawScrew(sp.x + sp.w/2, sp.y + sp.h/2, tray[i].color, false, false);
+    }
+  }
+  ctx.restore();
+}
+
+function drawHUD() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(8,18,36,0.9)';
+  ctx.fillRect(0,0,W,HUD_H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0,HUD_H); ctx.lineTo(W,HUD_H); ctx.stroke();
+
+  // Stage
+  ctx.fillStyle = '#7ec8ff';
+  ctx.font = `bold 13px 'Space Mono', monospace`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(`STAGE ${stage}`, 12, HUD_H/2 - 7);
+
+  ctx.fillStyle = '#8899bb';
+  ctx.font = `11px 'Space Mono', monospace`;
+  ctx.fillText(`SORTED ${totalSorted}`, 12, HUD_H/2 + 9);
+
+  ctx.fillStyle = '#f0c844';
+  ctx.textAlign = 'center';
+  ctx.font = `11px 'Space Mono', monospace`;
+  ctx.fillText(`BEST ${bestStage}`, W/2, HUD_H/2);
+
+  // Undo button
+  const hasUndo = undoCharges > 0;
+  const ux = W - (hasUndo ? 88 : 50), uy = 9;
+  const uw = 34, uh = HUD_H - 18;
+  if (hasUndo) {
+    undoBtn = {x:ux, y:uy, w:uw, h:uh};
+    ctx.fillStyle = 'rgba(240,200,68,0.12)';
+    roundRect(ux,uy,uw,uh,6); ctx.fill();
+    ctx.strokeStyle = '#f0c844'; ctx.lineWidth = 1;
+    roundRect(ux,uy,uw,uh,6); ctx.stroke();
+    ctx.fillStyle = '#f0c844';
+    ctx.font = `bold 11px 'Space Mono', monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(`↩${undoCharges}`, ux+uw/2, uy+uh/2);
+  } else {
+    undoBtn = {x:0,y:0,w:0,h:0};
+  }
+
+  // Mute button
+  const mx = W - 46, my = 9, mw = 34, mh = HUD_H - 18;
+  muteBtn = {x:mx, y:my, w:mw, h:mh};
+  ctx.fillStyle = muted ? 'rgba(220,60,60,0.18)' : 'rgba(255,255,255,0.07)';
+  roundRect(mx,my,mw,mh,6); ctx.fill();
+  ctx.strokeStyle = muted ? '#e44' : 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+  roundRect(mx,my,mw,mh,6); ctx.stroke();
+  // Speaker icon drawn manually (no emoji for crispness on canvas)
+  ctx.fillStyle = muted ? '#e44' : '#ccc';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '15px sans-serif';
+  ctx.fillText(muted ? '🔇' : '🔊', mx+mw/2, my+mh/2+1);
+
+  ctx.restore();
+}
+
+function drawParticles() {
+  for (const p of popParticles) {
+    ctx.save();
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ===== TITLE SCREEN =====
+function drawTitle(dt) {
+  titleT += dt * 0.001;
+  ctx.save();
+  ctx.fillStyle = '#1a2a4a';
+  ctx.fillRect(0,0,W,H);
+  drawBlueprintGrid();
+
+  // Orbiting decorative screws
+  const nDeco = 8;
+  for (let i = 0; i < nDeco; i++) {
+    const angle = titleT * 0.25 + i * (Math.PI * 2 / nDeco);
+    const r = Math.min(W, H) * 0.36;
+    const x = W/2 + Math.cos(angle) * r;
+    const y = H * 0.42 + Math.sin(angle) * r * 0.6;
+    ctx.globalAlpha = 0.25 + Math.sin(titleT + i * 1.3) * 0.08;
+    drawScrew(x, y, SCREW_COLORS[i % SCREW_COLORS.length], false, false);
+  }
+  ctx.globalAlpha = 1;
+
+  // Title text
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.font = `bold 52px 'Yusei Magic', serif`;
+  ctx.fillText('ねじポン', W/2+3, H*0.33+3);
+  ctx.fillStyle = '#f5e6a0';
+  ctx.fillText('ねじポン', W/2, H*0.33);
+
+  ctx.fillStyle = '#8ab8e8';
+  ctx.font = `13px 'Space Mono', monospace`;
+  ctx.fillText('NEJIPON', W/2, H*0.33 + 46);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = `14px 'Yusei Magic', serif`;
+  ctx.fillText('色ネジをタップしてツールボックスへ', W/2, H*0.55);
+  ctx.fillText('重なりの順番を読み解け！', W/2, H*0.55 + 26);
+
+  // Rules
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = `12px 'Yusei Magic', serif`;
+  ctx.fillText('・3本そろうとポップ！', W/2, H*0.65);
+  ctx.fillText('・置けなくなったらゲームオーバー', W/2, H*0.65 + 20);
+
+  const pulse = 0.55 + Math.sin(titleT * 3) * 0.45;
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold 18px 'Yusei Magic', serif`;
+  ctx.fillText('タップしてスタート', W/2, H*0.8);
+  ctx.globalAlpha = 1;
+
+  if (bestStage > 0) {
+    ctx.fillStyle = '#f0c844';
+    ctx.font = `11px 'Space Mono', monospace`;
+    ctx.fillText(`BEST: STAGE ${bestStage}  TOTAL: ${totalSorted}`, W/2, H*0.9);
+  }
+  ctx.restore();
+}
+
+// ===== GAME SCREEN =====
+function drawGame(dt) {
+  ctx.save();
+  ctx.fillStyle = '#1a2a4a';
+  ctx.fillRect(0,0,W,H);
+  drawBlueprintGrid();
+
+  // Plates back-to-front
+  const sorted = [...plates].sort((a,b) => a.zOrder - b.zOrder);
+  for (const plate of sorted) drawPlate(plate);
+
+  // Non-flying screws
+  for (const screw of screws) {
+    if (screw.removed || screw.flying) continue;
+    const hl = colorSense && selectedColor === screw.color;
+    drawScrew(screw.x, screw.y, screw.color, screw.locked, hl);
+  }
+
+  // Fly animations
+  const done = [];
+  for (let i = 0; i < flyAnimations.length; i++) {
+    const fa = flyAnimations[i];
+    fa.t = Math.min(fa.t + dt, fa.dur);
+    const p = fa.t / fa.dur;
+    const e = 1 - Math.pow(1 - p, 3); // cubic ease-out
+    const bx = (1-e)*(1-e)*fa.startX + 2*(1-e)*e*fa.cpX + e*e*fa.targetX;
+    const by = (1-e)*(1-e)*fa.startY + 2*(1-e)*e*fa.cpY + e*e*fa.targetY;
+    const sc = 1 - e*0.3;
+    ctx.save(); ctx.translate(bx,by); ctx.scale(sc,sc);
+    drawScrew(0, 0, fa.screw.color, false, false);
+    ctx.restore();
+    if (fa.t >= fa.dur) { done.push(i); fa.screw.flying = false; if (fa.onDone) fa.onDone(); }
+  }
+  for (let i = done.length-1; i >= 0; i--) flyAnimations.splice(done[i], 1);
+
+  // Toolbox pop update
+  for (const box of toolboxes) {
+    if (box.popping) {
+      box.popT += dt / 480;
+      if (box.popT >= 1) { box.popping = false; box.popT = 0; }
+    }
+  }
+
+  // Particle update
+  for (let i = popParticles.length-1; i >= 0; i--) {
+    const p = popParticles[i];
+    p.t += dt; p.x += p.vx; p.y += p.vy; p.vy += 0.15;
+    p.alpha = Math.max(0, 1 - p.t/550);
+    p.r = Math.max(0, p.r - 0.04);
+    if (p.alpha <= 0 || p.r <= 0) popParticles.splice(i, 1);
+  }
+
+  drawTray();
+  for (let i = 0; i < toolboxes.length; i++) drawToolbox(toolboxes[i], i);
+  drawParticles();
+  drawHUD();
+
+  // Win check
+  if (flyAnimations.length === 0) checkWin();
+
+  ctx.restore();
+}
+
+// ===== UPGRADE SCREEN =====
+function drawUpgrade() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(8,16,36,0.94)';
+  ctx.fillRect(0,0,W,H);
+  drawBlueprintGrid();
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#f5e6a0';
+  ctx.font = `bold 30px 'Yusei Magic', serif`;
+  ctx.fillText('ステージ クリア！', W/2, H*0.1);
+
+  ctx.fillStyle = '#8ab8e8';
+  ctx.font = `15px 'Yusei Magic', serif`;
+  ctx.fillText('強化を1つ選んでください', W/2, H*0.18);
+
+  upgradeCardRects = [];
+  const cw = W * 0.83;
+  const ch = H * 0.165;
+  const cx0 = (W - cw) / 2;
+  const startY = H * 0.265;
+  const gap = ch + 14;
+
+  for (let i = 0; i < upgradeChoices.length; i++) {
+    const ch2 = upgradeChoices[i];
+    const cy = startY + i * gap;
+    upgradeCardRects.push({x:cx0, y:cy, w:cw, h:ch});
+
+    ctx.fillStyle = 'rgba(30,65,130,0.75)';
+    roundRect(cx0,cy,cw,ch,12); ctx.fill();
+    ctx.strokeStyle = '#6aabf0'; ctx.lineWidth = 1.5;
+    roundRect(cx0,cy,cw,ch,12); ctx.stroke();
+
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(ch2.icon, cx0+16, cy+ch/2);
+
+    ctx.fillStyle = '#f5e6a0';
+    ctx.font = `bold 16px 'Yusei Magic', serif`;
+    ctx.fillText(ch2.label, cx0+62, cy + ch*0.34);
+
+    ctx.fillStyle = '#8ab8e8';
+    ctx.font = `13px 'Yusei Magic', serif`;
+    ctx.fillText(ch2.desc, cx0+62, cy + ch*0.66);
+  }
+
+  ctx.fillStyle = 'rgba(255,255,255,0.38)';
+  ctx.font = `11px 'Space Mono', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(`STAGE ${stage - 1} CLEAR  SORTED: ${totalSorted}`, W/2, H*0.89);
+  ctx.restore();
+}
+
+// ===== GAMEOVER SCREEN =====
+function drawGameover(dt) {
+  gameoverT += dt;
+  ctx.save();
+  const shake = Math.max(0, 1 - gameoverT/600) * 5;
+  if (shake > 0) ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+
+  ctx.fillStyle = 'rgba(8,4,18,0.96)';
+  ctx.fillRect(0,0,W,H);
+  drawBlueprintGrid();
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#e04444';
+  ctx.font = `bold 40px 'Yusei Magic', serif`;
+  ctx.fillText('ゲームオーバー', W/2, H*0.32);
+
+  ctx.fillStyle = '#888';
+  ctx.font = `15px 'Yusei Magic', serif`;
+  ctx.fillText('ネジを置く場所がなくなった', W/2, H*0.44);
+
+  ctx.fillStyle = '#f0c844';
+  ctx.font = `bold 18px 'Space Mono', monospace`;
+  ctx.fillText(`STAGE ${stage}`, W/2, H*0.54);
+  ctx.font = `14px 'Space Mono', monospace`;
+  ctx.fillText(`SORTED: ${totalSorted}`, W/2, H*0.62);
+  ctx.fillStyle = '#888';
+  ctx.font = `13px 'Space Mono', monospace`;
+  ctx.fillText(`BEST STAGE: ${bestStage}`, W/2, H*0.70);
+
+  const pulse = 0.5 + Math.sin(gameoverT * 0.0035) * 0.5;
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = '#ccc';
+  ctx.font = `bold 16px 'Yusei Magic', serif`;
+  ctx.fillText('タップしてタイトルへ', W/2, H*0.82);
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// ===== MAIN LOOP =====
+function loop(ts) {
+  const dt = Math.min(ts - (lastTime || ts), 50);
+  lastTime = ts;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  switch(screen) {
+    case 'title':    drawTitle(dt); break;
+    case 'game':     drawGame(dt); break;
+    case 'upgrade':  drawUpgrade(); break;
+    case 'gameover': drawGameover(dt); break;
+  }
+  requestAnimationFrame(loop);
+}
+
+lastTime = performance.now();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
