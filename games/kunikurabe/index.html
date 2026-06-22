@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>くにくらべ — 万国数くらべ 勝ち残りクイズ</title>
+
+<!-- ---------- OGP / メタ ---------- -->
+<meta name="description" content="2つの国、どちらが多い? 人口・面積・GDPを当てて勝ち残る、世界銀行の実データで遊ぶハイ&ロー。連勝を伸ばせ。古地図風アトラスの片手クイズ。">
+<meta property="og:title" content="くにくらべ — 万国数くらべ 勝ち残りクイズ">
+<meta property="og:description" content="人口・面積・GDP、より多いのはどっち? 世界銀行のリアルデータと本物の国旗で勝ち残る、ハイ&ローの連勝クイズ。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nrtkumi.github.io/games/kunikurabe/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/kunikurabe/">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700;900&family=Zen+Kaku+Gothic+New:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#e7d8ba;
+    --paper2:#dec9a2;
+    --paper3:#d2b985;
+    --ink:#21403d;
+    --ink2:#3a5b56;
+    --brass:#b1842f;
+    --gold:#d8a93f;
+    --accent:#a8412c;
+    --green:#3f7d56;
+    --line:#b69a64;
+    --shadow:rgba(33,40,40,.28);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  html,body{height:100%;}
+  body{
+    background:#14201f;
+    color:var(--ink);
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    overflow:hidden;
+    overscroll-behavior:none;
+    -webkit-touch-callout:none;
+    user-select:none;-webkit-user-select:none;
+  }
+  .app{
+    position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
+    width:min(100vw, calc(100dvh * 0.6), 480px);
+    display:flex;flex-direction:column;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #efe2c6 0%, var(--paper) 42%, var(--paper2) 100%);
+    box-shadow:0 0 60px rgba(0,0,0,.6);
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    overflow:hidden;
+  }
+  /* aged map texture */
+  .app::before{
+    content:"";position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.5;
+    background-image:
+      repeating-linear-gradient(90deg, transparent 0 46px, rgba(120,90,40,.05) 46px 47px),
+      repeating-linear-gradient(0deg, transparent 0 46px, rgba(120,90,40,.05) 46px 47px),
+      radial-gradient(140% 120% at 80% 110%, rgba(80,55,20,.18), transparent 55%),
+      radial-gradient(120% 120% at -10% -10%, rgba(80,55,20,.14), transparent 50%);
+    mix-blend-mode:multiply;
+  }
+  canvas#bg{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;touch-action:none;}
+
+  .hud{
+    position:relative;z-index:3;display:flex;align-items:center;gap:8px;
+    padding:9px 13px 8px;border-bottom:2px solid var(--line);
+  }
+  .brand{font-family:"Zen Old Mincho";font-weight:900;font-size:1.05rem;letter-spacing:.12em;color:var(--ink);}
+  .brand small{font-family:"Space Mono";font-weight:400;font-size:.52rem;letter-spacing:.18em;color:var(--brass);display:block;margin-top:-2px;}
+  .hud .sp{flex:1;}
+  .chip{font-family:"Space Mono";font-size:.58rem;line-height:1.15;color:var(--ink2);text-align:right;}
+  .chip b{display:block;font-size:1.0rem;color:var(--accent);font-weight:700;}
+  .iconbtn{
+    width:34px;height:34px;border-radius:8px;border:2px solid var(--line);
+    background:var(--paper3);color:var(--ink);font-size:1rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .iconbtn:active{transform:scale(.93);}
+
+  .stage{position:relative;z-index:2;flex:1;min-height:0;display:flex;flex-direction:column;}
+
+  /* country panels */
+  .panels{flex:1;min-height:0;display:flex;flex-direction:column;padding:10px 12px 4px;gap:8px;}
+  .panel{
+    flex:1;min-height:0;position:relative;border:2.5px solid var(--ink);border-radius:14px;
+    background:linear-gradient(180deg, rgba(255,250,235,.55), rgba(210,185,133,.35));
+    box-shadow:0 5px 0 var(--shadow), inset 0 0 0 1px rgba(255,255,255,.3);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:8px 12px;overflow:hidden;
+  }
+  .panel .flagwrap{
+    width:min(46%, 150px);aspect-ratio:3/2;border:2px solid var(--ink);border-radius:6px;
+    overflow:hidden;background:var(--paper3);box-shadow:0 3px 8px rgba(0,0,0,.3);flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .panel .flagwrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  .panel .flagwrap .fallback{font-family:"Space Mono";font-weight:700;font-size:1.4rem;color:var(--ink2);}
+  .panel .cname{font-family:"Zen Old Mincho";font-weight:700;font-size:clamp(1.05rem,5.2vw,1.5rem);color:var(--ink);text-align:center;margin-top:6px;line-height:1.15;}
+  .panel .metric{margin-top:3px;height:1.9em;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .panel .val{font-family:"Space Mono";font-weight:700;font-size:clamp(1.2rem,7vw,1.9rem);color:var(--accent);letter-spacing:.01em;}
+  .panel .unit{font-size:.68rem;color:var(--ink2);font-family:"Zen Kaku Gothic New";align-self:flex-end;padding-bottom:.25em;}
+  .panel .qmark{font-family:"Zen Old Mincho";font-weight:900;font-size:1.9rem;color:var(--brass);}
+  .panel.win{border-color:var(--green);box-shadow:0 5px 0 var(--shadow), inset 0 0 0 2px rgba(63,125,86,.5);}
+  .panel.lose{border-color:var(--accent);box-shadow:0 5px 0 var(--shadow), inset 0 0 0 2px rgba(168,65,44,.5);}
+
+  /* center VS / question */
+  .midbar{
+    position:relative;z-index:4;text-align:center;margin:-4px 0;pointer-events:none;
+  }
+  .vs{
+    display:inline-block;font-family:"Zen Old Mincho";font-weight:900;font-size:.95rem;
+    color:var(--paper);background:var(--ink);border-radius:20px;padding:3px 16px;
+    box-shadow:0 3px 0 var(--shadow);letter-spacing:.1em;
+  }
+  .qtext{display:block;font-size:.74rem;color:var(--ink2);margin-top:5px;font-weight:700;}
+  .qtext b{color:var(--accent);}
+
+  /* guess buttons */
+  .guess{position:relative;z-index:4;display:flex;gap:10px;padding:8px 12px 12px;}
+  .gbtn{
+    flex:1;border:2.5px solid var(--ink);border-radius:14px;padding:13px 6px;
+    font-family:"Zen Old Mincho";font-weight:900;font-size:1.15rem;color:var(--paper);
+    cursor:pointer;box-shadow:0 5px 0 var(--shadow);display:flex;flex-direction:column;align-items:center;gap:2px;
+  }
+  .gbtn .ar{font-size:1.5rem;line-height:1;}
+  .gbtn small{font-family:"Space Mono";font-size:.55rem;font-weight:400;opacity:.85;letter-spacing:.05em;}
+  .gbtn.hi{background:linear-gradient(180deg,#c5532f,#a8412c);}
+  .gbtn.lo{background:linear-gradient(180deg,#3f7d56,#2f6042);}
+  .gbtn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--shadow);}
+  .gbtn.disabled{filter:grayscale(.6) brightness(.85);pointer-events:none;}
+
+  .streakpop{
+    position:absolute;left:50%;top:46%;transform:translate(-50%,-50%) scale(0);z-index:8;
+    font-family:"Zen Old Mincho";font-weight:900;color:var(--gold);
+    text-shadow:0 2px 0 var(--ink),0 0 18px rgba(216,169,63,.8);pointer-events:none;
+    font-size:2.6rem;white-space:nowrap;
+  }
+
+  /* overlays */
+  .overlay{
+    position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:26px 24px;gap:14px;
+    background:linear-gradient(180deg, rgba(231,216,186,.92), rgba(210,185,133,.96));
+  }
+  .overlay.hidden{display:none;}
+  .title{font-family:"Zen Old Mincho";font-weight:900;font-size:2.7rem;color:var(--ink);letter-spacing:.14em;line-height:1;}
+  .title .sub{display:block;font-family:"Space Mono";font-size:.62rem;letter-spacing:.28em;color:var(--brass);margin-top:8px;font-weight:400;}
+  .lead{font-size:.86rem;color:var(--ink2);line-height:1.7;max-width:300px;}
+  .lead b{color:var(--accent);}
+  .modes{display:flex;flex-direction:column;gap:9px;width:100%;max-width:300px;}
+  .mode{
+    border:2.5px solid var(--ink);border-radius:13px;background:var(--paper);
+    padding:11px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;
+    box-shadow:0 4px 0 var(--shadow);text-align:left;
+  }
+  .mode:active{transform:translateY(2px);box-shadow:0 2px 0 var(--shadow);}
+  .mode .ico{font-size:1.5rem;flex:0 0 auto;}
+  .mode .mt{flex:1;}
+  .mode .mt b{font-family:"Zen Old Mincho";font-weight:700;font-size:1.05rem;color:var(--ink);display:block;}
+  .mode .mt span{font-size:.62rem;color:var(--ink2);}
+  .mode .best{font-family:"Space Mono";font-size:.62rem;color:var(--brass);text-align:right;}
+  .mode .best b{display:block;font-size:1.1rem;color:var(--accent);}
+  .bigbtn{
+    border:none;border-radius:30px;background:linear-gradient(180deg,#c5532f,#a8412c);
+    color:#fff5e6;font-family:"Zen Old Mincho";font-weight:900;font-size:1.2rem;letter-spacing:.1em;
+    padding:14px 40px;cursor:pointer;box-shadow:0 5px 0 #732a1c;
+  }
+  .bigbtn:active{transform:translateY(3px);box-shadow:0 2px 0 #732a1c;}
+  .result{font-family:"Space Mono";color:var(--ink2);font-size:.8rem;line-height:1.7;}
+  .result .big{font-family:"Zen Old Mincho";font-weight:900;font-size:3.4rem;color:var(--accent);display:block;line-height:1.1;}
+  .result .nb{color:var(--green);font-weight:700;}
+  .loadnote{font-family:"Space Mono";font-size:.56rem;color:var(--brass);letter-spacing:.05em;min-height:1em;}
+  .attrib{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-family:"Space Mono";font-size:.5rem;color:var(--ink2);opacity:.7;z-index:13;padding:0 10px;}
+  .howto{font-size:.72rem;color:var(--ink2);line-height:1.7;text-align:left;max-width:300px;background:rgba(255,250,235,.5);border:1.5px dashed var(--line);border-radius:10px;padding:10px 13px;}
+  .howto b{color:var(--accent);}
+  .linkrow{display:flex;gap:14px;align-items:center;}
+  .tlink{font-size:.66rem;color:var(--ink2);text-decoration:underline;cursor:pointer;background:none;border:none;font-family:inherit;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <canvas id="bg"></canvas>
+
+  <div class="hud">
+    <div class="brand">くにくらべ<small>WORLD ATLAS QUIZ</small></div>
+    <div class="sp"></div>
+    <div class="chip">連勝<b id="streak">0</b></div>
+    <div class="chip">最高<b id="best">0</b></div>
+    <button class="iconbtn" id="mute" aria-label="音">🔊</button>
+  </div>
+
+  <div class="stage">
+    <div class="panels">
+      <div class="panel" id="pTop">
+        <div class="flagwrap"><img id="flagTop" alt=""><span class="fallback" id="fbTop" style="display:none"></span></div>
+        <div class="cname" id="nameTop">—</div>
+        <div class="metric"><span class="val" id="valTop">—</span><span class="unit" id="unitTop"></span></div>
+      </div>
+      <div class="midbar">
+        <span class="vs" id="vs">VS</span>
+        <span class="qtext" id="qtext">下の国は <b>多い？少ない？</b></span>
+      </div>
+      <div class="panel" id="pBot">
+        <div class="flagwrap"><img id="flagBot" alt=""><span class="fallback" id="fbBot" style="display:none"></span></div>
+        <div class="cname" id="nameBot">—</div>
+        <div class="metric"><span class="qmark" id="qmark">?</span><span class="val" id="valBot" style="display:none"></span><span class="unit" id="unitBot" style="display:none"></span></div>
+      </div>
+    </div>
+
+    <div class="guess" id="guess">
+      <button class="gbtn hi" id="bHi" data-dir="hi"><span class="ar">▲</span>多い<small>HIGHER</small></button>
+      <button class="gbtn lo" id="bLo" data-dir="lo"><span class="ar">▼</span>少ない<small>LOWER</small></button>
+    </div>
+    <div class="streakpop" id="spop"></div>
+  </div>
+
+  <!-- title -->
+  <div class="overlay" id="ovTitle">
+    <div class="title">くにくらべ<span class="sub">★ 万国 数くらべ ★</span></div>
+    <div class="lead">2つの国、<b>より多いのはどっち？</b><br>当て続けて連勝を伸ばそう。データは<b>世界銀行</b>の実数値。</div>
+    <div class="modes" id="modeList"></div>
+    <button class="tlink" id="howBtn">▸ あそびかた</button>
+    <div class="loadnote" id="loadnote">最新データを取得中…</div>
+  </div>
+
+  <!-- howto -->
+  <div class="overlay hidden" id="ovHow">
+    <div class="title" style="font-size:1.8rem">あそびかた</div>
+    <div class="howto">
+      上の国を基準に、<b>下の国の数値が多いか少ないか</b>を当てます。<br><br>
+      ・<b>▲多い</b> / <b>▼少ない</b> をタップ<br>
+      ・正解すると下の国が上に上がり、新しい挑戦国が登場。<b>連勝が続く限りエンドレス</b>。<br>
+      ・1回でも外したら終了。最高連勝に挑もう。<br><br>
+      モードは <b>人口・面積・GDP</b> の3種。数値は世界銀行APIの最新値（取得失敗時は内蔵スナップショット）。
+    </div>
+    <button class="bigbtn" id="howClose">とじる</button>
+  </div>
+
+  <!-- gameover -->
+  <div class="overlay hidden" id="ovOver">
+    <div class="result">
+      <span style="font-size:.9rem">連勝ストップ…</span>
+      <span class="big" id="finalStreak">0</span>
+      <span id="overMsg"></span>
+    </div>
+    <button class="bigbtn" id="retry">もう一度</button>
+    <button class="tlink" id="toTitle">モードを変える</button>
+  </div>
+
+  <div class="attrib" id="attrib">Data: World Bank Open Data · Flags: flagcdn.com</div>
+</div>
+
+<script>
+"use strict";
+/* ===== 内蔵スナップショット(World Bank Open Data, mrnev) — 通信失敗時フォールバック & 国名/国旗の基準 ===== */
+const FALLBACK = [{"i":"in","n":"インド","pop":1450935791,"area":2973190,"gdp":3909891533858},{"i":"cn","n":"中国","pop":1408975000,"area":9388210,"gdp":18743803170827},{"i":"us","n":"アメリカ合衆国","pop":340110988,"area":9147420,"gdp":28750956130731},{"i":"id","n":"インドネシア","pop":283487931,"area":1892555,"gdp":1396300098191},{"i":"pk","n":"パキスタン","pop":251269164,"area":770880,"gdp":371570000121},{"i":"ng","n":"ナイジェリア","pop":232679478,"area":910770,"gdp":252261880141},{"i":"br","n":"ブラジル","pop":211998573,"area":8358140,"gdp":2185821648944},{"i":"bd","n":"バングラデシュ","pop":173562364,"area":129980,"gdp":450119432069},{"i":"ru","n":"ロシア","pop":143533851,"area":16376870,"gdp":2173835806672},{"i":"et","n":"エチオピア","pop":132059767,"area":1128499,"gdp":149740297953},{"i":"mx","n":"メキシコ","pop":130861007,"area":1943950,"gdp":1856365616166},{"i":"jp","n":"日本","pop":123975371,"area":364569,"gdp":4027597523551},{"i":"eg","n":"エジプト","pop":116538258,"area":995450,"gdp":389059911004},{"i":"ph","n":"フィリピン","pop":115843670,"area":298170,"gdp":461617509782},{"i":"cd","n":"コンゴ民主共和国(キンシャサ)","pop":109276265,"area":2267050,"gdp":70962185791},{"i":"vn","n":"ベトナム","pop":100987686,"area":313429,"gdp":476388230307},{"i":"ir","n":"イラン","pop":91567738,"area":1622500,"gdp":475252089215},{"i":"tr","n":"トルコ","pop":85518661,"area":769630,"gdp":1359123768774},{"i":"de","n":"ドイツ","pop":83516593,"area":349430,"gdp":4685592577805},{"i":"th","n":"タイ","pop":71668011,"area":510890,"gdp":526517658842},{"i":"gb","n":"イギリス","pop":69226000,"area":241930,"gdp":3686033044482},{"i":"tz","n":"タンザニア","pop":68560157,"area":885800,"gdp":78844405385},{"i":"fr","n":"フランス","pop":68551653,"area":538950,"gdp":3160442622465},{"i":"za","n":"南アフリカ","pop":64007187,"area":1213090,"gdp":401144998374},{"i":"it","n":"イタリア","pop":58952704,"area":295720,"gdp":2380825077244},{"i":"ke","n":"ケニア","pop":56432944,"area":580876,"gdp":120339557906},{"i":"mm","n":"ミャンマー (ビルマ)","pop":54500091,"area":652670,"gdp":74068349524},{"i":"co","n":"コロンビア","pop":52886363,"area":1109500,"gdp":418818154879},{"i":"kr","n":"韓国","pop":51751065,"area":97600,"gdp":1875388209407},{"i":"sd","n":"スーダン","pop":50448963,"area":1868000,"gdp":49672435513},{"i":"ug","n":"ウガンダ","pop":50015092,"area":200520,"gdp":53911907086},{"i":"es","n":"スペイン","pop":48848840,"area":499697,"gdp":1725671652742},{"i":"dz","n":"アルジェリア","pop":46814308,"area":2381740,"gdp":269322281665},{"i":"iq","n":"イラク","pop":46042015,"area":434130,"gdp":279641257615},{"i":"ar","n":"アルゼンチン","pop":45696159,"area":2736690,"gdp":638365455340},{"i":"af","n":"アフガニスタン","pop":42647492,"area":652230,"gdp":17152234637},{"i":"ca","n":"カナダ","pop":41288599,"area":8788700,"gdp":2243636826634},{"i":"ye","n":"イエメン","pop":40583164,"area":527970,"gdp":21606160663},{"i":"ma","n":"モロッコ","pop":38081173,"area":446300,"gdp":160610994055},{"i":"ao","n":"アンゴラ","pop":37885849,"area":1246700,"gdp":100998916781},{"i":"ua","n":"ウクライナ","pop":37860221,"area":579400,"gdp":190741262415},{"i":"pl","n":"ポーランド","pop":36559233,"area":306270,"gdp":917767106147},{"i":"uz","n":"ウズベキスタン","pop":36361859,"area":440650,"gdp":114965293467},{"i":"my","n":"マレーシア","pop":35557673,"area":328550,"gdp":422227005429},{"i":"sa","n":"サウジアラビア","pop":35300280,"area":2149690,"gdp":1239804533333},{"i":"mz","n":"モザンビーク","pop":34631766,"area":786380,"gdp":22745341305},{"i":"gh","n":"ガーナ","pop":34427414,"area":227533,"gdp":82308110386},{"i":"pe","n":"ペルー","pop":34217848,"area":1280000,"gdp":289221969063},{"i":"mg","n":"マダガスカル","pop":31964956,"area":581800,"gdp":17420501490},{"i":"ci","n":"コートジボワール","pop":31934230,"area":318000,"gdp":87113179149},{"i":"np","n":"ネパール","pop":29651054,"area":143350,"gdp":42914268287},{"i":"cm","n":"カメルーン","pop":29123744,"area":472710,"gdp":53296694320},{"i":"ve","n":"ベネズエラ","pop":28405543,"area":882050,"gdp":119802963258},{"i":"au","n":"オーストラリア","pop":27196812,"area":7692020,"gdp":1757022451653},{"i":"ne","n":"ニジェール","pop":27032412,"area":1266700,"gdp":19876128486},{"i":"sy","n":"シリア","pop":24672760,"area":183630,"gdp":23622827080},{"i":"ml","n":"マリ","pop":24478595,"area":1220190,"gdp":26794747240},{"i":"bf","n":"ブルキナファソ","pop":23548781,"area":273600,"gdp":23124729853},{"i":"lk","n":"スリランカ","pop":21916000,"area":61860,"gdp":98963185510},{"i":"mw","n":"マラウイ","pop":21655286,"area":94280,"gdp":11316411329},{"i":"zm","n":"ザンビア","pop":21314956,"area":743390,"gdp":25303185342},{"i":"kz","n":"カザフスタン","pop":20592571,"area":2699700,"gdp":291480274649},{"i":"td","n":"チャド","pop":20299123,"area":1259200,"gdp":19518819751},{"i":"cl","n":"チリ","pop":19764771,"area":742832,"gdp":330267137372},{"i":"ro","n":"ルーマニア","pop":19051804,"area":230080,"gdp":382564217989},{"i":"so","n":"ソマリア","pop":19009151,"area":627340,"gdp":11967000000},{"i":"sn","n":"セネガル","pop":18501984,"area":192530,"gdp":32808056601},{"i":"gt","n":"グアテマラ","pop":18406359,"area":107160,"gdp":113199581158},{"i":"ec","n":"エクアドル","pop":18135478,"area":248360,"gdp":124676074700},{"i":"nl","n":"オランダ","pop":17993485,"area":33670,"gdp":1214927698573},{"i":"kh","n":"カンボジア","pop":17638801,"area":176520,"gdp":46352647037},{"i":"zw","n":"ジンバブエ","pop":16634373,"area":386850,"gdp":41539411516},{"i":"gn","n":"ギニア","pop":14754785,"area":245720,"gdp":25008678293},{"i":"bj","n":"ベナン","pop":14462724,"area":112760,"gdp":21482643706},{"i":"rw","n":"ルワンダ","pop":14256567,"area":24670,"gdp":14251642235},{"i":"bi","n":"ブルンジ","pop":14047786,"area":25680,"gdp":3082433067},{"i":"bo","n":"ボリビア","pop":12413315,"area":1083300,"gdp":54881327453},{"i":"tn","n":"チュニジア","pop":12277109,"area":155360,"gdp":51332285657},{"i":"ss","n":"南スーダン","pop":11943408,"area":631930,"gdp":11997800760},{"i":"be","n":"ベルギー","pop":11858610,"area":30494,"gdp":671370081636},{"i":"ht","n":"ハイチ","pop":11772557,"area":27560,"gdp":25224154991},{"i":"jo","n":"ヨルダン","pop":11552876,"area":88794,"gdp":53352289577},{"i":"do","n":"ドミニカ共和国","pop":11427557,"area":48198,"gdp":124282245639},{"i":"ae","n":"アラブ首長国連邦","pop":10986400,"area":71020,"gdp":552324846835},{"i":"cu","n":"キューバ","pop":10979783,"area":103800,"gdp":107352000000},{"i":"cz","n":"チェコ","pop":10905028,"area":77167,"gdp":347034062928},{"i":"hn","n":"ホンジュラス","pop":10825703,"area":111890,"gdp":37093565854},{"i":"pt","n":"ポルトガル","pop":10694681,"area":91606,"gdp":313271185085},{"i":"tj","n":"タジキスタン","pop":10590927,"area":138790,"gdp":14204575549},{"i":"pg","n":"パプアニューギニア","pop":10576502,"area":452860,"gdp":31800428266},{"i":"se","n":"スウェーデン","pop":10569709,"area":407270,"gdp":603715224266},{"i":"gr","n":"ギリシャ","pop":10405134,"area":128900,"gdp":256238371778},{"i":"az","n":"アゼルバイジャン","pop":10202830,"area":82650,"gdp":74315882353},{"i":"il","n":"イスラエル","pop":9974400,"area":21640,"gdp":540379921262},{"i":"hu","n":"ハンガリー","pop":9562065,"area":91260,"gdp":222722738926},{"i":"tg","n":"トーゴ","pop":9515236,"area":54390,"gdp":10651180147},{"i":"at","n":"オーストリア","pop":9177982,"area":82520,"gdp":534790720467},{"i":"by","n":"ベラルーシ","pop":9132629,"area":202983,"gdp":75961865472},{"i":"ch","n":"スイス","pop":9005582,"area":39510,"gdp":936564198049},{"i":"sl","n":"シエラレオネ","pop":8642022,"area":72180,"gdp":6971127235},{"i":"la","n":"ラオス","pop":7769819,"area":230800,"gdp":16502933121},{"i":"hk","n":"中華人民共和国香港特別行政区","pop":7524100,"area":1050,"gdp":406863396487},{"i":"tm","n":"トルクメニスタン","pop":7494498,"area":469930,"gdp":51387209872},{"i":"ly","n":"リビア","pop":7381023,"area":1759540,"gdp":48487151215},{"i":"kg","n":"キルギス","pop":7221868,"area":191800,"gdp":17478259659},{"i":"py","n":"パラグアイ","pop":6929153,"area":396012,"gdp":44458118397},{"i":"ni","n":"ニカラグア","pop":6916140,"area":120340,"gdp":19693982968},{"i":"rs","n":"セルビア","pop":6586476,"area":84090,"gdp":90097765959},{"i":"bg","n":"ブルガリア","pop":6441421,"area":108560,"gdp":113343355780},{"i":"sv","n":"エルサルバドル","pop":6338193,"area":20720,"gdp":35364960000},{"i":"cg","n":"コンゴ共和国(ブラザビル)","pop":6332961,"area":341500,"gdp":15719986077},{"i":"sg","n":"シンガポール","pop":6036860,"area":718,"gdp":547386645892},{"i":"dk","n":"デンマーク","pop":5976992,"area":40000,"gdp":424524722037},{"i":"lb","n":"レバノン","pop":5805962,"area":10230,"gdp":20078620357},{"i":"fi","n":"フィンランド","pop":5619911,"area":303960,"gdp":298696961298},{"i":"lr","n":"リベリア","pop":5612817,"area":96320,"gdp":4779300900},{"i":"no","n":"ノルウェー","pop":5572279,"area":364270,"gdp":483592648313},{"i":"sk","n":"スロバキア","pop":5422069,"area":48080,"gdp":140934076532},{"i":"ie","n":"アイルランド","pop":5395790,"area":68890,"gdp":609157459747},{"i":"cf","n":"中央アフリカ共和国","pop":5330690,"area":622980,"gdp":2751494281},{"i":"ps","n":"パレスチナ自治区","pop":5289152,"area":6025,"gdp":13711100000},{"i":"nz","n":"ニュージーランド","pop":5287500,"area":263310,"gdp":260172385098},{"i":"om","n":"オマーン","pop":5281538,"area":309500,"gdp":107137198769},{"i":"mr","n":"モーリタニア","pop":5169395,"area":1030700,"gdp":10908045687},{"i":"cr","n":"コスタリカ","pop":5129910,"area":51060,"gdp":95350423177},{"i":"kw","n":"クウェート","pop":4897263,"area":17820,"gdp":160227273053},{"i":"pa","n":"パナマ","pop":4515577,"area":74180,"gdp":86523959132},{"i":"hr","n":"クロアチア","pop":3866200,"area":55960,"gdp":92983810329},{"i":"ge","n":"ジョージア","pop":3699557,"area":69490,"gdp":34189423545},{"i":"er","n":"エリトリア","pop":3535603,"area":121178,"gdp":2065001626},{"i":"mn","n":"モンゴル","pop":3524788,"area":1558500,"gdp":23794540025},{"i":"uy","n":"ウルグアイ","pop":3386588,"area":175020,"gdp":80961511074},{"i":"pr","n":"プエルトリコ","pop":3203295,"area":8870,"gdp":126029527034},{"i":"ba","n":"ボスニア・ヘルツェゴビナ","pop":3164253,"area":51200,"gdp":29613572023},{"i":"am","n":"アルメニア","pop":3033500,"area":28199,"gdp":25955275380},{"i":"na","n":"ナミビア","pop":3030131,"area":823290,"gdp":13372354512},{"i":"lt","n":"リトアニア","pop":2888278,"area":62600,"gdp":84869215513},{"i":"qa","n":"カタール","pop":2857822,"area":11490,"gdp":219162637363},{"i":"jm","n":"ジャマイカ","pop":2839175,"area":10830,"gdp":22014397090},{"i":"gm","n":"ガンビア","pop":2759988,"area":10120,"gdp":2404888749},{"i":"ga","n":"ガボン","pop":2538952,"area":257670,"gdp":20895684426},{"i":"bw","n":"ボツワナ","pop":2521139,"area":566730,"gdp":19402063513},{"i":"md","n":"モルドバ","pop":2402306,"area":32930,"gdp":18200340854},{"i":"al","n":"アルバニア","pop":2377128,"area":27400,"gdp":27046429297},{"i":"ls","n":"レソト","pop":2337423,"area":30360,"gdp":2271759455},{"i":"gw","n":"ギニアビサウ","pop":2201352,"area":28120,"gdp":2218393805},{"i":"si","n":"スロベニア","pop":2127400,"area":20135,"gdp":72972015197},{"i":"gq","n":"赤道ギニア","pop":1892516,"area":28050,"gdp":12765777677},{"i":"lv","n":"ラトビア","pop":1866124,"area":62230,"gdp":43684254432},{"i":"mk","n":"北マケドニア","pop":1824359,"area":25220,"gdp":16951682245},{"i":"bh","n":"バーレーン","pop":1588670,"area":800,"gdp":47109734309},{"i":"tl","n":"東ティモール","pop":1400638,"area":14870,"gdp":1865608515},{"i":"ee","n":"エストニア","pop":1372341,"area":42730,"gdp":43130419829},{"i":"tt","n":"トリニダード・トバゴ","pop":1368333,"area":5130,"gdp":25633544529},{"i":"cy","n":"キプロス","pop":1358282,"area":9240,"gdp":37634533332},{"i":"mu","n":"モーリシャス","pop":1245779,"area":1997,"gdp":14937861786},{"i":"sz","n":"エスワティニ","pop":1242822,"area":17200,"gdp":4858885841},{"i":"dj","n":"ジブチ","pop":1168722,"area":23180,"gdp":4152145940},{"i":"fj","n":"フィジー","pop":928784,"area":18270,"gdp":5968125909},{"i":"km","n":"コモロ","pop":866628,"area":1861,"gdp":1440991455},{"i":"gy","n":"ガイアナ","pop":831087,"area":211140,"gdp":24662709832},{"i":"sb","n":"ソロモン諸島","pop":819198,"area":27990,"gdp":1583964704},{"i":"bt","n":"ブータン","pop":791524,"area":38140,"gdp":3012896789},{"i":"mo","n":"中華人民共和国マカオ特別行政区","pop":687000,"area":33,"gdp":49467258923},{"i":"lu","n":"ルクセンブルク","pop":677012,"area":2574,"gdp":93279851863},{"i":"sr","n":"スリナム","pop":634431,"area":160508,"gdp":4416775112},{"i":"me","n":"モンテネグロ","pop":623525,"area":13450,"gdp":8270016671},{"i":"mt","n":"マルタ","pop":568847,"area":320,"gdp":24971574502},{"i":"mv","n":"モルディブ","pop":527799,"area":298,"gdp":7061608267},{"i":"cv","n":"カーボベルデ","pop":524877,"area":4030,"gdp":2725414151},{"i":"bn","n":"ブルネイ","pop":462721,"area":5270,"gdp":15340808592},{"i":"bz","n":"ベリーズ","pop":417072,"area":22810,"gdp":3203631800},{"i":"bs","n":"バハマ","pop":401283,"area":10010,"gdp":15832800000},{"i":"is","n":"アイスランド","pop":386506,"area":100830,"gdp":33255181469},{"i":"vu","n":"バヌアツ","pop":327777,"area":12190,"gdp":1117972034},{"i":"nc","n":"ニューカレドニア","pop":292639,"area":18280,"gdp":8548919387},{"i":"bb","n":"バルバドス","pop":282467,"area":430,"gdp":7498050000},{"i":"pf","n":"仏領ポリネシア","pop":281807,"area":3471,"gdp":6323716355},{"i":"st","n":"サントメ・プリンシペ","pop":235536,"area":960,"gdp":822154621},{"i":"ws","n":"サモア","pop":218019,"area":2780,"gdp":1175749786},{"i":"lc","n":"セントルシア","pop":179744,"area":610,"gdp":2549062963},{"i":"gu","n":"グアム","pop":167777,"area":540,"gdp":6910000000},{"i":"cw","n":"キュラソー","pop":155967,"area":444,"gdp":3561178196},{"i":"ki","n":"キリバス","pop":134518,"area":810,"gdp":307862564},{"i":"sc","n":"セーシェル","pop":121354,"area":460,"gdp":2167239562},{"i":"gd","n":"グレナダ","pop":117207,"area":340,"gdp":1371918519},{"i":"fm","n":"ミクロネシア連邦","pop":113160,"area":700,"gdp":471425099},{"i":"aw","n":"アルバ","pop":107995,"area":180,"gdp":4265650673},{"i":"vi","n":"米領ヴァージン諸島","pop":104377,"area":350,"gdp":4672000000},{"i":"to","n":"トンガ","pop":104175,"area":720,"gdp":591139749},{"i":"vc","n":"セントビンセント及びグレナディーン諸島","pop":100616,"area":390,"gdp":1157207407},{"i":"ag","n":"アンティグア・バーブーダ","pop":93772,"area":440,"gdp":2207622874},{"i":"im","n":"マン島","pop":84160,"area":570,"gdp":7431257411},{"i":"ad","n":"アンドラ","pop":81938,"area":470,"gdp":4039842405},{"i":"ky","n":"ケイマン諸島","pop":74457,"area":240,"gdp":7241244269}];
+
+/* ===== モード定義 ===== */
+const MODES = {
+  pop:  {key:"pop",  ico:"👥", name:"人口",  desc:"人の多い国はどっち？",   unit:"人",   field:"pop"},
+  area: {key:"area", ico:"🗺️", name:"面積",  desc:"国土が広いのはどっち？", unit:"km²", field:"area"},
+  gdp:  {key:"gdp",  ico:"💰", name:"GDP",   desc:"経済が大きいのはどっち？", unit:"US$", field:"gdp"},
+};
+
+/* ===== 状態(ループが触る値は全て宣言時に初期化) ===== */
+const G = {
+  scene:"title",          // title | playing | reveal | over
+  mode:"pop",
+  data:FALLBACK.slice(),  // 現在の有効データ(run開始時に確定)
+  pending:null,           // ライブ取得後の差し替え待ち
+  liveLoaded:false,
+  top:null, bot:null,     // 現在の2国
+  streak:0,
+  best:{pop:0,area:0,gdp:0},
+  busy:false,
+  // 数値カウントアップ
+  countFrom:0, countTo:0, countT:0, countDur:0, countEl:null, countActive:false,
+  // 演出
+  shake:0, flashWin:0,
+  t:0,
+};
+
+/* ===== オーディオ(iOS消音対策込み) ===== */
+let AC=null, muted=false;
+function audio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); AC.onstatechange=()=>{ if(AC.state!=="running"&&!document.hidden){ try{AC.resume();}catch(e){} } }; }catch(e){} } if(AC&&AC.state!=="running"){ try{AC.resume();}catch(e){} } return AC; }
+let silentEl=null;
+function silentWavUrl(){ const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf); const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}; str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true); for(let i=0;i<n;i++)v.setUint8(44+i,0x80); return URL.createObjectURL(new Blob([buf],{type:"audio/wav"})); }
+function unlockAudio(){ if(!silentEl){ silentEl=document.createElement("audio"); silentEl.setAttribute("playsinline",""); silentEl.loop=true; silentEl.volume=0.01; silentEl.src=silentWavUrl(); } const p=silentEl.play(); if(p&&p.catch)p.catch(()=>{}); audio(); if(!AC)return; const done=()=>{ if(AC.state==="running")["pointerdown","pointerup","touchend"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true)); }; try{ AC.resume().then(done); }catch(e){ done(); } }
+["pointerdown","pointerup","touchend"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) audio(); });
+function tone(f,d,type,vol,slideTo){ if(muted||!audio())return; try{ const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime; o.type=type||"sine"; o.frequency.setValueAtTime(f,t); if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+d); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.18,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+d); o.connect(g);g.connect(AC.destination); o.start(t);o.stop(t+d+0.02);}catch(e){} }
+const sCorrect=()=>{ tone(523,.09,"triangle",.2); setTimeout(()=>tone(784,.16,"triangle",.2),90); };
+const sWrong=()=>{ tone(220,.3,"sawtooth",.2,90); };
+const sTick=()=>tone(1200,.03,"square",.06);
+const sStreak=()=>{ tone(660,.1,"triangle",.18); setTimeout(()=>tone(880,.1,"triangle",.18),100); setTimeout(()=>tone(1175,.22,"triangle",.2),200); };
+const sFlip=()=>tone(420,.06,"sine",.12);
+
+/* ===== DOM ===== */
+const $=id=>document.getElementById(id);
+const el={
+  app:$("app"), streak:$("streak"), best:$("best"), mute:$("mute"),
+  pTop:$("pTop"), pBot:$("pBot"),
+  flagTop:$("flagTop"), fbTop:$("fbTop"), nameTop:$("nameTop"), valTop:$("valTop"), unitTop:$("unitTop"),
+  flagBot:$("flagBot"), fbBot:$("fbBot"), nameBot:$("nameBot"), valBot:$("valBot"), unitBot:$("unitBot"), qmark:$("qmark"),
+  vs:$("vs"), qtext:$("qtext"), guess:$("guess"), bHi:$("bHi"), bLo:$("bLo"), spop:$("spop"),
+  ovTitle:$("ovTitle"), ovHow:$("ovHow"), ovOver:$("ovOver"),
+  modeList:$("modeList"), loadnote:$("loadnote"), howBtn:$("howBtn"), howClose:$("howClose"),
+  finalStreak:$("finalStreak"), overMsg:$("overMsg"), retry:$("retry"), toTitle:$("toTitle"),
+};
+
+/* ===== 永続化 ===== */
+function loadBest(){ try{ const s=JSON.parse(localStorage.getItem("kunikurabe_best")||"null"); if(s&&typeof s==="object"){ G.best=Object.assign({pop:0,area:0,gdp:0},s); } }catch(e){} }
+function saveBest(){ try{ localStorage.setItem("kunikurabe_best",JSON.stringify(G.best)); }catch(e){} }
+
+/* ===== 数値フォーマット ===== */
+function group(n){ return Math.round(n).toLocaleString("en-US"); }
+function jpScale(n,mode){
+  // 補助の読みやすい表記
+  if(mode==="gdp"){ if(n>=1e12) return "約"+(n/1e12).toFixed(1)+"兆ドル"; if(n>=1e8) return "約"+(n/1e8).toFixed(0)+"億ドル"; return "約"+group(n)+"ドル"; }
+  if(n>=1e8) return "約"+(n/1e8).toFixed(n>=1e9?0:1)+"億"; if(n>=1e4) return "約"+(n/1e4).toFixed(0)+"万"; return group(n);
+}
+
+/* ===== 国旗 ===== */
+function setFlag(imgEl,fbEl,iso){
+  fbEl.style.display="none"; imgEl.style.display="block";
+  imgEl.onerror=()=>{ imgEl.style.display="none"; fbEl.textContent=iso.toUpperCase(); fbEl.style.display="flex"; };
+  imgEl.src="https://flagcdn.com/w320/"+iso+".png";
+}
+
+/* ===== ライブデータ取得(World Bank) ===== */
+async function fetchIndicator(code){
+  const url="https://api.worldbank.org/v2/country/all/indicator/"+code+"?format=json&per_page=400&mrnev=1";
+  const r=await fetch(url,{cache:"no-store"});
+  if(!r.ok) throw new Error("http "+r.status);
+  const j=await r.json();
+  const map={};
+  (j[1]||[]).forEach(row=>{ const id=(row.country&&row.country.id||"").toLowerCase(); if(/^[a-z]{2}$/.test(id) && row.value!=null) map[id]=row.value; });
+  return map;
+}
+async function loadLive(){
+  try{
+    const [pop,area,gdp]=await Promise.all([
+      fetchIndicator("SP.POP.TOTL"),
+      fetchIndicator("AG.LND.TOTL.K2"),
+      fetchIndicator("NY.GDP.MKTP.CD"),
+    ]);
+    // スナップショットの国一覧(国名・国旗の基準)にライブ値をマージ
+    const merged=[];
+    for(const c of FALLBACK){
+      const p=pop[c.i], a=area[c.i], g=gdp[c.i];
+      if(p!=null && a!=null && g!=null && p>=70000){
+        merged.push({i:c.i, n:c.n, pop:Math.round(p), area:Math.round(a), gdp:Math.round(g)});
+      } else {
+        merged.push(c); // 欠損はスナップショット値を維持
+      }
+    }
+    if(merged.length>=60){
+      G.pending=merged; G.liveLoaded=true;
+      if(G.scene==="title"){ G.data=merged.slice(); }
+      el.loadnote.textContent="✓ 世界銀行の最新データを取得";
+    }
+  }catch(e){
+    el.loadnote.textContent="（内蔵データで開始）";
+  }
+}
+
+/* ===== ゲーム進行 ===== */
+function pickCountry(exclude){
+  const d=G.data; let c;
+  let guard=0;
+  do{ c=d[(Math.random()*d.length)|0]; guard++; }while(exclude && c && c.i===exclude.i && guard<50);
+  return c;
+}
+function valueOf(c){ return c[MODES[G.mode].field]; }
+
+function startRun(mode){
+  G.mode=mode;
+  if(G.pending){ G.data=G.pending.slice(); } // 次のrunからライブ反映
+  G.streak=0; G.busy=false; G.scene="playing";
+  hide(el.ovTitle); hide(el.ovHow); hide(el.ovOver);
+  el.streak.textContent="0"; el.best.textContent=G.best[mode]||0;
+  G.top=pickCountry(null);
+  // 上の国は最初から数値公開
+  renderTop(G.top,true);
+  nextChallenger();
+}
+
+function nextChallenger(){
+  G.bot=pickCountry(G.top);
+  renderBot(G.bot,false);
+  const m=MODES[G.mode];
+  el.qtext.innerHTML="下の国の"+m.name+"は <b>多い？ 少ない？</b>";
+  el.vs.textContent="VS";
+  el.pBot.classList.remove("win","lose"); el.pTop.classList.remove("win","lose");
+  setGuess(true);
+  G.busy=false;
+}
+
+function renderTop(c,showVal){
+  setFlag(el.flagTop,el.fbTop,c.i);
+  el.nameTop.textContent=c.n;
+  el.unitTop.textContent=MODES[G.mode].unit;
+  if(showVal){ el.valTop.textContent=group(valueOf(c)); el.valTop.title=jpScale(valueOf(c),G.mode); }
+}
+function renderBot(c,showVal){
+  setFlag(el.flagBot,el.fbBot,c.i);
+  el.nameBot.textContent=c.n;
+  el.qmark.style.display=showVal?"none":"block";
+  el.valBot.style.display=showVal?"block":"none";
+  el.unitBot.style.display=showVal?"block":"none";
+  el.unitBot.textContent=MODES[G.mode].unit;
+  if(showVal){ el.valBot.textContent=group(valueOf(c)); }
+}
+
+function setGuess(on){
+  G.busy=!on;
+  el.bHi.classList.toggle("disabled",!on);
+  el.bLo.classList.toggle("disabled",!on);
+}
+
+function onGuess(dir){
+  if(G.scene!=="playing"||G.busy) return;
+  G.busy=true; setGuess(false); sFlip();
+  const tv=valueOf(G.top), bv=valueOf(G.bot);
+  const correct = (dir==="hi") ? (bv>=tv) : (bv<=tv);
+  // 数値カウントアップで公開
+  el.qmark.style.display="none";
+  el.valBot.style.display="block"; el.unitBot.style.display="block"; el.unitBot.textContent=MODES[G.mode].unit;
+  startCount(el.valBot, bv, 900, ()=>resolve(correct, tv, bv));
+}
+
+function startCount(elx, to, dur, done){
+  G.countEl=elx; G.countFrom=0; G.countTo=to; G.countT=0; G.countDur=dur; G.countActive=true; G.countDone=done; G.lastTick=0;
+}
+
+function resolve(correct, tv, bv){
+  G.scene="reveal";
+  if(correct){
+    sCorrect();
+    el.pBot.classList.add("win");
+    G.streak++; G.flashWin=1;
+    el.streak.textContent=G.streak;
+    if(G.streak>(G.best[G.mode]||0)){ G.best[G.mode]=G.streak; saveBest(); el.best.textContent=G.streak; }
+    if(G.streak%5===0){ showStreakPop(G.streak+"連勝！"); sStreak(); }
+    setTimeout(()=>{
+      // 挑戦国が新チャンピオンへ
+      G.top=G.bot; renderTop(G.top,true);
+      el.pBot.classList.remove("win");
+      G.scene="playing"; nextChallenger();
+    }, G.streak%5===0?1050:780);
+  }else{
+    sWrong(); G.shake=1;
+    el.pBot.classList.add("lose");
+    setTimeout(()=>gameOver(tv,bv), 950);
+  }
+}
+
+function showStreakPop(txt){
+  el.spop.textContent=txt;
+  el.spop.style.transition="none"; el.spop.style.transform="translate(-50%,-50%) scale(0)"; el.spop.style.opacity="1";
+  requestAnimationFrame(()=>{ el.spop.style.transition="transform .4s cubic-bezier(.2,1.4,.4,1), opacity .5s"; el.spop.style.transform="translate(-50%,-60%) scale(1)"; setTimeout(()=>{ el.spop.style.opacity="0"; },650); });
+}
+
+function gameOver(tv,bv){
+  G.scene="over";
+  el.finalStreak.textContent=G.streak;
+  const m=MODES[G.mode];
+  el.overMsg.innerHTML=G.top.n+"「"+group(tv)+"」 vs "+G.bot.n+"「"+group(bv)+"」<br>"
+    +(G.streak>=(G.best[m.key]||0)&&G.streak>0?'<span class="nb">自己ベスト更新！</span>':"最高連勝 "+(G.best[m.key]||0));
+  show(el.ovOver);
+}
+
+/* ===== オーバーレイ helpers ===== */
+function show(o){ o.classList.remove("hidden"); }
+function hide(o){ o.classList.add("hidden"); }
+
+/* ===== タイトルのモード一覧 ===== */
+function buildModeList(){
+  el.modeList.innerHTML="";
+  Object.values(MODES).forEach(m=>{
+    const b=document.createElement("button");
+    b.className="mode"; b.dataset.mode=m.key;
+    b.innerHTML='<span class="ico">'+m.ico+'</span><span class="mt"><b>'+m.name+'くらべ</b><span>'+m.desc+'</span></span><span class="best">最高<b class="mb-'+m.key+'">'+(G.best[m.key]||0)+'</b></span>';
+    el.modeList.appendChild(b);
+  });
+}
+function refreshModeBest(){ Object.keys(MODES).forEach(k=>{ const e=document.querySelector(".mb-"+k); if(e)e.textContent=G.best[k]||0; }); }
+
+/* ===== 入力(Pointer Events / clickに依存しない) ===== */
+function bindTap(node, fn){ node.addEventListener("pointerdown", e=>{ e.preventDefault(); fn(e); }); }
+bindTap(el.bHi, ()=>onGuess("hi"));
+bindTap(el.bLo, ()=>onGuess("lo"));
+el.modeList.addEventListener("pointerdown", e=>{ const m=e.target.closest(".mode"); if(m){ e.preventDefault(); startRun(m.dataset.mode); } });
+bindTap(el.howBtn, ()=>{ show(el.ovHow); });
+bindTap(el.howClose, ()=>{ hide(el.ovHow); });
+bindTap(el.retry, ()=>{ startRun(G.mode); });
+bindTap(el.toTitle, ()=>{ G.scene="title"; refreshModeBest(); hide(el.ovOver); show(el.ovTitle); });
+bindTap(el.mute, ()=>{ muted=!muted; el.mute.textContent=muted?"🔇":"🔊"; if(!muted)audio(); });
+// キーボード(PC)
+window.addEventListener("keydown", e=>{
+  if(G.scene==="playing"&&!G.busy){ if(e.key==="ArrowUp"||e.key==="w"){onGuess("hi");} else if(e.key==="ArrowDown"||e.key==="s"){onGuess("lo");} }
+  else if(G.scene==="over"&&(e.key===" "||e.key==="Enter")){ startRun(G.mode); }
+});
+
+/* ダブルタップズーム無効化 */
+let lastTouch=0;
+document.addEventListener("touchend", e=>{ const n=Date.now(); if(n-lastTouch<=350 && e.cancelable){ e.preventDefault(); } lastTouch=n; }, {passive:false});
+document.addEventListener("dblclick", e=>e.preventDefault());
+document.addEventListener("gesturestart", e=>e.preventDefault());
+
+/* ===== 背景canvas(経緯線がゆっくり流れる) ===== */
+const bg=$("bg"); const bx=bg.getContext("2d");
+let DPR=1,cssW=0,cssH=0;
+function resize(){ const r=bg.getBoundingClientRect(); DPR=Math.min(window.devicePixelRatio||1,2.5); cssW=r.width; cssH=r.height; bg.width=Math.max(1,cssW*DPR); bg.height=Math.max(1,cssH*DPR); }
+window.addEventListener("resize",resize); resize();
+function drawBg(){
+  bx.setTransform(DPR,0,0,DPR,0,0);
+  bx.clearRect(0,0,cssW,cssH);
+  // 緯線(同心の弧)
+  bx.save();
+  bx.globalAlpha=.10; bx.strokeStyle="#5a4423"; bx.lineWidth=1;
+  const cx=cssW*0.5, cy=cssH*0.42, off=(G.t*0.15)%40;
+  for(let r=40;r<cssH*1.3;r+=40){ bx.beginPath(); bx.arc(cx,cy,r+off,Math.PI*0.05,Math.PI*0.95); bx.stroke(); bx.beginPath(); bx.arc(cx,cy,r+off,Math.PI*1.05,Math.PI*1.95); bx.stroke(); }
+  // 経線
+  for(let a=0;a<Math.PI*2;a+=Math.PI/8){ bx.beginPath(); bx.moveTo(cx,cy); bx.lineTo(cx+Math.cos(a+G.t*0.0006)*cssH, cy+Math.sin(a+G.t*0.0006)*cssH); bx.stroke(); }
+  bx.restore();
+}
+
+/* ===== メインループ(タイトルから回る) ===== */
+let prev=0;
+function loop(ts){
+  const dt=Math.min(40, ts-prev||16); prev=ts; G.t+=dt;
+  // カウントアップ
+  if(G.countActive){
+    G.countT+=dt;
+    const p=Math.min(1,G.countT/G.countDur);
+    const e=1-Math.pow(1-p,3);
+    const cur=Math.round(G.countFrom+(G.countTo-G.countFrom)*e);
+    if(G.countEl) G.countEl.textContent=group(cur);
+    if(ts-G.lastTick>45){ sTick(); G.lastTick=ts; }
+    if(p>=1){ G.countActive=false; if(G.countEl)G.countEl.textContent=group(G.countTo); const d=G.countDone; G.countDone=null; if(d)d(); }
+  }
+  // シェイク
+  if(G.shake>0){ G.shake=Math.max(0,G.shake-dt/350); const s=G.shake*8; el.app.style.transform="translateX(-50%) translate("+( (Math.random()-.5)*s )+"px,"+((Math.random()-.5)*s)+"px)"; if(G.shake===0)el.app.style.transform="translateX(-50%)"; }
+  if(G.flashWin>0){ G.flashWin=Math.max(0,G.flashWin-dt/500); }
+  drawBg();
+  requestAnimationFrame(loop);
+}
+
+/* ===== 起動 ===== */
+function init(){
+  loadBest();
+  buildModeList();
+  el.best.textContent=G.best.pop||0;
+  if(!FALLBACK.length){ el.loadnote.textContent="データ読込エラー"; }
+  loadLive();
+  requestAnimationFrame(loop);
+}
+init();
+</script>
+</body>
+</html>
