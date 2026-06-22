@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>せかい天気くらべ — 今いちばん○○な街はどこ?</title>
+
+<!-- ---------- OGP / メタ ---------- -->
+<meta name="description" content="今この瞬間、世界でいちばん暑い・寒い・風が強い・じめじめした街はどこ? 4つの都市から当てる、リアルタイム気象クイズ。データはOpen-Meteo。連勝を伸ばせ。">
+<meta property="og:title" content="せかい天気くらべ — 今いちばん○○な街はどこ?">
+<meta property="og:description" content="今この瞬間の世界の天気で勝負。暑い・寒い・風・湿気、4都市からいちばんを当てる勝ち残りクイズ。データはOpen-Meteoのリアルタイム値。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nrtkumi.github.io/games/tenki/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/tenki/">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Zen+Maru+Gothic:wght@500;700;900&family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky1:#bfe3f2; --sky2:#8fcbe8; --sky3:#6fb6dd;
+    --cloud:#fbf7ee; --cream:#fdf7e7;
+    --ink:#2a4660; --ink2:#4a6986;
+    --sun:#f4a93b; --hot:#e8623a; --cold:#4a8fd6; --wind:#6bb09a; --humid:#7d80c8;
+    --card:#fdf9ef; --line:#cdbf9c;
+    --shadow:rgba(40,70,96,.22);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  html,body{height:100%;}
+  body{
+    background:#11212e;color:var(--ink);
+    font-family:"Zen Maru Gothic",sans-serif;
+    overflow:hidden;overscroll-behavior:none;
+    -webkit-touch-callout:none;user-select:none;-webkit-user-select:none;
+  }
+  .app{
+    position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
+    width:min(100vw, calc(100dvh * 0.6), 480px);
+    display:flex;flex-direction:column;
+    background:linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 55%, var(--sky3) 100%);
+    box-shadow:0 0 60px rgba(0,0,0,.6);
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    overflow:hidden;
+  }
+  canvas#sky{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;touch-action:none;}
+
+  .hud{
+    position:relative;z-index:3;display:flex;align-items:center;gap:8px;
+    padding:9px 13px 7px;
+  }
+  .brand{font-family:"Baloo 2","Zen Maru Gothic";font-weight:800;font-size:1.05rem;color:var(--ink);letter-spacing:.02em;}
+  .brand small{display:block;font-family:"Kosugi Maru";font-size:.5rem;letter-spacing:.16em;color:var(--ink2);margin-top:-1px;}
+  .hud .sp{flex:1;}
+  .chip{font-family:"Kosugi Maru";font-size:.56rem;line-height:1.1;color:var(--ink2);text-align:right;}
+  .chip b{display:block;font-size:1.05rem;color:var(--hot);font-weight:700;font-family:"Baloo 2";}
+  .iconbtn{width:34px;height:34px;border-radius:50%;border:2px solid #fff;background:rgba(255,255,255,.55);color:var(--ink);font-size:1rem;display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 2px 5px var(--shadow);}
+  .iconbtn:active{transform:scale(.92);}
+
+  .stage{position:relative;z-index:2;flex:1;min-height:0;display:flex;flex-direction:column;}
+
+  .prompt{
+    position:relative;z-index:3;text-align:center;margin:2px 12px 8px;
+    background:var(--cream);border:3px solid var(--ink);border-radius:16px;
+    padding:10px 14px;box-shadow:0 5px 0 var(--shadow);
+  }
+  .prompt .lbl{font-family:"Kosugi Maru";font-size:.7rem;color:var(--ink2);}
+  .prompt .q{font-family:"Zen Maru Gothic";font-weight:900;font-size:1.3rem;color:var(--ink);line-height:1.25;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .prompt .q .mIco{font-size:1.6rem;}
+  .prompt .q em{font-style:normal;padding:0 2px;}
+  .prompt .q em.hot{color:var(--hot);} .prompt .q em.cold{color:var(--cold);} .prompt .q em.wind{color:var(--wind);} .prompt .q em.humid{color:var(--humid);}
+
+  .grid{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 8px;}
+  .ccard{
+    position:relative;border:3px solid var(--ink);border-radius:16px;background:var(--card);
+    box-shadow:0 5px 0 var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:5px;padding:8px 6px;overflow:hidden;min-height:0;cursor:pointer;
+  }
+  .ccard:active{transform:translateY(2px);box-shadow:0 3px 0 var(--shadow);}
+  .ccard .flagwrap{width:54px;height:36px;border:1.5px solid var(--ink);border-radius:4px;overflow:hidden;background:#e8e0cc;flex:0 0 auto;box-shadow:0 2px 4px rgba(0,0,0,.2);}
+  .ccard .flagwrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  .ccard .nm{font-family:"Zen Maru Gothic";font-weight:700;font-size:clamp(.92rem,4.6vw,1.18rem);color:var(--ink);text-align:center;line-height:1.1;}
+  .ccard .reveal{height:1.7em;display:flex;align-items:center;justify-content:center;gap:5px;opacity:0;transition:opacity .3s;}
+  .ccard .reveal .v{font-family:"Baloo 2";font-weight:800;font-size:1.25rem;color:var(--ink);}
+  .ccard .reveal .u{font-family:"Kosugi Maru";font-size:.62rem;color:var(--ink2);}
+  .ccard .wico{position:absolute;top:6px;right:7px;width:26px;height:26px;opacity:0;transition:opacity .3s;}
+  .ccard.show .reveal,.ccard.show .wico{opacity:1;}
+  .ccard.correct{border-color:var(--wind);background:#eefaf2;}
+  .ccard.correct::after{content:"◎";position:absolute;left:6px;top:2px;color:var(--wind);font-size:1.3rem;font-weight:900;}
+  .ccard.wrongpick{border-color:var(--hot);background:#fdeee9;}
+  .ccard.wrongpick::after{content:"✕";position:absolute;left:7px;top:3px;color:var(--hot);font-size:1.15rem;font-weight:900;}
+  .ccard.dim{opacity:.62;}
+
+  .footer{position:relative;z-index:3;display:flex;align-items:center;justify-content:center;gap:10px;padding:2px 12px 10px;}
+  .obstime{font-family:"Kosugi Maru";font-size:.58rem;color:var(--ink2);}
+  .reload{font-family:"Kosugi Maru";font-size:.58rem;color:var(--ink);background:rgba(255,255,255,.6);border:1.5px solid var(--line);border-radius:12px;padding:3px 10px;cursor:pointer;}
+
+  .streakpop{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) scale(0);z-index:8;font-family:"Baloo 2";font-weight:800;color:#fff;font-size:2.4rem;text-shadow:0 2px 0 var(--hot),0 0 16px rgba(244,169,59,.9);pointer-events:none;white-space:nowrap;}
+
+  .overlay{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px 24px;gap:14px;background:linear-gradient(180deg, rgba(191,227,242,.95), rgba(111,182,221,.96));}
+  .overlay.hidden{display:none;}
+  .title{font-family:"Baloo 2","Zen Maru Gothic";font-weight:800;font-size:2.3rem;color:var(--ink);line-height:1.1;text-shadow:0 2px 0 rgba(255,255,255,.6);}
+  .title .em{font-size:2.9rem;display:block;}
+  .sub{font-family:"Kosugi Maru";font-size:.66rem;letter-spacing:.22em;color:var(--ink2);}
+  .lead{font-size:.86rem;color:var(--ink);line-height:1.7;max-width:300px;background:rgba(255,255,255,.55);border-radius:14px;padding:12px 15px;}
+  .lead b{color:var(--hot);}
+  .bigbtn{border:none;border-radius:30px;background:linear-gradient(180deg,#f6b94f,#e8623a);color:#fff;font-family:"Baloo 2","Zen Maru Gothic";font-weight:800;font-size:1.2rem;letter-spacing:.05em;padding:14px 44px;cursor:pointer;box-shadow:0 5px 0 #b8431f;}
+  .bigbtn:active{transform:translateY(3px);box-shadow:0 2px 0 #b8431f;}
+  .bigbtn.disabled{filter:grayscale(.5) brightness(.9);pointer-events:none;}
+  .tlink{font-size:.66rem;color:var(--ink2);text-decoration:underline;background:none;border:none;font-family:inherit;cursor:pointer;}
+  .result .big{font-family:"Baloo 2";font-weight:800;font-size:3.4rem;color:var(--hot);display:block;line-height:1.1;}
+  .result span{font-family:"Kosugi Maru";color:var(--ink);font-size:.84rem;line-height:1.7;}
+  .loadnote{font-family:"Kosugi Maru";font-size:.62rem;color:var(--ink2);min-height:1.2em;}
+  .spinner{width:38px;height:38px;border:4px solid rgba(255,255,255,.5);border-top-color:var(--hot);border-radius:50%;animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .attrib{position:absolute;bottom:5px;left:0;right:0;text-align:center;font-family:"Kosugi Maru";font-size:.5rem;color:var(--ink2);opacity:.75;z-index:13;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <canvas id="sky"></canvas>
+
+  <div class="hud">
+    <div class="brand">せかい天気くらべ<small>REALTIME WORLD WEATHER</small></div>
+    <div class="sp"></div>
+    <div class="chip">れんしょう<b id="streak">0</b></div>
+    <div class="chip">さいこう<b id="best">0</b></div>
+    <button class="iconbtn" id="mute" aria-label="音">🔊</button>
+  </div>
+
+  <div class="stage">
+    <div class="prompt">
+      <div class="lbl">今この瞬間、いちばん…</div>
+      <div class="q"><span class="mIco" id="mIco">🔥</span><span id="qmetric"><em class="hot">あつい</em>街は?</span></div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="footer">
+      <span class="obstime" id="obstime">観測 —</span>
+      <button class="reload" id="reload">↻ 最新に更新</button>
+    </div>
+    <div class="streakpop" id="spop"></div>
+  </div>
+
+  <!-- title -->
+  <div class="overlay" id="ovTitle">
+    <div class="title"><span class="em">🌍</span>せかい天気くらべ</div>
+    <div class="sub">★ REALTIME WORLD WEATHER ★</div>
+    <div class="lead">今この瞬間、世界で<b>いちばん暑い・寒い・風が強い・じめじめした街</b>はどこ?<br>4つの都市から当てよう。データは<b>本物のリアルタイム気象</b>。</div>
+    <button class="bigbtn" id="startBtn">はじめる</button>
+    <button class="tlink" id="howBtn">▸ あそびかた</button>
+    <div class="loadnote" id="loadnote"></div>
+  </div>
+
+  <!-- howto -->
+  <div class="overlay hidden" id="ovHow">
+    <div class="title" style="font-size:1.7rem">あそびかた</div>
+    <div class="lead" style="text-align:left">
+      お題(<b>あつい/さむい/風がつよい/じめじめ</b>)に当てはまる街を、4つから<b>1つタップ</b>。<br><br>
+      正解すると<b>連勝</b>がのびる。1回でも外したら終了!<br><br>
+      数値は <b>Open-Meteo</b> の今この瞬間の観測値。季節や半球(南半球は逆!)、緯度、砂漠かどうかを考えると当たりやすいよ。
+    </div>
+    <button class="bigbtn" id="howClose">とじる</button>
+  </div>
+
+  <!-- error -->
+  <div class="overlay hidden" id="ovErr">
+    <div class="title" style="font-size:1.6rem">☁️ 取得できませんでした</div>
+    <div class="lead">天気データを取得できませんでした。<br>通信環境を確認して、もう一度お試しください。</div>
+    <button class="bigbtn" id="retryFetch">再試行</button>
+  </div>
+
+  <!-- gameover -->
+  <div class="overlay hidden" id="ovOver">
+    <div class="result">
+      <span>ざんねん!</span>
+      <span class="big" id="finalStreak">0</span>
+      <span id="overMsg"></span>
+    </div>
+    <button class="bigbtn" id="retry">もう一度</button>
+    <button class="tlink" id="toTitle">タイトルへ</button>
+  </div>
+
+  <div class="attrib">Weather: Open-Meteo · Flags: flagcdn.com</div>
+</div>
+
+<script>
+"use strict";
+/* ===== 世界の主要都市(名前/国コード/緯度/経度) ===== */
+const CITIES=[
+["東京","jp",35.68,139.69],["大阪","jp",34.69,135.50],["札幌","jp",43.06,141.35],["那覇","jp",26.21,127.68],
+["ソウル","kr",37.57,126.98],["北京","cn",39.90,116.41],["上海","cn",31.23,121.47],["香港","hk",22.32,114.17],
+["台北","tw",25.03,121.57],["バンコク","th",13.76,100.50],["シンガポール","sg",1.35,103.82],["ジャカルタ","id",-6.21,106.85],
+["マニラ","ph",14.60,120.98],["ハノイ","vn",21.03,105.85],["ニューデリー","in",28.61,77.21],["ムンバイ","in",19.08,72.88],
+["ドバイ","ae",25.20,55.27],["イスタンブール","tr",41.01,28.98],["テヘラン","ir",35.69,51.39],["リヤド","sa",24.71,46.68],
+["モスクワ","ru",55.76,37.62],["ロンドン","gb",51.51,-0.13],["パリ","fr",48.85,2.35],["ベルリン","de",52.52,13.41],
+["ローマ","it",41.90,12.50],["マドリード","es",40.42,-3.70],["アムステルダム","nl",52.37,4.90],["ストックホルム","se",59.33,18.06],
+["オスロ","no",59.91,10.75],["ヘルシンキ","fi",60.17,24.94],["レイキャビク","is",64.15,-21.94],["アテネ","gr",37.98,23.73],
+["リスボン","pt",38.72,-9.14],["カイロ","eg",30.04,31.24],["ナイロビ","ke",-1.29,36.82],["ケープタウン","za",-33.92,18.42],
+["ヨハネスブルグ","za",-26.20,28.05],["ラゴス","ng",6.52,3.38],["カサブランカ","ma",33.57,-7.59],["ニューヨーク","us",40.71,-74.01],
+["ロサンゼルス","us",34.05,-118.24],["シカゴ","us",41.88,-87.63],["トロント","ca",43.65,-79.38],["バンクーバー","ca",49.28,-123.12],
+["メキシコシティ","mx",19.43,-99.13],["ハバナ","cu",23.11,-82.37],["ボゴタ","co",4.71,-74.07],["リマ","pe",-12.05,-77.04],
+["サンパウロ","br",-23.55,-46.63],["リオデジャネイロ","br",-22.91,-43.17],["ブエノスアイレス","ar",-34.60,-58.38],["サンティアゴ","cl",-33.45,-70.67],
+["シドニー","au",-33.87,151.21],["メルボルン","au",-37.81,144.96],["オークランド","nz",-36.85,174.76],["ホノルル","us",21.31,-157.86],
+["アンカレッジ","us",61.22,-149.90],["ウランバートル","mn",47.89,106.91]
+];
+
+/* ===== メトリック定義 ===== */
+const METRICS={
+  hot:  {key:"hot",  cls:"hot",  ico:"🔥", word:"あつい",     field:"t", unit:"℃", dir:1, fmt:v=>v.toFixed(1)},
+  cold: {key:"cold", cls:"cold", ico:"❄️", word:"さむい",     field:"t", unit:"℃", dir:-1,fmt:v=>v.toFixed(1)},
+  wind: {key:"wind", cls:"wind", ico:"🌬️", word:"風がつよい", field:"w", unit:"km/h", dir:1, fmt:v=>Math.round(v)},
+  humid:{key:"humid",cls:"humid",ico:"💧", word:"じめじめ",   field:"h", unit:"%", dir:1, fmt:v=>Math.round(v)},
+};
+const METKEYS=["hot","cold","wind","humid"];
+
+/* ===== 状態(ループが触る値は宣言時に初期化) ===== */
+const G={
+  scene:"title", weather:null, fetchTime:0, fetching:false,
+  metric:"hot", choices:[], answerIdx:-1, busy:false,
+  streak:0, best:0, t:0, shake:0,
+  spopT:0,
+};
+
+/* ===== オーディオ(iOS消音対策込み) ===== */
+let AC=null, muted=false;
+function audio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); AC.onstatechange=()=>{ if(AC.state!=="running"&&!document.hidden){ try{AC.resume();}catch(e){} } }; }catch(e){} } if(AC&&AC.state!=="running"){ try{AC.resume();}catch(e){} } return AC; }
+let silentEl=null;
+function silentWavUrl(){ const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf); const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}; str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true); for(let i=0;i<n;i++)v.setUint8(44+i,0x80); return URL.createObjectURL(new Blob([buf],{type:"audio/wav"})); }
+function unlockAudio(){ if(!silentEl){ silentEl=document.createElement("audio"); silentEl.setAttribute("playsinline",""); silentEl.loop=true; silentEl.volume=0.01; silentEl.src=silentWavUrl(); } const p=silentEl.play(); if(p&&p.catch)p.catch(()=>{}); audio(); if(!AC)return; const done=()=>{ if(AC.state==="running")["pointerdown","pointerup","touchend"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true)); }; try{ AC.resume().then(done); }catch(e){ done(); } }
+["pointerdown","pointerup","touchend"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) audio(); });
+function tone(f,d,type,vol,slideTo){ if(muted||!audio())return; try{ const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime; o.type=type||"sine"; o.frequency.setValueAtTime(f,t); if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+d); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.18,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+d); o.connect(g);g.connect(AC.destination); o.start(t);o.stop(t+d+0.02);}catch(e){} }
+const sTap=()=>tone(520,.05,"sine",.12);
+const sRight=()=>{ tone(587,.09,"triangle",.2); setTimeout(()=>tone(880,.18,"triangle",.2),95); };
+const sWrong=()=>tone(200,.34,"sawtooth",.2,90);
+const sStreak=()=>{ tone(660,.1,"triangle",.18); setTimeout(()=>tone(880,.1,"triangle",.18),100); setTimeout(()=>tone(1175,.22,"triangle",.2),200); };
+
+/* ===== DOM ===== */
+const $=id=>document.getElementById(id);
+const el={app:$("app"),streak:$("streak"),best:$("best"),mute:$("mute"),grid:$("grid"),
+  mIco:$("mIco"),qmetric:$("qmetric"),obstime:$("obstime"),reload:$("reload"),spop:$("spop"),
+  ovTitle:$("ovTitle"),ovHow:$("ovHow"),ovErr:$("ovErr"),ovOver:$("ovOver"),
+  startBtn:$("startBtn"),howBtn:$("howBtn"),howClose:$("howClose"),retryFetch:$("retryFetch"),
+  finalStreak:$("finalStreak"),overMsg:$("overMsg"),retry:$("retry"),toTitle:$("toTitle"),loadnote:$("loadnote")};
+
+/* ===== 永続化 ===== */
+function loadBest(){ try{ const v=parseInt(localStorage.getItem("tenki_best")||"0"); if(!isNaN(v))G.best=v; }catch(e){} }
+function saveBest(){ try{ localStorage.setItem("tenki_best",String(G.best)); }catch(e){} }
+
+/* ===== 天気アイコン(WMO weather_code) ===== */
+function wIcon(code){
+  if(code===0) return "☀️"; if(code<=2) return "🌤️"; if(code===3) return "☁️";
+  if(code<=48) return "🌫️"; if(code<=57) return "🌦️"; if(code<=67) return "🌧️";
+  if(code<=77) return "❄️"; if(code<=82) return "🌧️"; if(code<=86) return "🌨️";
+  return "⛈️";
+}
+
+/* ===== 天気取得(Open-Meteo, 全都市1リクエスト) ===== */
+async function fetchWeather(){
+  const lat=CITIES.map(c=>c[2]).join(",");
+  const lon=CITIES.map(c=>c[3]).join(",");
+  const url="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon
+    +"&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto";
+  const r=await fetch(url,{cache:"no-store"});
+  if(!r.ok) throw new Error("http "+r.status);
+  const j=await r.json();
+  const arr=Array.isArray(j)?j:[j];
+  const w=[];
+  for(let i=0;i<CITIES.length;i++){
+    const c=arr[i]&&arr[i].current;
+    if(c && c.temperature_2m!=null){ w[i]={t:c.temperature_2m,h:c.relative_humidity_2m,wd:c.weather_code,w:c.wind_speed_10m,ok:true}; }
+    else { w[i]={ok:false}; }
+  }
+  if(w.filter(x=>x.ok).length<8) throw new Error("too few");
+  return w;
+}
+async function ensureWeather(){
+  if(G.fetching) return false;
+  G.fetching=true;
+  try{
+    const w=await fetchWeather();
+    G.weather=w; G.fetchTime=Date.now();
+    updateObsTime();
+    G.fetching=false; return true;
+  }catch(e){ G.fetching=false; return false; }
+}
+function updateObsTime(){
+  if(!G.fetchTime){ el.obstime.textContent="観測 —"; return; }
+  const d=new Date(G.fetchTime);
+  const hh=String(d.getHours()).padStart(2,"0"), mm=String(d.getMinutes()).padStart(2,"0");
+  el.obstime.textContent="観測 "+hh+":"+mm+" 時点";
+}
+
+/* ===== ラウンド ===== */
+function validIdx(){ const a=[]; for(let i=0;i<CITIES.length;i++) if(G.weather[i]&&G.weather[i].ok) a.push(i); return a; }
+function nextRound(){
+  G.metric=METKEYS[(Math.random()*METKEYS.length)|0];
+  const m=METRICS[G.metric];
+  // 4都市を選ぶ。値が同点で割れないように、対象fieldの値がユニークになるよう選ぶ
+  const pool=validIdx();
+  shuffle(pool);
+  const pick=[];
+  const seen=new Set();
+  for(const idx of pool){
+    const val=G.weather[idx][m.field];
+    const k=Math.round(val*10);
+    if(seen.has(k)) continue;
+    seen.add(k); pick.push(idx);
+    if(pick.length===4) break;
+  }
+  while(pick.length<4 && pool.length>=4){ const idx=pool[pick.length]; if(!pick.includes(idx))pick.push(idx); }
+  G.choices=pick;
+  // 正解(dir=1なら最大, -1なら最小)
+  let best=-1, bestVal=null;
+  pick.forEach(idx=>{ const v=G.weather[idx][m.field]*m.dir; if(bestVal===null||v>bestVal){bestVal=v;best=idx;} });
+  G.answerIdx=best;
+  renderRound();
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } }
+
+function renderRound(){
+  const m=METRICS[G.metric];
+  el.mIco.textContent=m.ico;
+  el.qmetric.innerHTML='<em class="'+m.cls+'">'+m.word+'</em>街は?';
+  el.grid.innerHTML="";
+  G.choices.forEach(idx=>{
+    const c=CITIES[idx], wx=G.weather[idx];
+    const d=document.createElement("div");
+    d.className="ccard"; d.dataset.idx=idx;
+    d.innerHTML='<div class="flagwrap"><img alt="" src="https://flagcdn.com/w160/'+c[1]+'.png" onerror="this.style.display=\'none\'"></div>'
+      +'<div class="nm">'+c[0]+'</div>'
+      +'<div class="wico">'+wIcon(wx.wd)+'</div>'
+      +'<div class="reveal"><span class="v"></span><span class="u">'+m.unit+'</span></div>';
+    el.grid.appendChild(d);
+  });
+  G.busy=false;
+}
+
+function onPick(idx){
+  if(G.scene!=="playing"||G.busy) return;
+  G.busy=true; sTap();
+  const m=METRICS[G.metric];
+  const cards=[...el.grid.children];
+  // 全カード値公開
+  cards.forEach(card=>{
+    const ci=parseInt(card.dataset.idx);
+    const val=G.weather[ci][m.field];
+    card.querySelector(".reveal .v").textContent=m.fmt(val);
+    card.classList.add("show");
+    if(ci!==G.answerIdx && ci!==idx) card.classList.add("dim");
+  });
+  const correct = (idx===G.answerIdx);
+  const ansCard=cards.find(c=>parseInt(c.dataset.idx)===G.answerIdx);
+  const pickCard=cards.find(c=>parseInt(c.dataset.idx)===idx);
+  ansCard.classList.add("correct");
+  if(!correct){ pickCard.classList.add("wrongpick"); }
+  if(correct){
+    sRight(); G.streak++; el.streak.textContent=G.streak;
+    if(G.streak>G.best){ G.best=G.streak; saveBest(); el.best.textContent=G.best; }
+    if(G.streak%5===0){ showStreakPop(G.streak+"れんしょう!"); sStreak(); }
+    setTimeout(()=>{ G.scene="playing"; nextRound(); }, G.streak%5===0?1250:1000);
+  }else{
+    sWrong(); G.shake=1;
+    G.scene="reveal";
+    setTimeout(()=>gameOver(idx), 1300);
+  }
+}
+
+function showStreakPop(txt){
+  el.spop.textContent=txt;
+  el.spop.style.transition="none"; el.spop.style.transform="translate(-50%,-50%) scale(0)"; el.spop.style.opacity="1";
+  requestAnimationFrame(()=>{ el.spop.style.transition="transform .4s cubic-bezier(.2,1.4,.4,1),opacity .5s"; el.spop.style.transform="translate(-50%,-60%) scale(1)"; setTimeout(()=>{el.spop.style.opacity="0";},700); });
+}
+
+function gameOver(pickIdx){
+  G.scene="over";
+  el.finalStreak.textContent=G.streak+" れんしょう";
+  const m=METRICS[G.metric];
+  const ans=CITIES[G.answerIdx], pick=CITIES[pickIdx];
+  el.overMsg.innerHTML="いちばん"+m.word+"のは <b>"+ans[0]+"</b><br>("+m.fmt(G.weather[G.answerIdx][m.field])+m.unit+")　あなた: "+pick[0]
+    +(G.streak>=G.best&&G.streak>0?'<br>🏆 自己ベスト!':"<br>さいこう "+G.best+"れんしょう");
+  show(el.ovOver);
+}
+
+/* ===== シーン ===== */
+function show(o){o.classList.remove("hidden");}
+function hide(o){o.classList.add("hidden");}
+async function startGame(){
+  el.startBtn.classList.add("disabled");
+  el.loadnote.textContent="天気を取得中…";
+  let ok = G.weather ? true : await ensureWeather();
+  el.startBtn.classList.remove("disabled");
+  if(!ok){ el.loadnote.textContent=""; show(el.ovErr); return; }
+  el.loadnote.textContent="";
+  G.streak=0; el.streak.textContent="0"; el.best.textContent=G.best;
+  hide(el.ovTitle); hide(el.ovOver); hide(el.ovErr);
+  G.scene="playing"; nextRound();
+}
+
+/* ===== 入力(Pointer Events / clickに依存しない) ===== */
+function bindTap(node,fn){ node.addEventListener("pointerdown",e=>{ e.preventDefault(); fn(e); }); }
+el.grid.addEventListener("pointerdown",e=>{ const card=e.target.closest(".ccard"); if(card){ e.preventDefault(); onPick(parseInt(card.dataset.idx)); } });
+bindTap(el.startBtn,startGame);
+bindTap(el.howBtn,()=>show(el.ovHow));
+bindTap(el.howClose,()=>hide(el.ovHow));
+bindTap(el.retry,()=>startGame());
+bindTap(el.toTitle,()=>{ G.scene="title"; hide(el.ovOver); show(el.ovTitle); });
+bindTap(el.retryFetch,()=>{ hide(el.ovErr); startGame(); });
+bindTap(el.mute,()=>{ muted=!muted; el.mute.textContent=muted?"🔇":"🔊"; if(!muted)audio(); });
+bindTap(el.reload,async()=>{ el.reload.textContent="↻ 更新中…"; const ok=await ensureWeather(); el.reload.textContent="↻ 最新に更新"; if(ok&&G.scene==="playing"&&!G.busy)nextRound(); });
+window.addEventListener("keydown",e=>{
+  if(G.scene==="playing"&&!G.busy){ const k=["1","2","3","4"].indexOf(e.key); if(k>=0&&G.choices[k]!=null)onPick(G.choices[k]); }
+  else if(G.scene==="over"&&(e.key===" "||e.key==="Enter"))startGame();
+});
+
+/* ダブルタップズーム無効化 */
+let lastTouch=0;
+document.addEventListener("touchend",e=>{ const n=Date.now(); if(n-lastTouch<=350&&e.cancelable){e.preventDefault();} lastTouch=n; },{passive:false});
+document.addEventListener("dblclick",e=>e.preventDefault());
+document.addEventListener("gesturestart",e=>e.preventDefault());
+
+/* ===== 背景canvas(雲がゆっくり流れる) ===== */
+const sky=$("sky"), sx=sky.getContext("2d");
+let DPR=1,cssW=0,cssH=0,clouds=[];
+function resize(){ const r=sky.getBoundingClientRect(); DPR=Math.min(window.devicePixelRatio||1,2.5); cssW=r.width; cssH=r.height; sky.width=Math.max(1,cssW*DPR); sky.height=Math.max(1,cssH*DPR);
+  if(!clouds.length){ for(let i=0;i<7;i++) clouds.push({x:Math.random(),y:Math.random()*0.8,s:0.5+Math.random()*0.9,v:0.002+Math.random()*0.004}); } }
+window.addEventListener("resize",resize); resize();
+function puff(x,y,r){ sx.beginPath(); sx.arc(x,y,r,0,Math.PI*2); sx.arc(x+r*0.9,y+r*0.15,r*0.8,0,Math.PI*2); sx.arc(x-r*0.9,y+r*0.18,r*0.75,0,Math.PI*2); sx.arc(x+r*0.2,y-r*0.5,r*0.7,0,Math.PI*2); sx.fill(); }
+function drawSky(dt){
+  sx.setTransform(DPR,0,0,DPR,0,0);
+  sx.clearRect(0,0,cssW,cssH);
+  // sun
+  sx.save(); sx.globalAlpha=.5; sx.fillStyle="#fff3cf"; sx.beginPath(); sx.arc(cssW*0.82,cssH*0.12,42,0,Math.PI*2); sx.fill(); sx.restore();
+  sx.fillStyle="rgba(255,255,255,.82)";
+  clouds.forEach(c=>{ c.x+=c.v*dt/16; if(c.x>1.2)c.x=-0.2; puff(c.x*cssW, c.y*cssH, 24*c.s); });
+}
+
+/* ===== メインループ(タイトルから回る) ===== */
+let prev=0;
+function loop(ts){
+  const dt=Math.min(40,ts-prev||16); prev=ts; G.t+=dt;
+  if(G.shake>0){ G.shake=Math.max(0,G.shake-dt/380); const s=G.shake*7; el.app.style.transform="translateX(-50%) translate("+((Math.random()-.5)*s)+"px,"+((Math.random()-.5)*s)+"px)"; if(G.shake===0)el.app.style.transform="translateX(-50%)"; }
+  drawSky(dt);
+  requestAnimationFrame(loop);
+}
+
+/* ===== 起動 ===== */
+function init(){
+  loadBest(); el.best.textContent=G.best;
+  // タイトル表示中に裏で先読み
+  ensureWeather().then(ok=>{ if(ok&&G.scene==="title")el.loadnote.textContent="✓ 最新の天気を取得済み"; });
+  requestAnimationFrame(loop);
+}
+init();
+</script>
+</body>
+</html>
