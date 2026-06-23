@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>いきもの写真サファリ — 一瞬を、撮れ。</title>
+
+<!-- ---------- OGP / メタ ---------- -->
+<meta name="description" content="ファインダーを横切る本物の生き物を、ピントが合った一瞬にタップして撮影。世界中の実写真(iNaturalist)が題材。レアな生き物ほど臆病で逃げ足が速い。図鑑を埋める、撮影アクション・ローグライト。">
+<meta property="og:title" content="いきもの写真サファリ — 一瞬を、撮れ。">
+<meta property="og:description" content="ファインダーを横切る本物の生き物を、ピントが合う一瞬にタップして撮影。レアな個体ほど逃げ足が速い。実写真(iNaturalist)で図鑑を埋める撮影ローグライト。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nrtkumi.github.io/games/safari/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/safari/">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=BIZ+UDPMincho&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#efe6cf; --paper2:#e3d6b4; --ink:#2f3826; --ink2:#5c6647;
+    --moss:#5b7244; --moss-d:#3e5230; --olive:#7d8a4f;
+    --rust:#c5642e; --rust-d:#9c4a1e; --amber:#e0a02a;
+    --film:#1d2118; --hud:#d7e8c8; --hudline:rgba(215,232,200,.55);
+    --rare1:#8a9170; --rare2:#5f8f6a; --rare3:#3f86b0; --rare4:#9a5fb0; --rare5:#d4862a;
+    --shadow:rgba(28,34,20,.45);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  html,body{height:100%;}
+  body{
+    background:#16190f;color:var(--ink);
+    font-family:"Zen Maru Gothic",sans-serif;
+    overflow:hidden;overscroll-behavior:none;
+    -webkit-touch-callout:none;user-select:none;-webkit-user-select:none;
+  }
+
+  /* ---------- 縦長カラム ---------- */
+  .app{
+    position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
+    width:min(100vw, calc(100dvh * 0.60), 460px);
+    background:var(--film);
+    box-shadow:0 0 60px rgba(0,0,0,.6);
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+
+  /* ---------- ファインダー(プレイ画面) ---------- */
+  #view{
+    position:absolute;inset:0;
+    background:
+      radial-gradient(120% 80% at 50% 18%, #cfe0e6 0%, #bcd2cf 30%, #a9c2a0 60%, #7d9a6a 100%);
+    touch-action:none;overflow:hidden;
+    transition:background .8s ease;
+  }
+  /* 風景レイヤー(パララックス) */
+  .scenery{position:absolute;inset:0;pointer-events:none;}
+  .layer{position:absolute;left:-10%;width:120%;will-change:transform;}
+  .hill{bottom:0;height:46%;border-radius:50% 50% 0 0/100% 100% 0 0;}
+  .hill.far{height:54%;background:linear-gradient(#9fb87f,#86a268);opacity:.7;bottom:-6%;}
+  .hill.mid{height:42%;background:linear-gradient(#7c9a5c,#5e7c42);bottom:-2%;}
+  .hill.near{height:30%;background:linear-gradient(#4e6b36,#364d26);bottom:0;border-radius:46% 54% 0 0/100% 100% 0 0;}
+  .haze{position:absolute;inset:0;background:linear-gradient(transparent 40%, rgba(20,30,15,.18));pointer-events:none;}
+
+  /* 生き物 */
+  #creatures{position:absolute;inset:0;pointer-events:none;}
+  .creat{
+    position:absolute;width:30%;aspect-ratio:1/1;left:0;top:0;
+    will-change:transform;transform:translate(-50%,-50%);
+    pointer-events:none;
+  }
+  .creat .ph{
+    position:absolute;inset:0;border-radius:50%;overflow:hidden;
+    background:#cfd8c0 center/cover no-repeat;
+    box-shadow:0 4px 14px rgba(20,28,14,.45), inset 0 0 0 3px rgba(255,253,244,.85), inset 0 0 0 5px rgba(60,72,40,.5);
+    transition:filter .05s linear;
+  }
+  .creat .ph img{width:100%;height:100%;object-fit:cover;display:block;}
+  .creat .fallback{display:flex;align-items:center;justify-content:center;font-size:42px;width:100%;height:100%;background:#bcc9a8;}
+
+  /* ピントリング(ロックオン) */
+  #ring{
+    position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;
+    border-radius:50%;transform:translate(-50%,-50%);opacity:0;
+    border:3px dashed var(--hud);
+    box-shadow:0 0 0 1px rgba(0,0,0,.25);
+  }
+  #ring.lock{border-style:solid;}
+
+  /* 中央リティクル */
+  .reticle{position:absolute;left:50%;top:46%;width:34%;aspect-ratio:1/1;transform:translate(-50%,-50%);pointer-events:none;}
+  .reticle::before,.reticle::after{content:"";position:absolute;background:var(--hudline);}
+  .corner{position:absolute;width:18px;height:18px;border:2px solid var(--hud);opacity:.85;}
+  .corner.tl{left:0;top:0;border-right:none;border-bottom:none;}
+  .corner.tr{right:0;top:0;border-left:none;border-bottom:none;}
+  .corner.bl{left:0;bottom:0;border-right:none;border-top:none;}
+  .corner.br{right:0;bottom:0;border-left:none;border-top:none;}
+  .crossh{position:absolute;left:50%;top:50%;width:30px;height:30px;transform:translate(-50%,-50%);opacity:.7;}
+  .crossh::before{content:"";position:absolute;left:50%;top:0;width:1.5px;height:100%;background:var(--hud);transform:translateX(-50%);}
+  .crossh::after{content:"";position:absolute;top:50%;left:0;height:1.5px;width:100%;background:var(--hud);transform:translateY(-50%);}
+
+  /* HUD 上部 */
+  #hudTop{position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;
+    display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;
+    font-family:"Roboto Mono",monospace;color:var(--hud);text-shadow:0 1px 3px rgba(0,0,0,.6);}
+  .recdot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#e0432a;margin-right:6px;animation:blink 1s steps(1) infinite;vertical-align:middle;}
+  @keyframes blink{50%{opacity:.2;}}
+  #biomeTag{font-weight:700;font-size:13px;letter-spacing:.05em;}
+  #subBiome{font-size:10px;opacity:.8;font-weight:500;}
+  #hudTopR{text-align:right;font-size:12px;line-height:1.5;}
+  #filmRow{font-size:15px;font-weight:700;}
+  #scoreRow{font-size:13px;}
+  #comboRow{font-size:12px;color:var(--amber);min-height:16px;font-weight:700;}
+
+  /* 被写体チップ */
+  #subjChip{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 92px);transform:translateX(-50%);
+    background:rgba(20,25,15,.72);color:var(--hud);border:1px solid var(--hudline);
+    padding:5px 14px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap;
+    opacity:0;transition:opacity .12s;pointer-events:none;max-width:88%;overflow:hidden;text-overflow:ellipsis;text-align:center;}
+  #subjChip .sci{font-family:"BIZ UDPMincho",serif;font-style:italic;opacity:.7;font-size:11px;font-weight:500;}
+  #subjChip .stars{color:var(--amber);letter-spacing:1px;}
+
+  /* フォーカスメーター(シャッター) */
+  #shutterWrap{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 14px);
+    display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+  #focusBar{width:62%;height:12px;border-radius:8px;background:rgba(20,25,15,.55);border:1px solid var(--hudline);
+    position:relative;overflow:hidden;}
+  #focusGreen{position:absolute;top:0;bottom:0;left:52%;width:18%;background:rgba(95,180,110,.45);border-left:1px solid rgba(180,255,190,.7);border-right:1px solid rgba(180,255,190,.7);}
+  #focusFill{position:absolute;top:0;bottom:0;left:0;width:0%;background:linear-gradient(90deg,#d7e8c8,#f0c24a);transition:none;}
+  #shutterBtn{width:74px;height:74px;border-radius:50%;border:4px solid var(--hud);
+    background:radial-gradient(circle at 50% 40%, #f4efe0 0%, #d7e8c8 60%, #a9bd97 100%);
+    box-shadow:0 4px 14px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;
+    font-size:30px;transition:transform .06s;}
+  #shutterBtn.down{transform:scale(.9);}
+  #shutHint{font-family:"Roboto Mono",monospace;font-size:10px;color:var(--hud);opacity:.7;text-shadow:0 1px 2px #000;}
+
+  /* シャッターフラッシュ & 結果 */
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;}
+  .floatScore{position:absolute;transform:translate(-50%,-50%);pointer-events:none;
+    font-family:"Roboto Mono",monospace;font-weight:700;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.7);
+    text-align:center;animation:floatUp 1s ease-out forwards;z-index:30;}
+  .floatScore .pts{font-size:26px;}
+  .floatScore .q{font-size:13px;letter-spacing:.1em;}
+  .floatScore .new{display:inline-block;background:var(--rust);color:#fff;font-size:11px;padding:1px 7px;border-radius:8px;margin-top:3px;font-family:"Zen Maru Gothic";font-weight:900;}
+  @keyframes floatUp{0%{opacity:0;transform:translate(-50%,-30%) scale(.7);}15%{opacity:1;}100%{opacity:0;transform:translate(-50%,-150%) scale(1);}}
+
+  /* ヴィネット */
+  .vignette{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 120px 30px rgba(15,20,10,.55);}
+
+  /* ---------- オーバーレイ(画面) ---------- */
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;z-index:50;
+    background:linear-gradient(160deg,var(--paper),var(--paper2));color:var(--ink);
+    padding:calc(env(safe-area-inset-top) + 18px) 20px calc(env(safe-area-inset-bottom) + 18px);
+    overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .screen.show{display:flex;}
+  .screen::-webkit-scrollbar{width:0;}
+
+  .btn{font-family:"Zen Maru Gothic";font-weight:900;border:none;cursor:pointer;
+    background:var(--moss);color:#f6f0dc;border-radius:14px;padding:15px 22px;font-size:17px;
+    box-shadow:0 4px 0 var(--moss-d),0 6px 12px var(--shadow);transition:transform .07s,box-shadow .07s;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--moss-d),0 2px 6px var(--shadow);}
+  .btn.rust{background:var(--rust);box-shadow:0 4px 0 var(--rust-d),0 6px 12px var(--shadow);}
+  .btn.rust:active{box-shadow:0 1px 0 var(--rust-d),0 2px 6px var(--shadow);}
+  .btn.ghost{background:transparent;color:var(--moss-d);box-shadow:none;border:2px solid var(--moss);padding:11px 18px;font-size:15px;}
+  .btn.ghost:active{transform:translateY(2px);box-shadow:none;}
+  .btn:disabled{filter:grayscale(.7);opacity:.55;box-shadow:0 4px 0 #9a9376;}
+
+  /* タイトル */
+  #scrTitle{align-items:center;justify-content:center;text-align:center;}
+  .logo{position:relative;margin-bottom:6px;}
+  .logo .frame{border:3px solid var(--ink);border-radius:8px;padding:14px 20px 16px;position:relative;background:rgba(255,253,244,.35);}
+  .logo .frame::before{content:"";position:absolute;left:8px;top:8px;width:14px;height:14px;border-left:2px solid var(--rust);border-top:2px solid var(--rust);}
+  .logo .frame::after{content:"";position:absolute;right:8px;bottom:8px;width:14px;height:14px;border-right:2px solid var(--rust);border-bottom:2px solid var(--rust);}
+  .logo h1{font-size:34px;font-weight:900;letter-spacing:.04em;line-height:1.15;color:var(--ink);}
+  .logo .sub{font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.25em;color:var(--rust-d);margin-top:6px;}
+  .tagline{font-size:14px;color:var(--ink2);margin:14px 4px 22px;line-height:1.7;max-width:300px;}
+  .titleBtns{display:flex;flex-direction:column;gap:12px;width:min(80%,280px);}
+  .titleMeta{margin-top:22px;font-family:"Roboto Mono",monospace;font-size:10px;color:var(--ink2);opacity:.8;line-height:1.6;}
+  .titleMeta a{color:var(--moss-d);}
+  #bestLine{margin-top:16px;font-weight:700;color:var(--rust-d);font-size:14px;}
+
+  /* 見出し共通 */
+  .hd{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+  .hd h2{font-size:22px;font-weight:900;}
+  .hd .tag{font-family:"Roboto Mono",monospace;font-size:10px;background:var(--ink);color:var(--paper);padding:2px 8px;border-radius:6px;letter-spacing:.1em;}
+  .sectNote{font-size:12px;color:var(--ink2);margin-bottom:14px;}
+
+  /* ショップ */
+  #scrShop .pbank{font-family:"Roboto Mono",monospace;font-weight:700;font-size:16px;color:var(--rust-d);margin-left:auto;}
+  .upgrades{display:flex;flex-direction:column;gap:10px;margin:6px 0 16px;}
+  .upg{display:flex;align-items:center;gap:12px;background:rgba(255,253,244,.55);border:2px solid var(--paper2);
+    border-radius:12px;padding:11px 13px;}
+  .upg .ico{font-size:26px;width:40px;text-align:center;}
+  .upg .info{flex:1;min-width:0;}
+  .upg .info b{font-size:15px;}
+  .upg .info .d{font-size:11px;color:var(--ink2);line-height:1.4;}
+  .upg .info .lv{font-family:"Roboto Mono",monospace;font-size:10px;color:var(--moss-d);}
+  .upg .buy{font-family:"Zen Maru Gothic";font-weight:900;border:none;background:var(--rust);color:#fff;
+    border-radius:10px;padding:9px 12px;font-size:13px;white-space:nowrap;box-shadow:0 3px 0 var(--rust-d);}
+  .upg .buy:active{transform:translateY(2px);box-shadow:0 1px 0 var(--rust-d);}
+  .upg .buy:disabled{background:#a9a187;box-shadow:0 3px 0 #87805f;opacity:.7;}
+  .upg.maxed .buy{background:var(--moss);box-shadow:0 3px 0 var(--moss-d);}
+
+  /* 新着ギャラリー / 図鑑グリッド */
+  .newCatch{font-size:13px;font-weight:700;color:var(--moss-d);margin:4px 0 8px;}
+  .dexGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .dexCell{background:rgba(255,253,244,.55);border:2px solid var(--paper2);border-radius:10px;padding:6px;text-align:center;overflow:hidden;}
+  .dexCell .pic{width:100%;aspect-ratio:1/1;border-radius:8px;background:#cfd8c0 center/cover no-repeat;margin-bottom:5px;box-shadow:inset 0 0 0 2px rgba(255,253,244,.7);}
+  .dexCell.empty .pic{background:repeating-linear-gradient(45deg,#d8cdab,#d8cdab 6px,#cfc39e 6px,#cfc39e 12px);display:flex;align-items:center;justify-content:center;font-size:24px;color:#a99;opacity:.6;}
+  .dexCell .nm{font-size:11px;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .dexCell .st{font-size:10px;color:var(--amber);letter-spacing:.5px;}
+  .dexCell.empty .nm{color:#a99;}
+
+  /* リザルト */
+  #scrResult{text-align:center;align-items:center;}
+  .bigScore{font-family:"Roboto Mono",monospace;font-size:48px;font-weight:700;color:var(--rust-d);line-height:1;margin:8px 0 2px;}
+  .resStats{display:flex;gap:14px;justify-content:center;margin:14px 0 18px;flex-wrap:wrap;}
+  .resStat{background:rgba(255,253,244,.5);border:2px solid var(--paper2);border-radius:12px;padding:10px 16px;min-width:84px;}
+  .resStat .n{font-family:"Roboto Mono",monospace;font-size:22px;font-weight:700;color:var(--ink);}
+  .resStat .l{font-size:11px;color:var(--ink2);}
+
+  /* 図鑑モーダル */
+  #dexModal{z-index:60;}
+  #dexClose{position:absolute;right:16px;top:calc(env(safe-area-inset-top) + 14px);background:var(--ink);color:var(--paper);
+    border:none;width:38px;height:38px;border-radius:50%;font-size:18px;font-weight:900;z-index:2;}
+  .detailCard{background:rgba(255,253,244,.7);border:2px solid var(--paper2);border-radius:14px;padding:14px;margin-bottom:14px;}
+  .detailCard .pic{width:100%;aspect-ratio:4/3;border-radius:10px;background:#cfd8c0 center/cover no-repeat;margin-bottom:10px;}
+  .detailCard .nm{font-size:18px;font-weight:900;}
+  .detailCard .sci{font-family:"BIZ UDPMincho",serif;font-style:italic;color:var(--ink2);font-size:13px;}
+  .detailCard .attr{font-family:"Roboto Mono",monospace;font-size:9px;color:var(--ink2);opacity:.8;margin-top:6px;line-height:1.4;}
+
+  /* ローディング */
+  #loading{position:absolute;inset:0;z-index:70;display:none;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(20,25,15,.92);color:var(--hud);font-family:"Roboto Mono",monospace;}
+  #loading.show{display:flex;}
+  .lens{width:60px;height:60px;border-radius:50%;border:4px solid var(--hudline);border-top-color:var(--hud);animation:spin 1s linear infinite;margin-bottom:16px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #loadMsg{font-size:12px;letter-spacing:.1em;}
+
+  .credit{font-family:"Roboto Mono",monospace;font-size:9px;color:var(--ink2);opacity:.7;text-align:center;margin-top:auto;padding-top:14px;line-height:1.5;}
+
+  /* トースト */
+  #toast{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);z-index:80;
+    background:rgba(20,25,15,.9);color:var(--hud);padding:14px 20px;border-radius:12px;font-size:14px;
+    font-weight:700;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none;max-width:80%;}
+  #toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ===== ファインダー ===== -->
+  <div id="view">
+    <div class="scenery">
+      <div class="layer hill far"></div>
+      <div class="layer hill mid"></div>
+      <div class="layer hill near"></div>
+    </div>
+    <div class="haze"></div>
+    <div id="creatures"></div>
+    <div id="ring"></div>
+
+    <div class="reticle">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="crossh"></div>
+    </div>
+
+    <div class="vignette"></div>
+    <div id="flash"></div>
+
+    <div id="hudTop">
+      <div>
+        <div id="biomeTag"><span class="recdot"></span>REC</div>
+        <div id="subBiome">SAFARI CAM</div>
+      </div>
+      <div id="hudTopR">
+        <div id="filmRow">📷 --</div>
+        <div id="scoreRow">0 pt</div>
+        <div id="comboRow"></div>
+      </div>
+    </div>
+
+    <div id="subjChip"></div>
+
+    <div id="shutterWrap">
+      <div id="focusBar">
+        <div id="focusGreen"></div>
+        <div id="focusFill"></div>
+      </div>
+      <div id="shutterBtn">📸</div>
+      <div id="shutHint">長押しでピント / 離して撮影</div>
+    </div>
+  </div>
+
+  <!-- ===== タイトル ===== -->
+  <div class="screen show" id="scrTitle">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+      <div class="logo">
+        <div class="frame">
+          <h1>いきもの<br>写真サファリ</h1>
+          <div class="sub">PHOTO · SAFARI</div>
+        </div>
+      </div>
+      <p class="tagline">ファインダーを横切る<b>本物の生き物</b>を、ピントが合う一瞬に撮れ。<br>レアな個体ほど臆病で、逃げ足が速い。</p>
+      <div class="titleBtns">
+        <button class="btn rust" id="btnStart">たびに でる</button>
+        <button class="btn ghost" id="btnDexTitle">ずかんを みる</button>
+      </div>
+      <div id="bestLine"></div>
+    </div>
+    <div class="titleMeta">
+      写真と生物データ: iNaturalist (CC-BY / CC-BY-NC / CC0)<br>
+      © 各観察者 — 撮影画面に出典を表示します
+    </div>
+  </div>
+
+  <!-- ===== ショップ ===== -->
+  <div class="screen" id="scrShop">
+    <div class="hd"><h2>キャンプ補給</h2><span class="tag">SHOP</span><span class="pbank" id="shopBank">0 pt</span></div>
+    <p class="sectNote">次のエリアに向けて装備を整えよう。ポイントは図鑑には影響しない撮影報酬だ。</p>
+    <div class="upgrades" id="upgList"></div>
+    <div id="newCatchWrap"></div>
+    <button class="btn" id="btnNextArea" style="margin-top:8px;">つぎのエリアへ ▶</button>
+    <div style="height:10px;"></div>
+  </div>
+
+  <!-- ===== リザルト ===== -->
+  <div class="screen" id="scrResult">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;">
+      <div class="hd" style="justify-content:center;"><h2 id="resTitle">遠征おわり</h2></div>
+      <div class="bigScore" id="resScore">0</div>
+      <div style="font-size:12px;color:var(--ink2);">TOTAL SCORE</div>
+      <div class="resStats" id="resStats"></div>
+      <div id="resNewWrap" style="width:100%;"></div>
+      <div style="display:flex;flex-direction:column;gap:11px;width:min(80%,300px);margin-top:6px;">
+        <button class="btn rust" id="btnAgain">もういちど 遠征</button>
+        <button class="btn ghost" id="btnDexResult">ずかんを みる</button>
+        <button class="btn ghost" id="btnShare">きろくを シェア</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 図鑑モーダル ===== -->
+  <div class="screen" id="dexModal">
+    <button id="dexClose">×</button>
+    <div class="hd"><h2>いきもの図鑑</h2><span class="tag" id="dexCount">0</span></div>
+    <p class="sectNote">これまでに撮影した生き物。タップで詳細。</p>
+    <div class="dexGrid" id="dexGrid"></div>
+    <div id="dexDetail" style="margin-top:14px;"></div>
+    <div class="credit">データ提供: iNaturalist.org — 写真の権利は各観察者に帰属します</div>
+  </div>
+
+  <!-- ローディング & トースト -->
+  <div id="loading"><div class="lens"></div><div id="loadMsg">エリアを探索中…</div></div>
+  <div id="toast"></div>
+
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   いきもの写真サファリ — 単一HTML / iNaturalist 実API
+   ========================================================================= */
+
+/* ---------- DOM ---------- */
+const $ = s => document.querySelector(s);
+const view = $('#view'), creaturesEl = $('#creatures'), ringEl = $('#ring');
+const flashEl = $('#flash'), subjChip = $('#subjChip');
+const focusFill = $('#focusFill'), focusGreen = $('#focusGreen'), shutterBtn = $('#shutterBtn');
+const filmRow = $('#filmRow'), scoreRow = $('#scoreRow'), comboRow = $('#comboRow');
+const biomeTag = $('#biomeTag'), subBiome = $('#subBiome');
+const loadingEl = $('#loading'), loadMsg = $('#loadMsg'), toastEl = $('#toast');
+
+/* ---------- 定数: バイオーム ---------- */
+const BIOMES = [
+  { key:'forest', name:'はじまりの もり', sub:'FOREST',  taxa:'Aves,Mammalia,Insecta',
+    sky:['#cfe0e6','#bcd2cf','#a9c2a0','#7d9a6a'], hills:['#9fb87f','#7c9a5c','#4e6b36'] },
+  { key:'water',  name:'しずかな みずべ', sub:'WETLAND', taxa:'Actinopterygii,Amphibia,Aves,Mollusca',
+    sky:['#cfe3e8','#bfdbe0','#9fc6c2','#6fa088'], hills:['#92b59a','#5f9079','#37624c'] },
+  { key:'sky',    name:'たかい そら',     sub:'SKYLINE', taxa:'Aves,Insecta',
+    sky:['#bcdcef','#9fcae8','#7fb6df','#5f9ad0'], hills:['#a9c0d0','#86a6c0','#5d7f9c'] },
+  { key:'night',  name:'よるの しんりん', sub:'NIGHT',   taxa:'Mammalia,Amphibia,Insecta,Arachnida',
+    sky:['#2b3a55','#26324b','#1f2a40','#161e30'], hills:['#33405a','#222d44','#141b2c'] },
+];
+
+/* レア度ティア(iNat の observations_count から決定) */
+function rarityOf(obsCount){
+  const c = obsCount || 0;
+  if (c >= 120000) return 0;
+  if (c >= 40000)  return 1;
+  if (c >= 8000)   return 2;
+  if (c >= 1500)   return 3;
+  return 4;
+}
+const RARITY = [
+  { label:'ふつう',   stars:'★',     base:50,  color:'var(--rare1)', spd:1.00, shy:1.00 },
+  { label:'ときどき', stars:'★★',    base:95,  color:'var(--rare2)', spd:1.18, shy:0.85 },
+  { label:'めずらしい',stars:'★★★',  base:175, color:'var(--rare3)', spd:1.40, shy:0.70 },
+  { label:'レア',     stars:'★★★★', base:300, color:'var(--rare4)', spd:1.70, shy:0.55 },
+  { label:'げきレア', stars:'★★★★★',base:520, color:'var(--rare5)', spd:2.05, shy:0.42 },
+];
+
+/* ---------- ゲーム状態(宣言時に全初期化: ループが初回フレームで死なないように) ---------- */
+const G = {
+  scene:'title',          // title|play|shop|result
+  biomeIndex:0,
+  film:0, maxFilm:8,
+  score:0, runScore:0,
+  combo:0, bestCombo:0, runCombo:0,
+  shotsTaken:0, runShots:0, runCatches:0, runNew:0,
+  creatures:[],           // 場の生き物
+  pool:[], poolUsed:0,    // この遠征で使う生き物テンプレ
+  poolByBiome:{},
+  spawnTimer:0, spawnGap:1200,
+  focusing:false, focusLevel:0, focusVel:0, target:null, holdStart:0,
+  upg:{ tele:0, tripod:0, film:0, bait:0 },
+  baitPending:false,
+  seenThisRun:new Set(),
+  lastT:0, vw:300, vh:500,
+  paused:true,
+};
+
+/* ---------- 図鑑(永続) ---------- */
+let DEX = {};   // taxonId -> {name, sci, photo, attr, rarity, best, count}
+function loadDex(){ try{ DEX = JSON.parse(localStorage.getItem('safari_dex')||'{}'); }catch(e){ DEX={}; } }
+function saveDex(){ try{ localStorage.setItem('safari_dex', JSON.stringify(DEX)); }catch(e){} }
+function getBest(){ try{ return parseInt(localStorage.getItem('safari_best')||'0',10)||0; }catch(e){ return 0; } }
+function setBest(v){ try{ localStorage.setItem('safari_best', String(v)); }catch(e){} }
+
+/* =========================================================================
+   オーディオ(Web Audio 合成 + iOS 消音対策)
+   ========================================================================= */
+const Audio_ = (function(){
+  let AC=null, master=null, unlocked=false, silentEl=null;
+  function ensure(){
+    if(AC) return;
+    try{
+      AC = new (window.AudioContext||window.webkitAudioContext)();
+      master = AC.createGain(); master.gain.value=0.5; master.connect(AC.destination);
+      AC.onstatechange = ()=>{ if(AC.state==='interrupted'||AC.state==='suspended'){ AC.resume&&AC.resume(); } };
+    }catch(e){ AC=null; }
+  }
+  function silentWavUrl(){
+    const sr=8000, len=sr*0.5, bytes=44+len*2, b=new ArrayBuffer(bytes), v=new DataView(b);
+    const ws=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
+    ws(0,'RIFF'); v.setUint32(4,36+len*2,true); ws(8,'WAVE'); ws(12,'fmt ');
+    v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+    ws(36,'data'); v.setUint32(40,len*2,true);
+    const blob=new Blob([b],{type:'audio/wav'}); return URL.createObjectURL(blob);
+  }
+  async function unlock(){
+    ensure(); if(!AC) return;
+    try{
+      if(!silentEl){
+        silentEl=document.createElement('audio');
+        silentEl.loop=true; silentEl.src=silentWavUrl(); silentEl.volume=0.01;
+        silentEl.setAttribute('playsinline','');
+        silentEl.play().catch(()=>{});
+      }
+      if(AC.state!=='running'){ await AC.resume(); }
+      unlocked = (AC.state==='running');
+    }catch(e){}
+  }
+  function tone(f,t,dur,type,vol,slideTo){
+    if(!AC||AC.state!=='running') return;
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'sine'; o.frequency.setValueAtTime(f,t);
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t+dur);
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol||0.3, t+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.02);
+  }
+  function noise(t,dur,vol){
+    if(!AC||AC.state!=='running') return;
+    const n=Math.floor(AC.sampleRate*dur), buf=AC.createBuffer(1,n,AC.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+    const s=AC.createBufferSource(); s.buffer=buf;
+    const g=AC.createGain(); g.gain.value=vol||0.2;
+    s.connect(g); g.connect(master); s.start(t);
+  }
+  return {
+    unlock,
+    focus(){ if(!AC)return; tone(660,AC.currentTime,0.05,'square',0.12); },
+    shutter(){ if(!AC)return; const t=AC.currentTime; noise(t,0.05,0.35); tone(180,t,0.04,'square',0.18); },
+    good(stars){ if(!AC)return; const t=AC.currentTime; const f=[523,587,659,784,880];
+      for(let i=0;i<Math.min(stars,5);i++) tone(f[i], t+i*0.05, 0.18,'triangle',0.16); },
+    miss(){ if(!AC)return; const t=AC.currentTime; tone(200,t,0.18,'sawtooth',0.12,120); },
+    flee(){ if(!AC)return; tone(500,AC.currentTime,0.25,'sine',0.1,160); },
+    newSpecies(){ if(!AC)return; const t=AC.currentTime; [392,523,659,784,1047].forEach((f,i)=>tone(f,t+i*0.07,0.3,'triangle',0.18)); },
+    coin(){ if(!AC)return; const t=AC.currentTime; tone(880,t,0.08,'square',0.12); tone(1318,t+0.06,0.12,'square',0.12); },
+  };
+})();
+
+/* =========================================================================
+   iNaturalist フェッチ
+   ========================================================================= */
+function inatURL(taxa, page){
+  return 'https://api.inaturalist.org/v1/observations'
+    + '?quality_grade=research&photos=true&captive=false'
+    + '&iconic_taxa='+encodeURIComponent(taxa)
+    + '&locale=ja&photo_license=cc0,cc-by,cc-by-nc'
+    + '&popular=true&order_by=votes&hrank=species&lrank=species'
+    + '&per_page=40&page='+page;
+}
+function normPhoto(url){ return (url||'').replace('square','medium'); }
+
+async function fetchBiomePool(biome){
+  if(G.poolByBiome[biome.key]) return G.poolByBiome[biome.key];
+  const page = 1 + Math.floor(Math.random()*4);
+  let list = [];
+  try{
+    const res = await fetch(inatURL(biome.taxa, page), {headers:{'Accept':'application/json'}});
+    if(res.ok){
+      const data = await res.json();
+      const seen = new Set();
+      for(const o of (data.results||[])){
+        const t = o.taxon; if(!t) continue;
+        const p = (o.photos||[])[0]; if(!p||!p.url) continue;
+        if(seen.has(t.id)) continue; seen.add(t.id);
+        const name = t.preferred_common_name || t.name;
+        list.push({
+          taxonId:t.id,
+          name: name,
+          sci: t.name,
+          photo: normPhoto(p.url),
+          attr: (p.attribution||'').replace(/\(c\)/i,'©'),
+          rarity: rarityOf(t.observations_count),
+          obs: t.observations_count||0,
+          iconic: t.iconic_taxon_name||'',
+        });
+      }
+    }
+  }catch(e){ /* fall through to fallback */ }
+  if(list.length < 6) list = list.concat(fallbackPool(biome));
+  // 適度にシャッフル
+  for(let i=list.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [list[i],list[j]]=[list[j],list[i]]; }
+  G.poolByBiome[biome.key] = list;
+  return list;
+}
+
+/* オフライン/失敗時の絵文字フォールバック */
+function fallbackPool(biome){
+  const sets = {
+    forest:[['🦊','キツネ',2],['🦉','フクロウ',2],['🐿️','リス',1],['🦌','シカ',1],['🐗','イノシシ',2],['🦡','アナグマ',3]],
+    water :[['🐸','カエル',1],['🦆','カモ',1],['🐟','サカナ',2],['🦢','ハクチョウ',2],['🦎','イモリ',3],['🦦','カワウソ',3]],
+    sky   :[['🦅','ワシ',3],['🕊️','ハト',1],['🦋','チョウ',1],['🐝','ハチ',1],['🦜','インコ',2],['🦩','フラミンゴ',4]],
+    night :[['🦇','コウモリ',2],['🦝','アライグマ',2],['🦔','ハリネズミ',2],['🕷️','クモ',1],['🦂','サソリ',4],['🐺','オオカミ',4]],
+  };
+  return (sets[biome.key]||sets.forest).map((s,i)=>({
+    taxonId:'fb_'+biome.key+'_'+i, name:s[1], sci:'—', photo:null, emoji:s[0],
+    attr:'(オフライン代替)', rarity:s[2], obs:0, iconic:'',
+  }));
+}
+
+/* =========================================================================
+   生き物スポーン & 更新
+   ========================================================================= */
+function nextTemplate(){
+  if(G.pool.length===0) return null;
+  // bait: 次の1体をレア寄りに
+  if(G.baitPending){
+    G.baitPending=false;
+    const rares = G.pool.filter(t=>t.rarity>=3);
+    if(rares.length){ return rares[Math.floor(Math.random()*rares.length)]; }
+  }
+  const t = G.pool[G.poolUsed % G.pool.length]; G.poolUsed++;
+  return t;
+}
+
+function spawnCreature(){
+  if(G.creatures.length >= 3) return;
+  const tmpl = nextTemplate(); if(!tmpl) return;
+  const r = RARITY[tmpl.rarity];
+  const fromLeft = Math.random()<0.5;
+  const el = document.createElement('div');
+  el.className='creat';
+  const ph = document.createElement('div'); ph.className='ph';
+  if(tmpl.photo){
+    const img = document.createElement('img');
+    img.alt=''; img.decoding='async';
+    img.onerror=()=>{ ph.innerHTML='<div class="fallback">'+(tmpl.emoji||'🐾')+'</div>'; };
+    img.src=tmpl.photo;
+    ph.appendChild(img);
+  } else {
+    ph.innerHTML='<div class="fallback">'+(tmpl.emoji||'🐾')+'</div>';
+  }
+  el.appendChild(ph);
+  creaturesEl.appendChild(el);
+
+  const size = 0.30 - tmpl.rarity*0.018;        // レアほど少し小さい(撮りにくい)
+  const baseSpeed = (0.10 + Math.random()*0.05) * r.spd * (1 + G.biomeIndex*0.12);
+  const c = {
+    tmpl, el, ph, rarity:tmpl.rarity,
+    x: fromLeft ? -12 : 112,
+    y: 34 + Math.random()*26,
+    vx: (fromLeft?1:-1) * baseSpeed,
+    vy: 0,
+    bob: 1.5 + Math.random()*2.0,
+    bobPhase: Math.random()*6.28,
+    size,
+    life:0,
+    shyTime: (3200 + Math.random()*2200) * r.shy,   // この時間で逃走開始
+    fleeing:false,
+    dead:false,
+    photographed:false,
+  };
+  el.style.width = (size*100)+'%';
+  G.creatures.push(c);
+}
+
+function updateCreatures(dt){
+  const telSlow = 1 - G.upg.tele*0.12;   // 望遠: 全体が少しゆっくり
+  for(const c of G.creatures){
+    if(c.dead) continue;
+    c.life += dt;
+    if(!c.fleeing && c.life > c.shyTime && !c.photographed){
+      c.fleeing=true;
+      c.vx *= 2.4; c.vy = (Math.random()<0.5?-1:1)*0.06;
+      Audio_.flee();
+    }
+    const sp = c.fleeing?1:telSlow;
+    c.x += c.vx * dt*0.06 * sp;
+    c.y += c.vy * dt*0.06 * sp;
+    c.bobPhase += dt*0.004;
+    const yb = c.y + Math.sin(c.bobPhase)*c.bob;
+    c.el.style.left = c.x + '%';
+    c.el.style.top = yb + '%';
+    // 画面外で消滅
+    if(c.x < -20 || c.x > 120 || c.y < -20 || c.y > 120){
+      removeCreature(c);
+    }
+  }
+  G.creatures = G.creatures.filter(c=>!c.dead);
+}
+
+function removeCreature(c){
+  c.dead=true;
+  if(c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el);
+  if(G.target===c){ G.target=null; }
+}
+
+/* viewport 座標(%)→ px。x は vw 基準なので view 幅で換算 */
+function creaturePx(c){
+  const w=G.vw, h=G.vh;
+  const yb = c.y + Math.sin(c.bobPhase)*c.bob;
+  return { px: (c.x/100)*w, py: (yb/100)*h, r: c.size*w*0.5 };
+}
+
+/* 中心に最も近い被写体を選ぶ */
+function pickTarget(){
+  const cx=G.vw*0.5, cy=G.vh*0.46;
+  let best=null, bestD=Infinity;
+  for(const c of G.creatures){
+    if(c.dead||c.photographed) continue;
+    const p=creaturePx(c);
+    const d=Math.hypot(p.px-cx, p.py-cy);
+    const reach = G.vw*(0.32 + G.upg.tele*0.04);
+    if(d<reach && d<bestD){ bestD=d; best=c; }
+  }
+  return best;
+}
+
+/* =========================================================================
+   フォーカス & 撮影
+   ========================================================================= */
+const FOCUS_RISE = 0.16;       // /ms 相当(dtで掛ける)
+const GREEN_LO = 78, GREEN_HI = 105, BLUR_AT = 150;
+
+function startFocus(){
+  if(G.scene!=='play' || G.paused) return;
+  if(G.film<=0) return;
+  G.focusing=true; G.focusLevel=0; G.holdStart=performance.now();
+  G.target = pickTarget();
+  shutterBtn.classList.add('down');
+  Audio_.focus();
+}
+
+function updateFocus(dt){
+  if(!G.focusing) return;
+  // tripod: ピント上昇がゆっくり&安定(緑で止めやすい)
+  const rise = FOCUS_RISE * (1 - G.upg.tripod*0.16);
+  G.focusLevel += rise*dt;
+  if(G.focusLevel>BLUR_AT) G.focusLevel=BLUR_AT;
+  // ロックは維持しつつ、対象が消えたら取り直し
+  if(!G.target || G.target.dead || G.target.photographed){ G.target = pickTarget(); }
+  renderFocusUI();
+}
+
+function renderFocusUI(){
+  const lv = G.focusLevel;
+  focusFill.style.width = Math.min(100, lv/BLUR_AT*100)+'%';
+  // 緑帯位置
+  focusGreen.style.left = (GREEN_LO/BLUR_AT*100)+'%';
+  focusGreen.style.width = ((GREEN_HI-GREEN_LO)/BLUR_AT*100)+'%';
+  // リング表示
+  if(G.focusing && G.target){
+    const p=creaturePx(G.target);
+    // フォーカスが進むほどリングが締まる(被写体径へ)
+    const prog = Math.min(1, lv/GREEN_HI);
+    const big = p.r*3.4, tight=p.r*1.25;
+    const rad = big - (big-tight)*prog;
+    ringEl.style.left=p.px+'px'; ringEl.style.top=p.py+'px';
+    ringEl.style.width=(rad*2)+'px'; ringEl.style.height=(rad*2)+'px';
+    ringEl.style.opacity='1';
+    const inGreen = lv>=GREEN_LO && lv<=GREEN_HI;
+    ringEl.classList.toggle('lock', inGreen);
+    ringEl.style.borderColor = inGreen ? '#7ef09a' : (lv>GREEN_HI ? '#e08a5a' : 'var(--hud)');
+    // 被写体ボケ表現
+    const blurAmt = lv>GREEN_HI ? (lv-GREEN_HI)/(BLUR_AT-GREEN_HI)*4 : Math.max(0,(GREEN_LO-lv)/GREEN_LO*3);
+    G.target.ph.style.filter = `blur(${blurAmt.toFixed(2)}px)`;
+    // チップ
+    showChip(G.target);
+  } else {
+    ringEl.style.opacity='0';
+    subjChip.style.opacity='0';
+  }
+}
+
+function showChip(c){
+  const r=RARITY[c.rarity];
+  subjChip.innerHTML = `<span class="stars">${r.stars}</span> ${c.tmpl.name} `
+    + (c.tmpl.sci && c.tmpl.sci!=='—' ? `<span class="sci">${c.tmpl.sci}</span>`:'');
+  subjChip.style.opacity='1';
+}
+
+function shoot(){
+  if(!G.focusing){ return; }
+  G.focusing=false; shutterBtn.classList.remove('down');
+  const target=G.target;
+  // ピントUIリセット
+  ringEl.style.opacity='0'; subjChip.style.opacity='0';
+  if(target && target.ph) target.ph.style.filter='';
+
+  if(!target || target.dead || target.photographed){
+    // 空振り: フィルムは消費しない(やさしさ)
+    Audio_.miss(); flash(0.25);
+    floatMsg(G.vw*0.5, G.vh*0.46, '空振り…','', 0, false);
+    breakCombo();
+    return;
+  }
+
+  // フィルム消費
+  G.film--; G.shotsTaken++; G.runShots++;
+  flash(0.85); Audio_.shutter();
+
+  // 採点
+  const lv=G.focusLevel;
+  let focusScore;
+  if(lv>=GREEN_LO && lv<=GREEN_HI) focusScore=1.0;
+  else if(lv<GREEN_LO) focusScore=Math.max(0, lv/GREEN_LO*0.85);
+  else focusScore=Math.max(0, 1-(lv-GREEN_HI)/(BLUR_AT-GREEN_HI))*0.9;
+
+  const p=creaturePx(target);
+  const cx=G.vw*0.5, cy=G.vh*0.46;
+  const dist=Math.hypot(p.px-cx,p.py-cy);
+  const centerScore=Math.max(0, 1 - dist/(G.vw*0.40));
+
+  const fleeBonus = target.fleeing ? 1.15 : 1.0;
+  const q = (focusScore*0.62 + centerScore*0.38) * fleeBonus;
+  let stars = q>=0.92?5 : q>=0.78?4 : q>=0.6?3 : q>=0.4?2 : 1;
+  if(focusScore<0.25) stars=1;
+
+  const r=RARITY[target.rarity];
+  // コンボ
+  if(stars>=3){ G.combo++; G.runCombo=Math.max(G.runCombo,G.combo); }
+  else breakCombo();
+  const comboMul = 1 + Math.min(G.combo,10)*0.08;
+
+  const isNew = !DEX[target.tmpl.taxonId];
+  const newBonus = isNew? Math.round(r.base*0.6)+80 : 0;
+  const pts = Math.round( r.base * (0.3 + q*1.4) * comboMul ) + newBonus;
+
+  G.score += pts; G.runScore += pts; G.runCatches++;
+  if(isNew) G.runNew++;
+  target.photographed=true;
+
+  // 図鑑登録
+  registerDex(target.tmpl, stars);
+  if(G.target===target) G.target=null;
+
+  // フィードバック
+  const starStr='★'.repeat(stars)+'☆'.repeat(5-stars);
+  floatMsg(p.px, p.py, '+'+pts, starStr, stars, isNew);
+  if(stars>=4) Audio_.good(stars); else if(stars>=2) Audio_.good(2);
+  if(isNew) setTimeout(()=>Audio_.newSpecies(), 160);
+
+  // 撮られた個体はちょっと止まってから去る
+  target.fleeing=true; target.vx = (target.x<50?-1:1)*0.16; target.vy=-0.02;
+  setTimeout(()=>{ if(!target.dead) removeCreature(target); }, 600);
+
+  updateHUD();
+  if(G.film<=0) setTimeout(endBiome, 700);
+}
+
+function breakCombo(){ if(G.combo>0){ G.combo=0; } }
+
+function flash(a){
+  flashEl.style.transition='none'; flashEl.style.opacity=a;
+  requestAnimationFrame(()=>{ flashEl.style.transition='opacity .4s'; flashEl.style.opacity=0; });
+}
+
+function floatMsg(px,py,pts,q,stars,isNew){
+  const d=document.createElement('div'); d.className='floatScore';
+  d.style.left=px+'px'; d.style.top=py+'px';
+  let html=`<div class="pts">${pts}</div>`;
+  if(q) html+=`<div class="q" style="color:${stars>=3?'#ffd76a':'#fff'}">${q}</div>`;
+  if(isNew) html+=`<div class="new">NEW!</div>`;
+  d.innerHTML=html;
+  view.appendChild(d);
+  setTimeout(()=>{ if(d.parentNode) d.parentNode.removeChild(d); }, 1050);
+}
+
+/* =========================================================================
+   図鑑
+   ========================================================================= */
+function registerDex(tmpl, stars){
+  const cur = DEX[tmpl.taxonId];
+  if(!cur || stars>cur.best){
+    DEX[tmpl.taxonId] = {
+      name:tmpl.name, sci:tmpl.sci, photo:tmpl.photo, emoji:tmpl.emoji||null,
+      attr:tmpl.attr, rarity:tmpl.rarity, best:Math.max(stars, cur?cur.best:0),
+      count:(cur?cur.count:0)+1, obs:tmpl.obs,
+    };
+  } else {
+    cur.count++;
+  }
+  saveDex();
+}
+
+/* =========================================================================
+   バイオーム進行
+   ========================================================================= */
+function applyBiomeTheme(b){
+  view.style.background = `radial-gradient(120% 80% at 50% 18%, ${b.sky[0]} 0%, ${b.sky[1]} 30%, ${b.sky[2]} 60%, ${b.sky[3]} 100%)`;
+  const hills=document.querySelectorAll('.hill');
+  hills[0].style.background=`linear-gradient(${b.hills[0]}, ${shade(b.hills[0],-18)})`;
+  hills[1].style.background=`linear-gradient(${b.hills[1]}, ${shade(b.hills[1],-18)})`;
+  hills[2].style.background=`linear-gradient(${b.hills[2]}, ${shade(b.hills[2],-20)})`;
+  biomeTag.innerHTML='<span class="recdot"></span>'+b.name;
+  subBiome.textContent=b.sub+' · CAM-'+(G.biomeIndex+1);
+}
+function shade(hex,amt){
+  const m=hex.replace('#',''); let r=parseInt(m.slice(0,2),16),g=parseInt(m.slice(2,4),16),b=parseInt(m.slice(4,6),16);
+  r=Math.max(0,Math.min(255,r+amt));g=Math.max(0,Math.min(255,g+amt));b=Math.max(0,Math.min(255,b+amt));
+  return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+async function startBiome(idx){
+  G.biomeIndex=idx;
+  const b=BIOMES[idx];
+  showLoading('「'+b.name+'」を探索中…');
+  applyBiomeTheme(b);
+  const pool = await fetchBiomePool(b);
+  G.pool = pool; G.poolUsed=0;
+  // フィルム配給
+  G.maxFilm = 8 + G.upg.film*2;
+  G.film = G.maxFilm;
+  G.combo=0;
+  G.creatures.forEach(removeCreature); G.creatures=[];
+  G.spawnTimer=600; G.spawnGap = Math.max(700, 1300 - idx*120);
+  if(G.upg.bait>0) G.baitPending=true;
+  hideLoading();
+  G.scene='play'; G.paused=false;
+  showScreen(null);
+  updateHUD();
+}
+
+function endBiome(){
+  G.paused=true; G.scene='shop';
+  G.creatures.forEach(removeCreature); G.creatures=[];
+  G.focusing=false; ringEl.style.opacity='0'; subjChip.style.opacity='0';
+  if(G.biomeIndex >= BIOMES.length-1){ endRun(); return; }
+  buildShop();
+  showScreen('#scrShop');
+}
+
+/* =========================================================================
+   ショップ
+   ========================================================================= */
+const UPGRADES = [
+  { key:'film',   ico:'🎞️', name:'フィルム増量', d:'各エリアの撮影枚数 +2', max:4,
+    cost:lv=>120+lv*100 },
+  { key:'tele',   ico:'🔭', name:'望遠レンズ',   d:'被写体がゆっくり&ロック範囲拡大', max:4,
+    cost:lv=>150+lv*130 },
+  { key:'tripod', ico:'📐', name:'三脚',         d:'ピントが安定し緑で止めやすい', max:4,
+    cost:lv=>140+lv*120 },
+  { key:'bait',   ico:'🥜', name:'まきえ',       d:'各エリア最初の1体がレア寄りに', max:1,
+    cost:lv=>260 },
+];
+function buildShop(){
+  $('#shopBank').textContent = G.score.toLocaleString()+' pt';
+  const list=$('#upgList'); list.innerHTML='';
+  for(const u of UPGRADES){
+    const lv=G.upg[u.key];
+    const maxed = lv>=u.max;
+    const cost=u.cost(lv);
+    const row=document.createElement('div'); row.className='upg'+(maxed?' maxed':'');
+    row.innerHTML=`<div class="ico">${u.ico}</div>
+      <div class="info"><b>${u.name}</b> <span class="lv">Lv.${lv}/${u.max}</span>
+        <div class="d">${u.d}</div></div>`;
+    const btn=document.createElement('button'); btn.className='buy';
+    if(maxed){ btn.textContent='MAX'; btn.disabled=true; }
+    else { btn.textContent=cost+'pt'; btn.disabled = G.score<cost; }
+    btn.addEventListener('pointerup',(e)=>{ e.preventDefault(); buyUpgrade(u, btn); });
+    row.appendChild(btn);
+    list.appendChild(row);
+  }
+  // 新着
+  renderNewCatches('#newCatchWrap');
+}
+function buyUpgrade(u, btn){
+  const lv=G.upg[u.key]; if(lv>=u.max) return;
+  const cost=u.cost(lv); if(G.score<cost) return;
+  G.score-=cost; G.upg[u.key]++; Audio_.coin();
+  buildShop();
+}
+
+/* ショップ/リザルトの新着ギャラリー */
+let runNewIds=[];
+function renderNewCatches(sel){
+  const wrap=$(sel);
+  if(runNewIds.length===0){ wrap.innerHTML=''; return; }
+  let html='<div class="newCatch">📔 このエリアの新着 '+runNewIds.length+'種</div><div class="dexGrid">';
+  for(const id of runNewIds.slice(-6)){
+    const e=DEX[id]; if(!e) continue;
+    html+=dexCellHTML(e);
+  }
+  html+='</div>';
+  wrap.innerHTML=html;
+}
+function dexCellHTML(e){
+  const pic = e.photo ? `style="background-image:url('${e.photo}')"` : '';
+  const inner = e.photo ? '' : (e.emoji||'🐾');
+  const cls = e.photo ? 'pic' : 'pic';
+  return `<div class="dexCell"><div class="${cls}" ${pic}>${e.photo?'':inner}</div>
+    <div class="nm">${e.name}</div><div class="st">${'★'.repeat(e.best)}</div></div>`;
+}
+
+/* =========================================================================
+   リザルト
+   ========================================================================= */
+function endRun(){
+  G.scene='result'; G.paused=true;
+  const best=getBest();
+  const isRecord = G.score>best;
+  if(isRecord) setBest(G.score);
+  $('#resTitle').textContent = isRecord ? '🏆 自己ベスト更新!' : '遠征おわり';
+  $('#resScore').textContent = G.score.toLocaleString();
+  const dexTotal=Object.keys(DEX).length;
+  $('#resStats').innerHTML=`
+    <div class="resStat"><div class="n">${G.runCatches}</div><div class="l">撮影数</div></div>
+    <div class="resStat"><div class="n">${G.runNew}</div><div class="l">新種</div></div>
+    <div class="resStat"><div class="n">×${G.runCombo}</div><div class="l">最大コンボ</div></div>
+    <div class="resStat"><div class="n">${dexTotal}</div><div class="l">図鑑 累計</div></div>`;
+  renderNewCatches('#resNewWrap');
+  showScreen('#scrResult');
+}
+
+/* =========================================================================
+   HUD
+   ========================================================================= */
+function updateHUD(){
+  let film='📷 ';
+  for(let i=0;i<G.maxFilm;i++) film += (i<G.film?'▮':'▯');
+  if(G.maxFilm>10){ film='📷 '+G.film+'/'+G.maxFilm; }
+  filmRow.textContent=film;
+  scoreRow.textContent=G.score.toLocaleString()+' pt';
+  comboRow.textContent = G.combo>=2 ? ('COMBO ×'+G.combo) : '';
+}
+
+/* =========================================================================
+   画面遷移
+   ========================================================================= */
+function showScreen(sel){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('show'));
+  if(sel) $(sel).classList.add('show');
+}
+function showLoading(msg){ loadMsg.textContent=msg||'読み込み中…'; loadingEl.classList.add('show'); }
+function hideLoading(){ loadingEl.classList.remove('show'); }
+function toast(msg){ toastEl.textContent=msg; toastEl.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>toastEl.classList.remove('show'),1600); }
+
+/* =========================================================================
+   メインループ(タイトルからずっと回る)
+   ========================================================================= */
+function measure(){ const r=view.getBoundingClientRect(); G.vw=r.width; G.vh=r.height; }
+window.addEventListener('resize', measure);
+
+function loop(t){
+  const dt = Math.min(50, t - (G.lastT||t)); G.lastT=t;
+  // 風景パララックス(常時うっすら動かす)
+  const layers=document.querySelectorAll('.layer');
+  if(layers[0]) layers[0].style.transform=`translateX(${-Math.sin(t*0.0002)*3-3}%)`;
+  if(layers[1]) layers[1].style.transform=`translateX(${-Math.sin(t*0.0003)*5-4}%)`;
+  if(layers[2]) layers[2].style.transform=`translateX(${-Math.sin(t*0.0004)*7-5}%)`;
+
+  if(G.scene==='play' && !G.paused){
+    G.spawnTimer -= dt;
+    if(G.spawnTimer<=0 && G.film>0){
+      spawnCreature();
+      G.spawnTimer = G.spawnGap*(0.7+Math.random()*0.7);
+    }
+    updateCreatures(dt);
+    updateFocus(dt);
+  }
+  requestAnimationFrame(loop);
+}
+
+/* =========================================================================
+   入力(Pointer / キーボード)— click 非依存
+   ========================================================================= */
+let pressing=false;
+function onDown(e){
+  if(G.scene!=='play'||G.paused) return;
+  if(pressing) return;
+  pressing=true;
+  startFocus();
+}
+function onUp(e){
+  if(!pressing) return;
+  pressing=false;
+  if(G.scene==='play'&&!G.paused) shoot();
+}
+view.addEventListener('pointerdown', e=>{ e.preventDefault(); onDown(e); }, {passive:false});
+window.addEventListener('pointerup', e=>{ onUp(e); });
+window.addEventListener('pointercancel', e=>{ if(pressing){ pressing=false; G.focusing=false; shutterBtn.classList.remove('down'); ringEl.style.opacity='0'; } });
+
+// キーボード(PC)
+window.addEventListener('keydown', e=>{
+  if(e.repeat) return;
+  if(e.code==='Space'){ e.preventDefault(); if(!pressing){ pressing=true; startFocus(); } }
+});
+window.addEventListener('keyup', e=>{
+  if(e.code==='Space'){ e.preventDefault(); if(pressing){ pressing=false; if(G.scene==='play'&&!G.paused) shoot(); } }
+});
+
+/* ダブルタップズーム抑止 */
+let lastTouchEnd=0;
+document.addEventListener('touchend', e=>{
+  const now=Date.now();
+  if(now-lastTouchEnd<=350){ e.preventDefault(); }
+  lastTouchEnd=now;
+}, {passive:false});
+document.addEventListener('dblclick', e=>e.preventDefault());
+document.addEventListener('gesturestart', e=>e.preventDefault());
+
+/* =========================================================================
+   ボタン
+   ========================================================================= */
+function bindTap(sel, fn){
+  const el=$(sel); if(!el) return;
+  el.addEventListener('pointerup', e=>{ e.preventDefault(); fn(); });
+}
+async function startRun(){
+  await Audio_.unlock();
+  // リセット
+  G.score=0; G.runScore=0; G.runCatches=0; G.runNew=0; G.runCombo=0; G.combo=0;
+  G.runShots=0; G.upg={tele:0,tripod:0,film:0,bait:0};
+  G.poolByBiome={}; runNewIds=[];
+  G.seenThisRun=new Set();
+  await startBiome(0);
+}
+bindTap('#btnStart', startRun);
+bindTap('#btnAgain', startRun);
+bindTap('#btnNextArea', async ()=>{ await Audio_.unlock(); runNewIds=[]; await startBiome(G.biomeIndex+1); });
+bindTap('#btnDexTitle', ()=>openDex());
+bindTap('#btnDexResult', ()=>openDex());
+bindTap('#dexClose', ()=>{ closeDex(); });
+bindTap('#btnShare', shareResult);
+
+// 新種登録時に runNewIds へ反映(registerDex をラップ)
+const _registerDex = registerDex;
+registerDex = function(tmpl, stars){
+  const wasNew = !DEX[tmpl.taxonId];
+  _registerDex(tmpl, stars);
+  if(wasNew && runNewIds.indexOf(tmpl.taxonId)<0) runNewIds.push(tmpl.taxonId);
+};
+
+/* =========================================================================
+   図鑑モーダル
+   ========================================================================= */
+function openDex(){
+  const ids=Object.keys(DEX);
+  $('#dexCount').textContent=ids.length+'種';
+  const grid=$('#dexGrid');
+  // レア度→撮影順でソート(レア優先表示)
+  ids.sort((a,b)=> (DEX[b].rarity-DEX[a].rarity) || (DEX[b].best-DEX[a].best));
+  if(ids.length===0){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--ink2);padding:30px 0;font-size:13px;">まだ1枚も撮影していません。<br>遠征に出て生き物を撮ろう。</div>';
+  } else {
+    grid.innerHTML = ids.map(id=>{
+      const e=DEX[id];
+      const pic=e.photo?`style="background-image:url('${e.photo}')"`:'';
+      return `<div class="dexCell" data-id="${id}">
+        <div class="pic" ${pic}>${e.photo?'':(e.emoji||'🐾')}</div>
+        <div class="nm">${e.name}</div>
+        <div class="st">${'★'.repeat(e.best)}</div></div>`;
+    }).join('');
+    grid.querySelectorAll('.dexCell').forEach(cell=>{
+      cell.addEventListener('pointerup',e=>{ e.preventDefault(); showDexDetail(cell.getAttribute('data-id')); });
+    });
+  }
+  $('#dexDetail').innerHTML='';
+  showScreen('#dexModal');
+}
+function showDexDetail(id){
+  const e=DEX[id]; if(!e) return;
+  const r=RARITY[e.rarity];
+  const pic=e.photo?`style="background-image:url('${e.photo}')"`:'';
+  $('#dexDetail').innerHTML=`<div class="detailCard">
+    <div class="pic" ${pic}>${e.photo?'':'<div style="font-size:60px;text-align:center;line-height:1.6">'+(e.emoji||'🐾')+'</div>'}</div>
+    <div class="nm">${e.name}</div>
+    <div class="sci">${e.sci||''}</div>
+    <div style="margin-top:6px;color:${r.color};font-weight:900;">${r.stars} ${r.label}　<span style="color:var(--ink2);font-weight:500;font-size:12px;">ベスト ${'★'.repeat(e.best)} ・ ${e.count}枚撮影</span></div>
+    ${e.obs?`<div style="font-size:11px;color:var(--ink2);margin-top:4px;">世界の観察数: ${e.obs.toLocaleString()}件</div>`:''}
+    <div class="attr">${e.attr||''}</div>
+  </div>`;
+  $('#dexDetail').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function closeDex(){
+  // 直前の画面へ戻る
+  if(G.scene==='result') showScreen('#scrResult');
+  else if(G.scene==='shop') showScreen('#scrShop');
+  else showScreen('#scrTitle');
+}
+
+/* =========================================================================
+   シェア
+   ========================================================================= */
+function shareResult(){
+  const dexTotal=Object.keys(DEX).length;
+  const txt=`いきもの写真サファリ 📸\nスコア ${G.score.toLocaleString()}pt / 新種${G.runNew} / 図鑑${dexTotal}種\nhttps://nrtkumi.github.io/games/safari/`;
+  if(navigator.share){ navigator.share({text:txt}).catch(()=>{}); }
+  else if(navigator.clipboard){ navigator.clipboard.writeText(txt).then(()=>toast('コピーしました')).catch(()=>toast(txt)); }
+  else toast('シェア非対応');
+}
+
+/* =========================================================================
+   起動
+   ========================================================================= */
+function boot(){
+  loadDex();
+  const best=getBest();
+  if(best>0) $('#bestLine').textContent='自己ベスト '+best.toLocaleString()+' pt';
+  measure();
+  requestAnimationFrame(loop);
+  // フォント等の読み込みでサイズが変わるので少し後にも計測
+  setTimeout(measure, 400); window.addEventListener('load', measure);
+}
+boot();
+</script>
+</body>
+</html>
