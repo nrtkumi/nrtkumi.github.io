@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>ねんぴょう — 歴史を、順番に。</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23b5362a'/%3E%3Ctext x='50' y='72' font-size='62' text-anchor='middle' fill='%23f6efdc' font-family='serif' font-weight='bold'%3E年%3C/text%3E%3C/svg%3E">
+<meta name="description" content="人物・建物・できごと…Wikipediaの実データから引いた札を、古いほうから順に年表へ差し込む歴史パズル。正しく並べ続けて自己ベストを更新せよ。">
+<!-- OGP -->
+<meta property="og:title" content="ねんぴょう — 歴史を、順番に。">
+<meta property="og:description" content="Wikipedia/Wikidataの実データの札を、古いほうから順に年表へ差し込む歴史パズル。あと1枚、を狙う中毒ループ。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nrtkumi.github.io/games/nenpyo/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/nenpyo/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ねんぴょう — 歴史を、順番に。">
+<meta name="twitter:description" content="Wikipediaの実データの札を、古い順に年表へ差し込む歴史パズル。">
+<meta name="twitter:image" content="https://nrtkumi.github.io/games/nenpyo/assets/ogp.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#ece1c8; --paper2:#e3d6b8; --card:#f6efdc;
+  --ink:#2c2620; --ink2:#5b5142; --line:rgba(44,38,32,.20);
+  --shu:#b5362a; --shu2:#c4452e; --gold:#9a7b32; --good:#3f6b4a;
+  --mincho:'Shippori Mincho B1',serif;
+  --gothic:'Zen Kaku Gothic New',system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+html,body{margin:0;height:100%;}
+body{
+  font-family:var(--gothic);
+  color:var(--ink);
+  background:#1c1813;
+  overscroll-behavior:none;
+  user-select:none;-webkit-user-select:none;
+}
+#app{
+  position:relative;
+  max-width:min(540px,72vh);
+  margin:0 auto;
+  min-height:100%;
+  height:100dvh;
+  display:flex;flex-direction:column;
+  background:
+    radial-gradient(120% 80% at 50% -10%, #f0e6cd 0%, var(--paper) 45%, var(--paper2) 100%);
+  box-shadow:0 0 60px rgba(0,0,0,.55);
+  overflow:hidden;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+/* paper grain */
+#app::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  mix-blend-mode:multiply;opacity:.6;
+}
+/* ===== header ===== */
+header{position:relative;z-index:2;padding:10px 16px 6px;border-bottom:1px solid var(--line);}
+.brand{display:flex;align-items:baseline;gap:10px;}
+.brand h1{font-family:var(--mincho);font-weight:800;font-size:23px;letter-spacing:.18em;margin:0;}
+.brand .sub{font-family:var(--mincho);font-size:11px;color:var(--ink2);letter-spacing:.25em;}
+.stats{display:flex;align-items:center;gap:14px;margin-top:8px;font-size:12px;color:var(--ink2);}
+.stat b{font-family:var(--mincho);font-size:20px;color:var(--ink);font-weight:800;margin-right:3px;}
+.stat .lab{letter-spacing:.1em;}
+.lives{margin-left:auto;display:flex;gap:5px;align-items:center;}
+.seal-life{width:17px;height:17px;border-radius:4px;background:var(--shu);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);transition:.25s;position:relative;}
+.seal-life.gone{background:transparent;box-shadow:inset 0 0 0 1.5px var(--line);}
+.combo-chip{display:inline-flex;align-items:center;gap:3px;font-family:var(--mincho);font-weight:800;color:var(--shu);opacity:0;transform:scale(.6);transition:.18s;}
+.combo-chip.on{opacity:1;transform:scale(1);}
+
+/* ===== timeline rail ===== */
+.railwrap{position:relative;z-index:1;flex:1 1 auto;padding:12px 0 8px;display:flex;flex-direction:column;justify-content:center;}
+.railhint{text-align:center;font-family:var(--mincho);font-size:12.5px;color:var(--ink2);letter-spacing:.12em;margin-bottom:8px;height:16px;}
+.rail{
+  display:flex;align-items:stretch;gap:0;overflow-x:auto;overflow-y:hidden;
+  padding:6px 42% 14px;scroll-behavior:smooth;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.rail::-webkit-scrollbar{display:none;}
+/* the time axis line behind tiles */
+.tile,.gap{flex:0 0 auto;position:relative;}
+.tile{
+  width:112px;min-height:118px;margin:0;
+  background:var(--card);border:1px solid var(--line);
+  border-radius:3px;
+  box-shadow:0 2px 5px rgba(44,38,32,.13);
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding:9px 7px 8px;text-align:center;
+}
+.tile .yr{font-family:var(--mincho);font-weight:800;font-size:26px;line-height:1;letter-spacing:.01em;margin:2px 0 2px;}
+.tile .yr .bce{font-size:13px;margin-right:1px;color:var(--shu);}
+.tile .yr .suf{font-size:11px;color:var(--ink2);margin-left:1px;font-weight:500;}
+.tile .nm{font-size:11px;line-height:1.32;color:var(--ink);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.miniseal{width:24px;height:24px;border-radius:5px;background:var(--shu);color:#f6efdc;font-family:var(--mincho);font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;transform:rotate(-4deg);box-shadow:0 1px 2px rgba(0,0,0,.2);}
+.tile.just{animation:pop .45s cubic-bezier(.2,1.3,.4,1);}
+.tile.just::after{content:"正";position:absolute;top:-10px;right:-8px;width:30px;height:30px;border-radius:50%;background:var(--shu);color:#f6efdc;font-family:var(--mincho);font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;transform:rotate(-12deg);box-shadow:0 2px 6px rgba(0,0,0,.3);animation:stamp .5s cubic-bezier(.2,1.4,.4,1);}
+.tile.miss{border-color:var(--shu);}
+.tile.miss::after{content:"誤";position:absolute;top:-10px;right:-8px;width:30px;height:30px;border-radius:50%;background:#5b5142;color:#f6efdc;font-family:var(--mincho);font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;transform:rotate(8deg);box-shadow:0 2px 6px rgba(0,0,0,.3);}
+@keyframes pop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes stamp{0%{transform:rotate(-12deg) scale(2.2);opacity:0}60%{opacity:1}100%{transform:rotate(-12deg) scale(1);opacity:1}}
+
+.gap{width:18px;display:flex;align-items:center;justify-content:center;align-self:stretch;}
+.gap .bar{width:2px;height:80%;background:repeating-linear-gradient(var(--line) 0 5px,transparent 5px 10px);border-radius:2px;}
+.rail.active .gap{width:30px;cursor:pointer;}
+.rail.active .gap .bar{background:var(--shu);opacity:.32;width:3px;animation:breathe 1.3s ease-in-out infinite;}
+.rail.active .gap::after{content:"▼";position:absolute;top:-2px;left:50%;transform:translateX(-50%);color:var(--shu);font-size:11px;opacity:.55;}
+.rail.active .gap.cursor .bar{opacity:.9;width:4px;}
+.rail.active .gap.cursor::after{opacity:1;transform:translateX(-50%) scale(1.25);}
+.gap.flashbad .bar{background:var(--shu)!important;opacity:1!important;animation:shakebar .4s;}
+@keyframes breathe{0%,100%{opacity:.28}50%{opacity:.6}}
+@keyframes shakebar{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+
+/* ===== current card dock ===== */
+.dock{position:relative;z-index:2;flex:0 0 auto;padding:8px 18px calc(14px + env(safe-area-inset-bottom));}
+.deck-label{text-align:center;font-family:var(--mincho);font-size:12px;color:var(--ink2);letter-spacing:.18em;margin-bottom:8px;}
+.handcard{
+  background:var(--card);border:1px solid var(--line);border-radius:4px;
+  box-shadow:0 6px 18px rgba(44,38,32,.22);
+  padding:12px;display:flex;gap:13px;align-items:center;
+  position:relative;
+}
+.handcard.deal{animation:deal .4s cubic-bezier(.2,1,.4,1);}
+@keyframes deal{0%{transform:translateY(30px) rotate(2deg);opacity:0}100%{transform:translateY(0) rotate(0);opacity:1}}
+.hc-img{width:88px;height:108px;flex:0 0 auto;border-radius:3px;overflow:hidden;background:#ded0ad;border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;}
+.hc-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.hc-img .fallback{font-family:var(--mincho);font-size:34px;color:var(--shu);}
+.hc-body{flex:1;min-width:0;}
+.hc-cat{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px;}
+.hc-cat .s{width:26px;height:26px;border-radius:5px;background:var(--shu);color:#f6efdc;font-family:var(--mincho);font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;transform:rotate(-4deg);}
+.hc-cat .t{font-family:var(--mincho);font-size:12px;color:var(--ink2);letter-spacing:.14em;}
+.hc-name{font-family:var(--mincho);font-weight:800;font-size:20px;line-height:1.25;letter-spacing:.01em;word-break:break-word;}
+.hc-q{margin-top:7px;font-family:var(--mincho);color:var(--shu);font-size:13px;letter-spacing:.1em;}
+.hc-q .qm{font-size:22px;font-weight:800;letter-spacing:.15em;}
+
+/* toast */
+.toast{position:absolute;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);z-index:30;
+  max-width:88%;background:rgba(34,28,22,.95);color:#f3e9d2;padding:11px 16px;border-radius:7px;font-size:13px;line-height:1.5;
+  opacity:0;transition:.3s;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.4);text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast b{font-family:var(--mincho);color:#f0c96b;}
+
+/* ===== overlays ===== */
+.overlay{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:30px 26px calc(30px + env(safe-area-inset-bottom));text-align:center;
+  background:radial-gradient(120% 90% at 50% 0%, rgba(236,225,200,.97),rgba(227,214,184,.98));
+  backdrop-filter:blur(2px);}
+.overlay.hidden{display:none;}
+.ov-seal{width:74px;height:74px;border-radius:50%;background:var(--shu);color:#f6efdc;font-family:var(--mincho);font-weight:800;font-size:34px;display:flex;align-items:center;justify-content:center;transform:rotate(-8deg);box-shadow:0 4px 14px rgba(0,0,0,.25);margin-bottom:18px;}
+.overlay h2{font-family:var(--mincho);font-weight:800;font-size:30px;letter-spacing:.16em;margin:0 0 4px;}
+.overlay .lead{font-family:var(--mincho);font-size:13.5px;color:var(--ink2);letter-spacing:.06em;line-height:1.9;max-width:330px;margin:6px 0 22px;}
+.howto{display:flex;flex-direction:column;gap:12px;margin:6px 0 24px;width:100%;max-width:320px;}
+.howto .row{display:flex;gap:12px;align-items:flex-start;text-align:left;font-size:13px;line-height:1.55;color:var(--ink);}
+.howto .row .n{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--paper);font-family:var(--mincho);font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.howto .row b{font-family:var(--mincho);}
+.bigscore{font-family:var(--mincho);font-weight:800;font-size:64px;line-height:1;color:var(--shu);margin:4px 0;}
+.bigscore .u{font-size:20px;color:var(--ink2);margin-left:6px;}
+.subscore{font-family:var(--mincho);font-size:14px;color:var(--ink2);letter-spacing:.08em;margin-bottom:6px;}
+.newrec{font-family:var(--mincho);font-weight:800;color:var(--shu);letter-spacing:.2em;font-size:15px;margin:8px 0 4px;animation:blink 1s infinite;}
+@keyframes blink{50%{opacity:.4}}
+.btn{font-family:var(--mincho);font-weight:700;font-size:17px;letter-spacing:.14em;color:var(--paper);background:var(--ink);
+  border:none;border-radius:6px;padding:15px 40px;margin-top:6px;cursor:pointer;box-shadow:0 4px 0 #1a1610;transition:.08s;}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #1a1610;}
+.btn.shu{background:var(--shu);box-shadow:0 4px 0 #7d231a;}
+.btn.shu:active{box-shadow:0 1px 0 #7d231a;}
+.btn.ghost{background:transparent;color:var(--ink2);box-shadow:none;font-size:14px;padding:10px 20px;text-decoration:underline;letter-spacing:.08em;}
+.btnrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;}
+.creditline{margin-top:18px;font-size:11px;color:var(--ink2);letter-spacing:.05em;line-height:1.6;}
+.creditline a{color:var(--ink2);}
+.miniline{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px;max-width:340px;}
+.miniline .mc{font-family:var(--mincho);font-size:11px;color:var(--ink2);border:1px solid var(--line);border-radius:20px;padding:3px 10px;}
+
+.loading{position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:var(--paper);font-family:var(--mincho);letter-spacing:.2em;color:var(--ink2);}
+.spin{width:20px;height:20px;border:2px solid var(--line);border-top-color:var(--shu);border-radius:50%;display:inline-block;margin-right:10px;animation:sp .8s linear infinite;vertical-align:middle;}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand"><h1>ねんぴょう</h1><span class="sub">歴史を、順番に。</span></div>
+    <div class="stats">
+      <span class="stat"><b id="score">0</b><span class="lab">正解</span></span>
+      <span class="stat"><b id="best">0</b><span class="lab">最高</span></span>
+      <span class="combo-chip" id="combo">連鎖 ×<span id="comboN">0</span></span>
+      <span class="lives" id="lives"></span>
+    </div>
+  </header>
+
+  <div class="railwrap">
+    <div class="railhint" id="railhint">古い ← 年表 → 新しい</div>
+    <div class="rail" id="rail"></div>
+  </div>
+
+  <div class="dock">
+    <div class="deck-label" id="deckLabel">この札を、年表の正しい位置に差し込め</div>
+    <div class="handcard" id="hand">
+      <div class="hc-img" id="hcImg"></div>
+      <div class="hc-body">
+        <div class="hc-cat"><span class="s" id="hcSeal">人</span><span class="t" id="hcCat">人物</span></div>
+        <div class="hc-name" id="hcName">—</div>
+        <div class="hc-q"><span class="qm">？？？</span> 年 — どこに入る？</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- intro -->
+  <div class="overlay" id="introOv">
+    <div class="ov-seal">年</div>
+    <h2>ねんぴょう</h2>
+    <div class="lead">人物・建物・できごと…<br>本物の歴史の札を、<b>古いほうから順に</b>年表へ差し込もう。</div>
+    <div class="howto">
+      <div class="row"><span class="n">1</span><div>下に出た<b>札</b>の年代を推理する（年は伏せられている）。</div></div>
+      <div class="row"><span class="n">2</span><div>上の年表で、入ると思う<b>すき間（▼）をタップ</b>。</div></div>
+      <div class="row"><span class="n">3</span><div>正しい位置なら年表が伸びて<b>連鎖</b>。間違えると<b>札を失う</b>。</div></div>
+    </div>
+    <button class="btn shu" id="startBtn">はじめる</button>
+    <div class="creditline">データ：Wikipedia / Wikidata の実データ（CC BY-SA）</div>
+  </div>
+
+  <!-- game over -->
+  <div class="overlay hidden" id="overOv">
+    <div class="ov-seal" id="overSeal">了</div>
+    <h2 id="overTitle">年表、ここまで</h2>
+    <div id="newRec" class="newrec" style="display:none">★ 自己ベスト更新 ★</div>
+    <div class="bigscore"><span id="finalScore">0</span><span class="u">枚正解</span></div>
+    <div class="subscore">最高記録 <span id="finalBest">0</span> 枚 ／ 最長連鎖 ×<span id="finalCombo">0</span></div>
+    <div class="miniline" id="recapLine"></div>
+    <div class="btnrow" style="margin-top:20px">
+      <button class="btn shu" id="retryBtn">もう一回</button>
+      <button class="btn" id="shareBtn">記録をシェア</button>
+    </div>
+    <button class="btn ghost" id="howBtn">遊び方</button>
+  </div>
+
+  <div class="loading" id="loading"><span class="spin"></span>札を集めています…</div>
+</div>
+
+<script>
+"use strict";
+/* ===================== data / config ===================== */
+const CAT = {
+  "人物":   {k:"人", label:"人物"},
+  "建造物": {k:"築", label:"建物・場所"},
+  "戦争":   {k:"戦", label:"できごと"},
+  "書籍":   {k:"書", label:"書物"},
+  "映画":   {k:"映", label:"映画"},
+  "ゲーム": {k:"遊", label:"ゲーム"},
+  "音楽":   {k:"音", label:"音楽"},
+  "乗り物": {k:"船", label:"乗り物"},
+};
+const META = {
+  score:0, best:0, combo:0, maxCombo:0, lives:3, maxLives:3,
+  timeline:[],   // [{n,y,c,i,wrong}] sorted ascending by y
+  current:null,  // drawn card {n,y,c,i}
+  pool:[],       // remaining undrawn items
+  all:[],        // full dataset
+  phase:"intro", // intro | placing | resolving | over
+  cursor:0,
+};
+const LS_KEY="nenpyo_best_v1";
+
+/* ===================== helpers ===================== */
+const $=s=>document.querySelector(s);
+function eraSpan(y){
+  if(y<0) return `<span class="bce">前</span>${-y}<span class="suf">年</span>`;
+  return `${y}<span class="suf">年</span>`;
+}
+function thumb(url,w){ return url + (url.includes("?")?"&":"?") + "width="+w; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(audioRandom()* (i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+// deterministic-ish random without Date/Math.random ban issues — Math.random is fine in browser
+function audioRandom(){ return Math.random(); }
+
+/* ===================== audio (Web Audio + iOS unlock) ===================== */
+let AC=null, silentEl=null, audioReady=false;
+function makeSilentWav(){
+  const sr=8000,len=sr*1; const buf=new ArrayBuffer(44+len*2); const v=new DataView(buf);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  w(0,"RIFF");v.setUint32(4,36+len*2,true);w(8,"WAVE");w(12,"fmt ");
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);
+  w(36,"data");v.setUint32(40,len*2,true);
+  const blob=new Blob([buf],{type:"audio/wav"}); return URL.createObjectURL(blob);
+}
+async function unlockAudio(){
+  if(audioReady) return;
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    if(!silentEl){
+      silentEl=new Audio(makeSilentWav()); silentEl.loop=true; silentEl.volume=0.01;
+      silentEl.setAttribute("playsinline","");
+    }
+    silentEl.play().catch(()=>{});
+    await AC.resume();
+    AC.onstatechange=()=>{ if(AC.state==="interrupted"||AC.state==="suspended"){ AC.resume().catch(()=>{}); } };
+    audioReady=(AC.state==="running");
+  }catch(e){ audioReady=false; }
+}
+function tone(freq,dur,type="sine",gain=0.18,when=0,slideTo=null){
+  if(!AC||AC.state!=="running") return;
+  const t=AC.currentTime+when;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type; o.frequency.setValueAtTime(freq,t);
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo,t+dur);
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(gain,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0008,t+dur);
+  o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur+0.02);
+}
+const sfx={
+  tap:()=>tone(420,0.05,"triangle",0.12),
+  deal:()=>{tone(300,0.08,"sine",0.1);tone(450,0.09,"sine",0.07,0.04);},
+  correct:(c)=>{const base=523.25;tone(base,0.12,"triangle",0.16);tone(base*1.5,0.16,"triangle",0.13,0.07);
+    if(c>=3)tone(base*2,0.18,"sine",0.1,0.14);},
+  wrong:()=>{tone(220,0.18,"sawtooth",0.14,0,110);tone(160,0.25,"square",0.08,0.05);},
+  life:()=>{tone(700,0.1,"sine",0.12);tone(900,0.12,"sine",0.1,0.08);tone(1200,0.14,"sine",0.08,0.16);},
+  over:()=>{[440,392,330,262].forEach((f,i)=>tone(f,0.3,"triangle",0.14,i*0.16));},
+};
+
+/* ===================== rendering ===================== */
+function renderStats(){
+  $("#score").textContent=META.score;
+  $("#best").textContent=META.best;
+  const cc=$("#combo");
+  if(META.combo>=2){ cc.classList.add("on"); $("#comboN").textContent=META.combo; }
+  else cc.classList.remove("on");
+  const lv=$("#lives"); lv.innerHTML="";
+  for(let i=0;i<META.maxLives;i++){
+    const d=document.createElement("span");
+    d.className="seal-life"+(i<META.lives?"":" gone");
+    lv.appendChild(d);
+  }
+}
+function tileHTML(it){
+  const cat=CAT[it.c]||{k:"史"};
+  return `<div class="miniseal">${cat.k}</div>
+    <div class="yr">${eraSpan(it.y)}</div>
+    <div class="nm">${escapeHtml(it.n)}</div>`;
+}
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function renderRail(){
+  const rail=$("#rail");
+  rail.innerHTML="";
+  const active=(META.phase==="placing");
+  rail.classList.toggle("active",active);
+  const L=META.timeline.length;
+  for(let i=0;i<=L;i++){
+    const gap=document.createElement("div");
+    gap.className="gap"+(active&&i===META.cursor?" cursor":"");
+    gap.dataset.gap=i; gap.innerHTML='<div class="bar"></div>';
+    rail.appendChild(gap);
+    if(i<L){
+      const t=document.createElement("div");
+      const it=META.timeline[i];
+      t.className="tile"+(it._just?" just":"")+(it.wrong?" miss":"");
+      t.innerHTML=tileHTML(it);
+      rail.appendChild(t);
+      it._just=false;
+    }
+  }
+}
+function renderHand(){
+  const it=META.current;
+  const cat=CAT[it.c]||{k:"史",label:"歴史"};
+  $("#hcSeal").textContent=cat.k;
+  $("#hcCat").textContent=cat.label;
+  $("#hcName").textContent=it.n;
+  const box=$("#hcImg");
+  box.innerHTML=`<div class="fallback">${cat.k}</div>`;
+  const img=new Image();
+  img.alt=it.n;
+  img.onload=()=>{ box.innerHTML=""; box.appendChild(img); };
+  img.onerror=()=>{ /* keep fallback kanji */ };
+  img.src=thumb(it.i,260);
+  const h=$("#hand"); h.classList.remove("deal"); void h.offsetWidth; h.classList.add("deal");
+}
+function scrollToCursor(){
+  const rail=$("#rail");
+  const g=rail.querySelector(".gap.cursor")||rail.querySelector('[data-gap="'+META.cursor+'"]');
+  if(g){ const target=g.offsetLeft - rail.clientWidth/2 + g.offsetWidth/2;
+    rail.scrollTo({left:Math.max(0,target),behavior:"smooth"}); }
+}
+
+/* ===================== toast ===================== */
+let toastTimer=null;
+function toast(html,ms=2600){
+  const t=$("#toast"); t.innerHTML=html; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),ms);
+}
+
+/* ===================== game flow ===================== */
+function newGame(){
+  META.score=0; META.combo=0; META.maxCombo=0; META.lives=META.maxLives;
+  META.pool=shuffle(META.all.slice());
+  META.timeline=[];
+  // seed with one card
+  const seed=META.pool.pop();
+  META.timeline.push({...seed,wrong:false});
+  META.phase="placing";
+  $("#overOv").classList.add("hidden");
+  $("#introOv").classList.add("hidden");
+  renderStats();
+  draw();
+}
+function draw(){
+  if(META.pool.length===0){ META.pool=shuffle(META.all.filter(x=>!inTimeline(x))); }
+  // avoid duplicate of something already on timeline
+  let next=null;
+  while(META.pool.length){ const c=META.pool.pop(); if(!inTimeline(c)){ next=c; break; } }
+  if(!next){ // exhausted (huge run) — recycle
+    META.pool=shuffle(META.all.slice()); next=META.pool.pop();
+  }
+  META.current=next;
+  META.phase="placing";
+  // default cursor near middle
+  META.cursor=Math.min(META.timeline.length,Math.round(META.timeline.length/2));
+  renderHand();
+  renderRail();
+  $("#deckLabel").textContent="この札を、年表の正しい位置に差し込め";
+  scrollToCursor();
+}
+function inTimeline(c){ return META.timeline.some(t=>t.n===c.n); }
+
+function correctIndexFor(y){
+  let lo=0,hi=0;
+  for(const t of META.timeline){ if(t.y<y)lo++; if(t.y<=y)hi++; }
+  return {lo,hi};
+}
+function place(gapIndex){
+  if(META.phase!=="placing"||!META.current) return;
+  META.phase="resolving";
+  const it=META.current;
+  const {lo,hi}=correctIndexFor(it.y);
+  const ok=(gapIndex>=lo&&gapIndex<=hi);
+  const insertAt=lo; // canonical correct slot
+  if(ok){
+    sfx.correct(META.combo+1);
+    META.score++; META.combo++; META.maxCombo=Math.max(META.maxCombo,META.combo);
+    const obj={...it,wrong:false,_just:true};
+    META.timeline.splice(insertAt,0,obj);
+    META.cursor=insertAt;
+    renderStats(); renderRail(); scrollAfter(insertAt);
+    // life reward every 12
+    if(META.score%12===0 && META.lives<META.maxLives){
+      META.lives++; sfx.life(); renderStats();
+      toast("📜 札を1枚回収！<b>残機+1</b>",1800);
+    }
+    flashGood();
+    setTimeout(()=>{ if(META.phase==="resolving"){ draw(); } },720);
+  }else{
+    sfx.wrong();
+    META.combo=0; META.lives--;
+    flashBad(gapIndex);
+    const obj={...it,wrong:true,_just:false};
+    META.timeline.splice(insertAt,0,obj);
+    renderStats();
+    setTimeout(()=>{ renderRail(); scrollAfter(insertAt); },380);
+    showAnswer(it);
+    if(META.lives<=0){
+      setTimeout(gameOver,1500);
+    }else{
+      setTimeout(()=>{ if(META.phase==="resolving"){ draw(); } },2100);
+    }
+  }
+}
+function scrollAfter(idx){
+  setTimeout(()=>{
+    const rail=$("#rail");
+    const tiles=rail.querySelectorAll(".tile");
+    const t=tiles[idx];
+    if(t){ const target=t.offsetLeft - rail.clientWidth/2 + t.offsetWidth/2;
+      rail.scrollTo({left:Math.max(0,target),behavior:"smooth"}); }
+  },60);
+}
+function flashGood(){ $("#railhint").textContent="正解！"; setTimeout(()=>{ $("#railhint").textContent="古い ← 年表 → 新しい"; },800); }
+function flashBad(gapIndex){
+  const g=$("#rail").querySelector('[data-gap="'+gapIndex+'"]');
+  if(g){ g.classList.add("flashbad"); setTimeout(()=>g.classList.remove("flashbad"),450); }
+}
+
+/* live Wikipedia REST summary for the teaching toast */
+async function showAnswer(it){
+  const eraTxt=it.y<0?("紀元前"+(-it.y)+"年"):(it.y+"年");
+  toast(`正解は <b>${escapeHtml(eraTxt)}</b> ｜ ${escapeHtml(it.n)}`,2300);
+  try{
+    const title=encodeURIComponent(it.n);
+    const r=await fetch(`https://ja.wikipedia.org/api/rest_v1/page/summary/${title}?redirect=true`,{headers:{"Accept":"application/json"}});
+    if(!r.ok) return;
+    const j=await r.json();
+    let ex=(j.extract||"").trim();
+    if(ex){ if(ex.length>78) ex=ex.slice(0,78)+"…";
+      toast(`正解は <b>${escapeHtml(eraTxt)}</b><br>${escapeHtml(it.n)}：${escapeHtml(ex)}`,3200); }
+  }catch(e){/* offline-safe */}
+}
+
+function gameOver(){
+  META.phase="over";
+  if(META.score>META.best){ META.best=META.score; saveBest(); $("#newRec").style.display="block"; }
+  else $("#newRec").style.display="none";
+  $("#finalScore").textContent=META.score;
+  $("#finalBest").textContent=META.best;
+  $("#finalCombo").textContent=META.maxCombo;
+  // recap: show a few notable spread items from the built timeline
+  const tl=META.timeline.slice().sort((a,b)=>a.y-b.y);
+  const picks=[]; const step=Math.max(1,Math.floor(tl.length/5));
+  for(let i=0;i<tl.length&&picks.length<5;i+=step) picks.push(tl[i]);
+  $("#recapLine").innerHTML=picks.map(p=>`<span class="mc">${p.y<0?"前"+(-p.y):p.y} ${escapeHtml(p.n)}</span>`).join("");
+  $("#overTitle").textContent = META.score>=20?"歴史の達人！" : META.score>=10?"なかなかの目利き" : "年表、ここまで";
+  sfx.over();
+  $("#overOv").classList.remove("hidden");
+}
+
+/* ===================== persistence ===================== */
+function loadBest(){ try{ META.best=parseInt(localStorage.getItem(LS_KEY)||"0",10)||0; }catch(e){ META.best=0; } }
+function saveBest(){ try{ localStorage.setItem(LS_KEY,String(META.best)); }catch(e){} }
+
+/* ===================== input ===================== */
+function onRailPointer(e){
+  if(META.phase!=="placing") return;
+  const g=e.target.closest(".gap");
+  if(!g) return;
+  unlockAudio();
+  sfx.tap();
+  const idx=parseInt(g.dataset.gap,10);
+  META.cursor=idx;
+  place(idx);
+}
+function onKey(e){
+  if(META.phase==="placing"){
+    if(e.key==="ArrowLeft"){ META.cursor=Math.max(0,META.cursor-1); renderRail(); scrollToCursor(); e.preventDefault(); }
+    else if(e.key==="ArrowRight"){ META.cursor=Math.min(META.timeline.length,META.cursor+1); renderRail(); scrollToCursor(); e.preventDefault(); }
+    else if(e.key==="Enter"||e.key===" "){ unlockAudio(); sfx.tap(); place(META.cursor); e.preventDefault(); }
+  }else if(META.phase==="over"){
+    if(e.key==="Enter"||e.key===" "){ unlockAudio(); newGame(); e.preventDefault(); }
+  }
+}
+
+/* double-tap zoom guard (iOS) */
+let lastTouch=0;
+function guardDoubleTap(){
+  document.addEventListener("touchend",e=>{
+    const now=performance.now();
+    if(now-lastTouch<350){ e.preventDefault(); }
+    lastTouch=now;
+  },{passive:false});
+  document.addEventListener("dblclick",e=>e.preventDefault());
+  document.addEventListener("gesturestart",e=>e.preventDefault());
+}
+
+/* ===================== boot ===================== */
+async function boot(){
+  loadBest();
+  renderStats();
+  guardDoubleTap();
+  $("#rail").addEventListener("pointerup",onRailPointer);
+  window.addEventListener("keydown",onKey);
+  $("#startBtn").addEventListener("pointerup",()=>{ unlockAudio(); sfx.deal(); newGame(); });
+  $("#retryBtn").addEventListener("pointerup",()=>{ unlockAudio(); sfx.deal(); newGame(); });
+  $("#howBtn").addEventListener("pointerup",()=>{ $("#overOv").classList.add("hidden"); $("#introOv").classList.remove("hidden"); });
+  $("#shareBtn").addEventListener("pointerup",doShare);
+  try{
+    const r=await fetch("./data.json",{cache:"force-cache"});
+    META.all=await r.json();
+    if(!Array.isArray(META.all)||META.all.length<20) throw new Error("bad data");
+  }catch(e){
+    $("#loading").innerHTML="データの読み込みに失敗しました。<br>通信環境をご確認ください。";
+    return;
+  }
+  $("#loading").style.display="none";
+}
+function doShare(){
+  const txt=`ねんぴょうで歴史の札を ${META.score}枚 正しく並べた！（最高 ${META.best}枚）`;
+  const url="https://nrtkumi.github.io/games/nenpyo/";
+  if(navigator.share){ navigator.share({title:"ねんぴょう",text:txt,url}).catch(()=>{}); }
+  else{ window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent(txt)+"&url="+encodeURIComponent(url),"_blank"); }
+}
+boot();
+</script>
+</body>
+</html>
