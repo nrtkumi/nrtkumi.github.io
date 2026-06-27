@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>面子 — MENTSU 麻雀ソリティア</title>
+<meta name="description" content="自由な牌を同じ絵柄2枚で消していく麻雀ソリティア。役を作れば倍率、時間と戦い、強化を引いて何面も巡るローグライト。">
+<meta property="og:title" content="面子 — MENTSU 麻雀ソリティア">
+<meta property="og:description" content="自由な牌を同じ絵柄2枚で消していく麻雀ソリティア。役を作れば倍率、時間と戦い、強化を引いて何面も巡るローグライト。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/mentsu/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/mentsu/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt:#1f5c45; --felt2:#17452f; --ivory:#f3ead2; --ivory2:#e2d4ac;
+    --ink:#23201a; --paper:#f3ecdb; --muted:#bcae8e;
+    --man:#b23b2e; --pin:#2a5c8a; --sou:#3f7d46; --honor:#2a2620;
+    --gold:#d3a64a; --brass:#caa46e;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  html,body{height:100%;}
+  body{ background:#0d130f; color:var(--paper);
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    overflow:hidden; overscroll-behavior:none;
+    -webkit-touch-callout:none; user-select:none; -webkit-user-select:none;
+    display:flex; flex-direction:column; align-items:center;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+  .wrap{ position:relative;
+    width:min(100vw,480px,calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 0.60));
+    height:100%; margin:0 auto;
+    background:radial-gradient(120% 80% at 50% 30%, #246b50, #143c2a);
+    box-shadow:0 0 40px rgba(0,0,0,.6);
+    display:flex; flex-direction:column; }
+  .hud{ display:flex; align-items:center; gap:9px; padding:8px 11px 5px; flex:0 0 auto;
+    border-bottom:1px solid rgba(0,0,0,.25); }
+  .hud .b{ font-family:"Shippori Mincho",serif; font-weight:700; font-size:.7rem; color:#bfe0cf; line-height:1.1; }
+  .hud .b b{ display:block; color:#fff; font-size:.96rem; }
+  .hud .sp{ flex:1; }
+  .ic{ width:30px;height:30px;border-radius:7px;border:1px solid rgba(0,0,0,.3);
+    background:rgba(0,0,0,.2); color:#f3ecdb; font-size:.85rem; display:flex;align-items:center;justify-content:center; }
+  .ic:active{ background:rgba(0,0,0,.4); }
+  .timebar{ height:7px; background:rgba(0,0,0,.3); margin:0 11px; border-radius:4px; overflow:hidden; flex:0 0 auto; }
+  .timebar > i{ display:block; height:100%; width:100%; background:linear-gradient(90deg,#d3a64a,#e9c25f); transition:width .1s linear; }
+  canvas{ display:block; touch-action:none; flex:1 1 auto; width:100%; }
+
+  .overlay{ position:absolute; inset:0; z-index:10; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; padding:26px 24px;
+    background:radial-gradient(120% 90% at 50% 25%, rgba(20,60,42,.5), rgba(6,12,8,.92)); }
+  .overlay.hidden{ display:none; }
+  .title{ font-family:"Shippori Mincho",serif; font-weight:800; font-size:3.2rem; letter-spacing:.16em;
+    color:var(--paper); text-shadow:0 2px 0 #000, 0 0 28px rgba(211,166,74,.4); }
+  .title .en{ display:block; font-size:.78rem; letter-spacing:.5em; color:var(--gold); margin-top:8px; }
+  .sub{ color:#cfe2d6; font-size:.86rem; line-height:1.8; margin-top:18px; max-width:18em; }
+  .sub b{ color:var(--paper); }
+  .btn{ margin-top:22px; font-family:"Shippori Mincho",serif; font-weight:800; font-size:1.1rem; letter-spacing:.14em;
+    color:#23201a; background:linear-gradient(#e9c25f,#cf9a37); border:none; border-radius:10px; padding:13px 40px;
+    box-shadow:0 4px 0 #7a5418, 0 6px 14px rgba(0,0,0,.4); }
+  .btn:active{ transform:translateY(2px); box-shadow:0 2px 0 #7a5418; }
+  .btn.sm{ font-size:.92rem; padding:10px 22px; margin-top:14px; background:linear-gradient(#3a6b54,#245840); color:#f3ecdb; box-shadow:0 3px 0 #143626; }
+  .best{ color:var(--gold); font-size:.78rem; margin-top:16px; font-family:"Shippori Mincho",serif; }
+  .cards{ display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; justify-content:center; }
+  .card{ width:128px; background:rgba(243,234,210,.96); border:2px solid var(--brass); border-radius:12px;
+    padding:14px 10px; color:var(--ink); box-shadow:0 5px 14px rgba(0,0,0,.4); }
+  .card:active{ transform:translateY(2px); }
+  .card .nm{ font-family:"Shippori Mincho",serif; font-weight:800; font-size:1.02rem; color:#1f5c45; }
+  .card .ds{ font-size:.72rem; line-height:1.5; margin-top:7px; color:#5a4d36; }
+  .rule{ background:rgba(243,234,210,.97); border:1px solid var(--brass); border-radius:12px; padding:16px 18px; max-width:20em; }
+  .rule h3{ font-family:"Shippori Mincho",serif; color:#1f5c45; font-size:1rem; margin-bottom:8px; }
+  .rule p{ color:var(--ink); font-size:.8rem; line-height:1.75; text-align:left; }
+  .rule p span{ color:#7a6c4c; }
+  .head{ font-family:"Shippori Mincho",serif; font-weight:800; font-size:2rem; color:var(--paper); }
+  .head.good{ color:#9fe0b0; } .head.bad{ color:#e0a07a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hud">
+    <div class="b">手<b id="hLv">1</b></div>
+    <div class="b">得点<b id="hScore">0</b></div>
+    <div class="b">連<b id="hCombo">×1</b></div>
+    <div class="b">役<b id="hYaku">—</b></div>
+    <div class="sp"></div>
+    <button class="ic" id="btnShuf" title="洗牌">🀄</button>
+    <button class="ic" id="btnRule">?</button>
+    <button class="ic" id="btnMute">♪</button>
+  </div>
+  <div class="timebar"><i id="timeFill"></i></div>
+  <canvas id="cv"></canvas>
+
+  <div class="overlay" id="ovStart">
+    <div class="title">面子<span class="en">MENTSU</span></div>
+    <div class="sub"><b>自由な牌</b>(上が空いて左右どちらか空き)を、<br>同じ絵柄<b>2枚タップ</b>で消す。<br><b>役</b>を作れば倍率、時間と戦い、<br>強化を引いて何面も巡る。</div>
+    <button class="btn" id="btnStart">卓に着く</button>
+    <div class="best" id="bestLine"></div>
+  </div>
+
+  <div class="overlay hidden" id="ovRule">
+    <div class="rule">
+      <h3>遊び方</h3>
+      <p>① <b>自由な牌</b>=上に牌が乗っておらず、左か右が空いている牌。<br><br>
+      ② 同じ絵柄の自由牌を<span>2枚タップ</span>で取り除く。全部消せばその手は完了。<br><br>
+      ③ 続けて取ると<b>連(コンボ)</b>で倍率上昇。手早く取るほど高得点。<br><br>
+      ④ <b>役</b>(同種・三色・役牌)で大きなボーナス。<br><br>
+      ⑤ 時間が尽きるか手詰まり(洗牌切れ)で仕事じまい。強化のお守りを選んで巡れ。</p>
+    </div>
+    <button class="btn sm" id="btnRuleClose">閉じる</button>
+  </div>
+
+  <div class="overlay hidden" id="ovUp">
+    <div class="head good">和了!</div>
+    <div class="sub" id="upSub"></div>
+    <div class="cards" id="upCards"></div>
+  </div>
+
+  <div class="overlay hidden" id="ovEnd">
+    <div class="head bad" id="endHead">仕事じまい</div>
+    <div class="sub" id="endSub"></div>
+    <button class="btn" id="btnAgain">もう一局</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* anti double-tap zoom */
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{const n=Date.now();if(n-lastTouchEnd<=350)e.preventDefault();lastTouchEnd=n;},{passive:false});
+document.addEventListener('dblclick',e=>e.preventDefault());
+document.addEventListener('gesturestart',e=>e.preventDefault());
+/* iOS audio */
+let AC=null,muted=false;
+function audio(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+  AC.onstatechange=()=>{if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}} return AC; }
+let silentEl=null;
+function silentWavUrl(){ const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);
+  str(36,"data");v.setUint32(40,n,true); for(let i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"})); }
+function unlockAudio(){ if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  const p=silentEl.play();if(p&&p.catch)p.catch(()=>{}); audio();if(!AC)return;
+  const done=()=>{if(AC.state==="running"){["pointerdown","pointerup","touchend","click"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true));}};
+  try{AC.resume().then(done);}catch(e){done();} }
+["pointerdown","pointerup","touchend","click"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){ if(muted||!audio())return;
+  try{const o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){} }
+function noise(d,vol){ if(muted||!audio())return; try{const n=Math.floor(AC.sampleRate*d);
+    const buf=AC.createBuffer(1,n,AC.sampleRate);const data=buf.getChannelData(0);
+    for(let i=0;i<n;i++)data[i]=(Math.random()*2-1)*(1-i/n);
+    const src=AC.createBufferSource();src.buffer=buf;const g=AC.createGain();g.gain.value=vol||0.05;
+    src.connect(g);g.connect(AC.destination);src.start();}catch(e){} }
+const vibe=ms=>{try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}};
+const sSel=()=>tone(560,0.05,"sine",0.05,720);
+const sClink=()=>{tone(880,0.05,"triangle",0.05);noise(0.04,0.03);};
+const sErr=()=>tone(160,0.1,"sawtooth",0.05,100);
+const sYaku=()=>[660,880,1100,1320].forEach((f,i)=>setTimeout(()=>tone(f,0.18,"triangle",0.06),i*70));
+const sBoard=()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,0.22,"sine",0.06),i*100));
+const sTool=()=>[784,1047].forEach((f,i)=>setTimeout(()=>tone(f,0.13,"triangle",0.05),i*60));
+const sLow=()=>tone(330,0.18,"sine",0.05);
+const sOver=()=>[392,311,247,196].forEach((f,i)=>setTimeout(()=>tone(f,0.32,"sawtooth",0.05),i*150));
+
+/* persistence */
+const store={ load(k,fb){try{const r=localStorage.getItem(k);return r?JSON.parse(r):fb;}catch{return fb;}},
+  save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}} };
+let best=store.load("mentsu_best",{score:0,level:0});
+
+/* faces */
+// suit: 'man'|'pin'|'sou' with n 1..9 ; honor: 'E','S','W','N','chun','hatsu','haku'
+const FACE_POOL=[];
+['man','pin','sou'].forEach(s=>{ for(let n=1;n<=9;n++) FACE_POOL.push({suit:s,n}); });
+[['E','東'],['S','南'],['W','西'],['N','北'],['chun','中'],['hatsu','發'],['haku','白']].forEach(([k,t])=>FACE_POOL.push({honor:k,t}));
+function faceKey(f){ return f.honor?('H'+f.honor):(f.suit+f.n); }
+function randomFace(){ return FACE_POOL[Math.floor(Math.random()*FACE_POOL.length)]; }
+function isTerminalOrHonor(f){ return f.honor || f.n===1 || f.n===9; }
+
+/* state */
+let scene="start";
+let level=1, score=0;
+let tiles=[];            // {id,col,row,z,face,removed,dora,sx,sy,w,h, sel}
+let solutionOrder=[];    // [[idA,idB],...] guaranteed-solvable order (for shuffle/E2E)
+let selId=-1;
+let timeLeft=0, timeMax=0;
+let combo=1, comboTimer=0, comboWindow=2.4;
+let charges={shuffle:2, hint:2, undo:1};
+let history=[];
+let recentSuits=[];      // for yaku window
+let yakuText="—", yakuTimer=0;
+let floats=[], parts=[];
+let toast="", toastT=0;
+let tNow=0, last=0;
+let hintPair=null, hintTimer=0;
+
+/* ---- free-tile rules ---- */
+function alive(){ return tiles.filter(t=>!t.removed); }
+function coveredBy(t){ // any non-removed tile at z+1 same col,row
+  return tiles.some(o=>!o.removed&&o.z===t.z+1&&o.col===t.col&&o.row===t.row); }
+function sideBlocked(t,dir){ return tiles.some(o=>!o.removed&&o.z===t.z&&o.row===t.row&&o.col===t.col+dir); }
+function isFreeIn(t,arr){
+  if(t.removed) return false;
+  if(arr.some(o=>o!==t&&!o.removed&&o.z===t.z+1&&o.col===t.col&&o.row===t.row)) return false;
+  const l=arr.some(o=>o!==t&&!o.removed&&o.z===t.z&&o.row===t.row&&o.col===t.col-1);
+  const r=arr.some(o=>o!==t&&!o.removed&&o.z===t.z&&o.row===t.row&&o.col===t.col+1);
+  return !(l&&r);
+}
+function isFree(t){ return isFreeIn(t,tiles); }
+function freeTiles(){ return tiles.filter(t=>!t.removed && isFree(t)); }
+function freeMatchExists(){ const fr=freeTiles(); const m={}; for(const t of fr){ const k=faceKey(t.face); if(m[k])return true; m[k]=1; } return false; }
+
+/* ---- layout ---- */
+function layoutSlots(level){
+  const slots=[];
+  const layers = level<3?2:3;
+  const cols = 5 + Math.min(3, Math.floor((level-1)/2)); // 5..8
+  const rows = 4 + Math.min(2, Math.floor((level-1)/3)); // 4..6
+  for(let z=0;z<layers;z++){
+    const ins=z;
+    for(let r=ins;r<rows-ins;r++) for(let c=ins;c<cols-ins;c++) slots.push({col:c,row:r,z});
+  }
+  if(slots.length%2===1) slots.pop();
+  return slots;
+}
+/* assign solvable faces via reverse-removal construction */
+function buildBoard(level){
+  for(let attempt=0;attempt<40;attempt++){
+    const slots=layoutSlots(level);
+    const arr=slots.map((s,i)=>({...s,id:i,removed:false}));
+    const present=arr.slice();
+    const order=[];
+    let ok=true;
+    const work=arr.map(t=>({...t}));
+    // simulate removals on a copy
+    const live=work;
+    const isFreeW=(t)=>{
+      if(t._gone) return false;
+      if(live.some(o=>o!==t&&!o._gone&&o.z===t.z+1&&o.col===t.col&&o.row===t.row)) return false;
+      const l=live.some(o=>o!==t&&!o._gone&&o.z===t.z&&o.row===t.row&&o.col===t.col-1);
+      const r=live.some(o=>o!==t&&!o._gone&&o.z===t.z&&o.row===t.row&&o.col===t.col+1);
+      return !(l&&r);
+    };
+    let remaining=live.length;
+    while(remaining>0){
+      const fr=live.filter(t=>!t._gone && isFreeW(t));
+      if(fr.length<2){ ok=false; break; }
+      // pick two random free
+      const a=fr[Math.floor(Math.random()*fr.length)];
+      let b=fr[Math.floor(Math.random()*fr.length)]; let guard=0;
+      while(b===a && guard++<10) b=fr[Math.floor(Math.random()*fr.length)];
+      if(b===a){ b=fr.find(x=>x!==a); }
+      a._gone=true; b._gone=true; remaining-=2;
+      order.push([a.id,b.id]);
+    }
+    if(!ok) continue;
+    // assign faces per pair
+    const faceMap={};
+    order.forEach(([i,j],idx)=>{ const f=randomFace(); faceMap[i]=f; faceMap[j]=f; });
+    // dora: mark one random pair
+    const doraPair = order.length? order[Math.floor(Math.random()*order.length)] : null;
+    tiles=arr.map(t=>({ id:t.id, col:t.col, row:t.row, z:t.z, face:faceMap[t.id],
+      removed:false, dora: doraPair && (t.id===doraPair[0]||t.id===doraPair[1]),
+      sx:0,sy:0,w:0,h:0, anim:0 }));
+    solutionOrder=order.slice();
+    return true;
+  }
+  return false;
+}
+
+/* ---- flow ---- */
+function startRun(){
+  scene="play"; level=1; score=0; combo=1;
+  charges={shuffle:2, hint:2, undo:1};
+  newBoard(); syncHud();
+}
+function newBoard(){
+  buildBoard(level);
+  selId=-1; history=[]; recentSuits=[]; combo=1; comboTimer=0;
+  timeMax= 55 + level*6 + tiles.length*0.6; timeLeft=timeMax;
+  yakuText="—"; syncHud();
+}
+function snapshot(){ return { tiles:tiles.map(t=>({id:t.id,removed:t.removed})), score, combo, time:timeLeft, recent:[...recentSuits] }; }
+function pushHistory(){ history.push(snapshot()); if(history.length>30)history.shift(); }
+
+function tapTile(id){
+  const t=tiles.find(x=>x.id===id); if(!t||t.removed) return;
+  if(!isFree(t)){ sErr(); shake(t); flash("動かせない牌"); return; }
+  if(selId<0){ selId=id; sSel(); vibe(4); return; }
+  if(selId===id){ selId=-1; return; }
+  const s=tiles.find(x=>x.id===selId);
+  if(!s || s.removed){ selId=id; return; }
+  if(faceKey(s.face)===faceKey(t.face)){ matchPair(s,t); }
+  else { selId=id; sSel(); } // switch selection
+}
+function matchPair(a,b){
+  pushHistory();
+  a.removed=true; b.removed=true; a.anim=1; b.anim=1; selId=-1;
+  // combo
+  if(comboTimer>0) combo++; else combo=1;
+  comboTimer=comboWindow;
+  // base score
+  let pts=Math.round(10*combo);
+  if(a.dora||b.dora){ pts*=3; floats.push(mkFloat(a,"ドラ ×3","#e9c25f")); }
+  // yaku
+  const yk=evalYaku(a.face);
+  if(yk){ pts+=yk.bonus; yakuText=yk.name; yakuTimer=2.2; floats.push(mkFloat(b, yk.name+" +"+yk.bonus, "#9fe0b0")); sYaku(); }
+  score+=pts; floats.push(mkFloat(a,"+"+pts,"#fff"));
+  // time reward
+  timeLeft=Math.min(timeMax, timeLeft+2.5);
+  sClink(); vibe(8);
+  for(let i=0;i<6;i++) parts.push({x:a.sx+a.w/2,y:a.sy+a.h/2,vx:(Math.random()-0.5)*3,vy:-Math.random()*3-1,r:2+Math.random()*2,col:suitColor(a.face),life:0.6});
+  best.score=Math.max(best.score,score); store.save("mentsu_best",best);
+  syncHud();
+  setTimeout(()=>checkState(),60);
+}
+function evalYaku(face){
+  // track recent matched faces (suit/honor/terminal)
+  const suit = face.honor? 'H' : face.suit;
+  recentSuits.push({suit, honor:face.honor, n:face.n, t:tNow});
+  if(recentSuits.length>8) recentSuits.shift();
+  // 役牌: dragon pair
+  if(face.honor==='chun'||face.honor==='hatsu'||face.honor==='haku') return {name:"役牌",bonus:60};
+  // 三色: man,pin,sou all matched within last 6
+  const win=recentSuits.slice(-6).map(r=>r.suit);
+  if(win.includes('man')&&win.includes('pin')&&win.includes('sou')){
+    // only fire once per fresh trio: clear suit markers after
+    if(!recentSuits._tri){ recentSuits._tri=true; return {name:"三色",bonus:90}; }
+  } else recentSuits._tri=false;
+  // 清一: last 3 matches same numbered suit
+  const last3=recentSuits.slice(-3);
+  if(last3.length===3 && last3.every(r=>r.suit===suit && suit!=='H')) return {name:"清一",bonus:70};
+  // 断么九: last 3 matches all simples (2-8, no honors)
+  if(last3.length===3 && last3.every(r=>!r.honor && r.n>=2 && r.n<=8)) return {name:"断么九",bonus:50};
+  return null;
+}
+function checkState(){
+  if(alive().length===0){ onBoardClear(); return; }
+  if(!freeMatchExists()){ onStuck(); }
+}
+function onBoardClear(){
+  const timeBonus=Math.round(timeLeft*4);
+  const lvlScore=100+level*30+timeBonus;
+  score+=lvlScore;
+  best.score=Math.max(best.score,score); best.level=Math.max(best.level,level); store.save("mentsu_best",best);
+  sBoard(); vibe(20); scene="boardclear";
+  upSub.innerHTML="第 "+level+" 局を和了。<br>+"+lvlScore+" 点(時間 +"+timeBonus+")";
+  buildUpgradeCards();
+  ovUp.classList.remove("hidden");
+}
+function onStuck(){
+  if(charges.shuffle>0){ flash("手詰まり…洗牌で再配置を"); sErr(); return; }
+  endRun("手詰まり。洗牌も尽きた。");
+}
+function endRun(reason){
+  scene="over"; sOver(); vibe(40);
+  endHead.textContent="仕事じまい"; endHead.className="head bad";
+  endSub.innerHTML=reason+"<br><br>到達: 第 "+level+" 局<br>得点 "+score+"<br><span style='color:#d3a64a'>最高 "+best.score+" 点 / 第 "+best.level+" 局</span>";
+  ovEnd.classList.remove("hidden");
+}
+
+/* shuffle: re-deal remaining faces to remaining slots, keep solvable */
+function doShuffle(fromTool){
+  if(scene!=="play") return;
+  if(fromTool && charges.shuffle<=0){ sErr(); flash("洗牌がない"); return; }
+  const live=tiles.filter(t=>!t.removed);
+  if(live.length<2) return;
+  // reconstruct a solvable order over current live slots, assign current multiset of faces
+  const faces=live.map(t=>t.face);
+  // group faces into pairs by key (they always pair up since matched in pairs)
+  // build removal order over live slots
+  const work=live.map(t=>({col:t.col,row:t.row,z:t.z,id:t.id,_gone:false}));
+  const isFreeW=(t)=>{ if(t._gone)return false;
+    if(work.some(o=>o!==t&&!o._gone&&o.z===t.z+1&&o.col===t.col&&o.row===t.row))return false;
+    const l=work.some(o=>o!==t&&!o._gone&&o.z===t.z&&o.row===t.row&&o.col===t.col-1);
+    const r=work.some(o=>o!==t&&!o._gone&&o.z===t.z&&o.row===t.row&&o.col===t.col+1);
+    return !(l&&r); };
+  const order=[]; let rem=work.length; let ok=true;
+  while(rem>0){ const fr=work.filter(t=>!t._gone&&isFreeW(t)); if(fr.length<2){ok=false;break;}
+    const a=fr[Math.floor(Math.random()*fr.length)]; let b=fr[Math.floor(Math.random()*fr.length)]; let g=0;
+    while(b===a&&g++<10)b=fr[Math.floor(Math.random()*fr.length)]; if(b===a)b=fr.find(x=>x!==a);
+    a._gone=true;b._gone=true;rem-=2;order.push([a.id,b.id]); }
+  if(!ok){ flash("配置できず"); return; }
+  // assign faces: distribute the existing faces grouped into matching pairs onto order pairs
+  const byKey={}; faces.forEach(f=>{ const k=faceKey(f); (byKey[k]=byKey[k]||[]).push(f); });
+  const pairFaces=[]; Object.keys(byKey).forEach(k=>{ const list=byKey[k]; for(let i=0;i+1<list.length;i+=2) pairFaces.push(list[i]); });
+  // shuffle pairFaces
+  for(let i=pairFaces.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pairFaces[i],pairFaces[j]]=[pairFaces[j],pairFaces[i]];}
+  order.forEach(([i,j],idx)=>{ const f=pairFaces[idx]||randomFace(); const ta=tiles.find(t=>t.id===i),tb=tiles.find(t=>t.id===j); ta.face=f; tb.face=f; });
+  solutionOrder=order.slice();
+  selId=-1; if(fromTool) charges.shuffle--; sTool(); flash("洗牌"); syncHud();
+}
+function useUndo(){ if(scene!=="play")return; if(!history.length||charges.undo<=0){ sErr(); flash(charges.undo<=0?"戻せる札がない":"戻せない"); return; }
+  const h=history.pop(); const map={}; h.tiles.forEach(x=>map[x.id]=x.removed);
+  tiles.forEach(t=>{ t.removed=map[t.id]; }); score=h.score; combo=h.combo; timeLeft=h.time; recentSuits=h.recent; charges.undo--; selId=-1; sTool(); flash("一手戻した"); syncHud(); }
+function useHint(){ if(scene!=="play")return; if(charges.hint<=0){ sErr(); flash("ヒントがない"); return; }
+  const fr=freeTiles(); const m={}; for(const t of fr){ const k=faceKey(t.face); if(m[k]){ hintPair=[m[k].id,t.id]; hintTimer=2.5; charges.hint--; sTool(); syncHud(); return; } m[k]=t; }
+  flash("自由な対子がない"); sErr(); }
+
+/* upgrades */
+const UPGRADES=[
+  {id:"time", nm:"延刻", ds:"持ち時間+20秒(この局)"},
+  {id:"hint", nm:"目利き", ds:"ヒント札 +2"},
+  {id:"shuf", nm:"洗牌符", ds:"洗牌札 +1"},
+  {id:"undo", nm:"待った", ds:"一手戻す札 +2"},
+  {id:"combo",nm:"連風", ds:"コンボ持続+0.8秒(以降ずっと)"},
+  {id:"slow", nm:"砂時計", ds:"時間の減りが遅くなる(以降ずっと)"},
+];
+let timeDrain=1.0;
+function buildUpgradeCards(){
+  const picks=[...UPGRADES].sort(()=>Math.random()-0.5).slice(0,3);
+  upCards.innerHTML="";
+  picks.forEach(u=>{ const el=document.createElement("div"); el.className="card";
+    el.innerHTML='<div class="nm">'+u.nm+'</div><div class="ds">'+u.ds+'</div>';
+    el.addEventListener("pointerdown",()=>{ applyUpgrade(u.id); sTool(); ovUp.classList.add("hidden");
+      level++; scene="play"; newBoard(); });
+    upCards.appendChild(el); });
+}
+function applyUpgrade(id){
+  if(id==="time") pendTime=20;
+  else if(id==="hint") charges.hint+=2;
+  else if(id==="shuf") charges.shuffle++;
+  else if(id==="undo") charges.undo+=2;
+  else if(id==="combo") comboWindow+=0.8;
+  else if(id==="slow") timeDrain=Math.max(0.6,timeDrain-0.12);
+}
+let pendTime=0;
+
+/* ---- canvas ---- */
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+let DPR=Math.min(devicePixelRatio||1,2.5), W=0, H=0;
+function resize(){ const r=cv.getBoundingClientRect(); W=Math.max(1,r.width); H=Math.max(1,r.height);
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); }
+window.addEventListener('resize',resize);
+
+let TW=0,TH=0,OX=0,OY=0,OZx=0,OZy=0;
+function computeTileLayout(){
+  if(!tiles.length) return;
+  let maxCol=0,maxRow=0,maxZ=0;
+  tiles.forEach(t=>{ maxCol=Math.max(maxCol,t.col); maxRow=Math.max(maxRow,t.row); maxZ=Math.max(maxZ,t.z); });
+  const colsN=maxCol+1, rowsN=maxRow+1;
+  const padX=12, padTop=12, padBot=58;
+  const availW=W-padX*2, availH=H-padTop-padBot;
+  OZx=0; OZy=0;
+  // tile size with small layer offset
+  let tw=Math.min(availW/(colsN+0.4), 64);
+  let th=tw*1.32;
+  // total drawn size, shrink to fit height
+  const ozx=tw*0.14, ozy=th*0.14;
+  const totalH=rowsN*th + maxZ*ozy;
+  if(totalH>availH){ const k=availH/totalH; tw*=k; th*=k; }
+  TW=tw; TH=th; OZx=tw*0.14; OZy=th*0.14;
+  const dW=colsN*TW + maxZ*OZx, dH=rowsN*TH + maxZ*OZy;
+  OX=padX+(availW-dW)/2 + maxZ*OZx; // shift so highest layer sits within
+  OY=padTop+(availH-dH)*0.42 + maxZ*OZy;
+  // compute screen rects
+  tiles.forEach(t=>{ t.sx=OX + t.col*TW - t.z*OZx; t.sy=OY + t.row*TH - t.z*OZy; t.w=TW; t.h=TH; });
+}
+function suitColor(f){ if(f.honor){ if(f.honor==='chun')return '#b23b2e'; if(f.honor==='hatsu')return '#3f7d46'; if(f.honor==='haku')return '#2a5c8a'; return '#2a2620'; }
+  return f.suit==='man'?'#b23b2e':f.suit==='pin'?'#2a5c8a':'#3f7d46'; }
+
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+  if(scene==="play"||scene==="boardclear"||scene==="over"){
+    computeTileLayout();
+    // draw tiles back-to-front: z asc, then row asc, col asc
+    const order=tiles.filter(t=>!t.removed).slice().sort((a,b)=> a.z-b.z || a.row-b.row || a.col-b.col);
+    order.forEach(drawTile);
+    // hint glow
+    if(hintTimer>0 && hintPair){ hintPair.forEach(id=>{ const t=tiles.find(x=>x.id===id); if(t&&!t.removed){
+      ctx.strokeStyle="rgba(233,194,95,"+(0.5+0.4*Math.sin(tNow*7))+")"; ctx.lineWidth=3; rr(t.sx-2,t.sy-2,t.w+4,t.h+4,6); ctx.stroke(); } }); }
+    drawToolbar();
+  }
+  floats.forEach(f=>{ ctx.globalAlpha=Math.max(0,f.life); ctx.fillStyle=f.col; ctx.font="800 16px 'Zen Kaku Gothic New'"; ctx.textAlign="center";
+    ctx.fillText(f.txt,f.x,f.y); ctx.globalAlpha=1; });
+  parts.forEach(p=>{ ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); ctx.globalAlpha=1; });
+  drawToast();
+}
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawTile(t){
+  const x=t.sx, y=t.sy, w=t.w, h=t.h;
+  const free=isFree(t);
+  // 3D side
+  ctx.fillStyle="#b59b5e"; rr(x+3,y+4,w,h,6); ctx.fill();
+  // face
+  ctx.fillStyle = (selId===t.id)? "#fff4d0" : (t.dora? "#fff0c6":"#f3ead2");
+  rr(x,y,w,h,6); ctx.fill();
+  ctx.strokeStyle = (selId===t.id)? "#1f5c45" : "rgba(120,100,60,.5)"; ctx.lineWidth=(selId===t.id)?2.5:1.2; rr(x,y,w,h,6); ctx.stroke();
+  if(!free){ ctx.fillStyle="rgba(40,30,15,.18)"; rr(x,y,w,h,6); ctx.fill(); }
+  if(t.dora){ ctx.strokeStyle="#d3a64a"; ctx.lineWidth=2; rr(x+2,y+2,w-4,h-4,5); ctx.stroke(); }
+  drawFace(t.face,x,y,w,h);
+}
+function drawFace(f,x,y,w,h){
+  const cx=x+w/2, cy=y+h/2; const col=suitColor(f);
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  if(f.honor){ ctx.fillStyle=col; ctx.font="800 "+Math.round(h*0.5)+"px 'Shippori Mincho'"; ctx.fillText(f.t,cx,cy+1);
+    if(f.honor==='haku'){ ctx.strokeStyle="#2a5c8a"; ctx.lineWidth=1.5; rr(x+w*0.22,y+h*0.18,w*0.56,h*0.64,3); ctx.stroke(); }
+    return; }
+  if(f.suit==='man'){ ctx.fillStyle=col; ctx.font="800 "+Math.round(h*0.3)+"px 'Shippori Mincho'";
+    ctx.fillText(kanjiNum(f.n),cx,y+h*0.32); ctx.fillStyle="#23201a"; ctx.font="700 "+Math.round(h*0.26)+"px 'Shippori Mincho'"; ctx.fillText("萬",cx,y+h*0.68); return; }
+  if(f.suit==='pin'){ drawDots(f.n,x,y,w,h,col); return; }
+  if(f.suit==='sou'){ drawBars(f.n,x,y,w,h,col); return; }
+}
+function kanjiNum(n){ return ["","一","二","三","四","五","六","七","八","九"][n]; }
+function drawDots(n,x,y,w,h,col){
+  const pts=dotLayout(n); ctx.fillStyle=col;
+  const r=Math.min(w,h)*0.11;
+  pts.forEach(([px,py])=>{ ctx.beginPath(); ctx.arc(x+w*px,y+h*py,r,0,7); ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,.5)"; ctx.lineWidth=1; ctx.stroke(); });
+}
+function dotLayout(n){
+  const c={1:[[.5,.5]],2:[[.5,.3],[.5,.7]],3:[[.3,.28],[.5,.5],[.7,.72]],
+    4:[[.33,.32],[.67,.32],[.33,.68],[.67,.68]],5:[[.3,.3],[.7,.3],[.5,.5],[.3,.7],[.7,.7]],
+    6:[[.33,.26],[.67,.26],[.33,.5],[.67,.5],[.33,.74],[.67,.74]],
+    7:[[.5,.22],[.32,.42],[.68,.42],[.5,.5],[.32,.74],[.5,.74],[.68,.74]],
+    8:[[.33,.22],[.67,.22],[.33,.42],[.67,.42],[.33,.62],[.67,.62],[.33,.82],[.67,.82]],
+    9:[[.3,.26],[.5,.26],[.7,.26],[.3,.5],[.5,.5],[.7,.5],[.3,.74],[.5,.74],[.7,.74]]};
+  return c[n]||c[1];
+}
+function drawBars(n,x,y,w,h,col){
+  ctx.fillStyle=col; ctx.strokeStyle="rgba(0,0,0,.2)";
+  const cols=n<=3?n:(n<=6?3:3); const rows=Math.ceil(n/cols);
+  let k=0; const bw=w*0.13,bh=h*0.2;
+  for(let r=0;r<rows;r++){ const inRow=Math.min(cols,n-r*cols);
+    for(let c=0;c<inRow;c++){ const px=x+w*(0.5+ (c-(inRow-1)/2)*0.24); const py=y+h*(0.32+ r*0.3);
+      rr(px-bw/2,py-bh/2,bw,bh,2); ctx.fill();
+      k++; if(k>=n)break; } }
+}
+function drawToolbar(){
+  const y=H-48, h=40, gap=8; const w=(W-24-gap*2)/3;
+  const tools=[["洗牌",charges.shuffle,"shuffle"],["ヒント",charges.hint,"hint"],["待った",charges.undo,"undo"]];
+  tbBtns=[];
+  tools.forEach((t,k)=>{ const x=12+k*(w+gap);
+    ctx.fillStyle=t[1]>0?"rgba(243,234,210,.92)":"rgba(120,110,80,.4)"; rr(x,y,w,h,9); ctx.fill();
+    ctx.strokeStyle="rgba(0,0,0,.3)"; ctx.lineWidth=1.2; rr(x,y,w,h,9); ctx.stroke();
+    ctx.fillStyle=t[1]>0?"#23201a":"#cfe2d6"; ctx.font="700 13px 'Shippori Mincho'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(t[0]+" ×"+t[1], x+w/2, y+h/2);
+    tbBtns.push({x,y,w,h,tool:t[2]}); });
+}
+let tbBtns=[];
+function drawToast(){ if(toastT<=0)return; ctx.globalAlpha=Math.min(1,toastT*2);
+  ctx.fillStyle="rgba(15,40,28,.92)"; rr(W/2-100,H*0.42,200,38,10); ctx.fill();
+  ctx.fillStyle="#f3ecdb"; ctx.font="700 14px 'Shippori Mincho'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(toast,W/2,H*0.42+19); ctx.globalAlpha=1; }
+function flash(m){ toast=m; toastT=1.3; }
+function shake(t){ t._shake=0.3; }
+function mkFloat(t,txt,col){ return {x:t.sx+t.w/2,y:t.sy+t.h*0.3,txt,col,life:1.0,vy:-24}; }
+
+/* ---- input ---- */
+function xy(e){ const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; }
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault(); audio();
+  if(scene!=="play") return;
+  const {x,y}=xy(e);
+  for(const b of tbBtns){ if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){ onTool(b.tool); return; } }
+  // topmost tile under point (highest z first)
+  const cand=tiles.filter(t=>!t.removed && x>=t.sx&&x<=t.sx+t.w&&y>=t.sy&&y<=t.sy+t.h)
+    .sort((a,b)=> b.z-a.z || b.row-a.row || b.col-a.col);
+  if(cand.length){ tapTile(cand[0].id); }
+},{passive:false});
+function onTool(t){ if(t==="shuffle")doShuffle(true); else if(t==="hint")useHint(); else if(t==="undo")useUndo(); }
+window.addEventListener('keydown',e=>{
+  if(scene==="play"){ if(e.key==="s"||e.key==="S")doShuffle(true); if(e.key==="h"||e.key==="H")useHint(); if(e.key==="u"||e.key==="U")useUndo(); if(e.key==="Escape")selId=-1; }
+  if(scene==="over"&&(e.key==="Enter"||e.key===" ")){ ovEnd.classList.add('hidden'); startRun(); }
+});
+
+/* ---- HUD/overlays ---- */
+const hLv=document.getElementById('hLv'),hScore=document.getElementById('hScore'),hCombo=document.getElementById('hCombo'),hYaku=document.getElementById('hYaku');
+const timeFill=document.getElementById('timeFill');
+const ovStart=document.getElementById('ovStart'),ovRule=document.getElementById('ovRule'),ovUp=document.getElementById('ovUp'),ovEnd=document.getElementById('ovEnd');
+const upSub=document.getElementById('upSub'),upCards=document.getElementById('upCards');
+const endHead=document.getElementById('endHead'),endSub=document.getElementById('endSub'),bestLine=document.getElementById('bestLine');
+function syncHud(){ hLv.textContent=level; hScore.textContent=score; hCombo.textContent="×"+combo; hYaku.textContent=yakuText; }
+document.getElementById('btnStart').addEventListener('click',()=>{ ovStart.classList.add('hidden'); startRun(); });
+document.getElementById('btnRule').addEventListener('click',()=>ovRule.classList.remove('hidden'));
+document.getElementById('btnRuleClose').addEventListener('click',()=>ovRule.classList.add('hidden'));
+document.getElementById('btnShuf').addEventListener('click',()=>doShuffle(true));
+document.getElementById('btnMute').addEventListener('click',e=>{ muted=!muted; e.target.textContent=muted?"🔇":"♪"; if(!muted)sSel(); });
+document.getElementById('btnAgain').addEventListener('click',()=>{ ovEnd.classList.add('hidden'); startRun(); });
+bestLine.textContent=best.score>0?("最高 "+best.score+" 点 / 第 "+best.level+" 局"):"";
+
+/* ---- main loop ---- */
+let lowBeep=0;
+function frame(ts){
+  if(!last)last=ts; let dt=(ts-last)/1000; last=ts; if(dt>0.1)dt=0.1; tNow+=dt;
+  if(toastT>0)toastT-=dt;
+  if(scene==="play"){
+    if(pendTime>0){ timeLeft=Math.min(timeMax+pendTime,timeLeft+pendTime); timeMax+=pendTime; pendTime=0; }
+    timeLeft-=dt*timeDrain;
+    if(comboTimer>0){ comboTimer-=dt; if(comboTimer<=0){ combo=1; syncHud(); } }
+    if(yakuTimer>0){ yakuTimer-=dt; if(yakuTimer<=0){ yakuText="—"; syncHud(); } }
+    if(hintTimer>0) hintTimer-=dt;
+    if(timeLeft<=10){ lowBeep-=dt; if(lowBeep<=0){ sLow(); lowBeep=1; } }
+    if(timeLeft<=0){ timeLeft=0; endRun("時間切れ。"); }
+  }
+  timeFill.style.width=(timeMax>0?Math.max(0,Math.min(1,timeLeft/timeMax))*100:0)+"%";
+  for(let i=floats.length-1;i>=0;i--){ const f=floats[i]; f.y+=f.vy*dt; f.life-=dt*1.3; if(f.life<=0)floats.splice(i,1); }
+  for(let i=parts.length-1;i>=0;i--){ const p=parts[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.life-=dt*1.6; if(p.life<=0)parts.splice(i,1); }
+  resize(); draw();
+  requestAnimationFrame(frame);
+}
+resize();
+requestAnimationFrame(frame);
+
+/* test hook (harmless) */
+window.__mn={ scene:()=>scene, state:()=>({level,score,combo,timeLeft:Math.round(timeLeft),alive:alive().length,charges:{...charges}}),
+  solution:()=>solutionOrder.slice(), tileXY:(id)=>{ const t=tiles.find(x=>x.id===id); return t&&!t.removed?{x:t.sx+t.w/2,y:t.sy+t.h/2}:null; },
+  freePair:()=>{ const fr=freeTiles(); const m={}; for(const t of fr){ const k=faceKey(t.face); if(m[k])return [m[k].id,t.id]; m[k]=t; } return null; },
+  cleared:()=>alive().length===0 };
+</script>
+</body>
+</html>
