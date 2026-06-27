@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>ウキボリ — サムネ・ピクロス</title>
+<meta name="description" content="動画サムネから作られたお絵かきロジック(ピクロス/ノノグラム)を解くと、暗室で写真が現像されるように本物のサムネが浮き彫りになり、本編を再生できる。制限時間内に解き続けるスコアアタック。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ウキボリ — サムネ・ピクロス">
+<meta property="og:description" content="サムネから作ったピクロスを解くと、本物のサムネが現像されるように浮き彫りに。解いた動画は本編再生。制限時間スコアアタック。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/ukibori/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/ukibori/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c1116; --panel:#121b22; --ink:#e7eef2; --cyan:#28e0c8; --amber:#ffb84d;
+  --red:#ff5a5a; --dim:#5f7787; --line:#22323d; --grid:#0a0f13;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+html,body{margin:0;padding:0;background:#05080a;color:var(--ink);
+  font-family:"Noto Sans JP",system-ui,sans-serif;overscroll-behavior:none;
+  user-select:none;-webkit-user-select:none;}
+#app{position:relative;left:50%;transform:translateX(-50%);
+  width:100%;max-width:min(520px,64vh);min-height:100svh;
+  background:radial-gradient(120% 80% at 50% 0%, #14202a 0%, var(--bg) 55%, #04070a 100%);
+  box-shadow:0 0 70px rgba(0,0,0,.6);
+  padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 12px);
+  display:flex;flex-direction:column;gap:10px;}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.brand{display:flex;align-items:baseline;gap:8px;}
+.brand .logo{font-family:"DotGothic16",sans-serif;font-size:26px;color:var(--cyan);
+  letter-spacing:2px;text-shadow:0 0 14px rgba(40,224,200,.4);}
+.brand .sub{font-size:9px;color:var(--dim);letter-spacing:2px;}
+.stats{display:flex;gap:8px;align-items:center;}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px 10px;text-align:right;min-width:60px;}
+.stat .k{font-size:8px;color:var(--dim);letter-spacing:1px;}
+.stat .v{font-family:"DotGothic16";font-size:16px;color:var(--amber);line-height:1.1;}
+.timebar{height:8px;background:#0a1318;border:1px solid var(--line);border-radius:99px;overflow:hidden;}
+.timebar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--cyan),var(--amber));transition:width .25s linear;}
+.timebar.warn i{background:linear-gradient(90deg,#ff8a3d,var(--red));}
+#boardwrap{position:relative;width:100%;}
+canvas{display:block;width:100%;height:auto;border-radius:10px;touch-action:none;background:var(--grid);
+  border:1px solid var(--line);}
+.tools{display:flex;gap:8px;align-items:stretch;}
+.tool{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:11px;
+  padding:10px 6px;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;}
+.tool:active{transform:translateY(1px);}
+.tool.on{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(40,224,200,.25) inset;color:var(--cyan);}
+.tool .cnt{font-family:"DotGothic16";color:var(--amber);}
+.tool.dead{opacity:.4;}
+.mutebtn{background:none;border:1px solid var(--line);color:var(--dim);border-radius:9px;width:38px;font-size:15px;cursor:pointer;}
+.hint{text-align:center;font-size:11px;color:var(--dim);min-height:14px;}
+.toast{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:20;
+  background:var(--cyan);color:#04141200;color:#042;padding:8px 16px;border-radius:99px;font-weight:700;font-size:13px;
+  box-shadow:0 6px 20px rgba(0,0,0,.5);opacity:0;transition:opacity .3s,top .3s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;top:18px;}
+/* reveal panel buttons over board */
+.revbar{position:absolute;left:0;right:0;bottom:8px;display:flex;gap:8px;justify-content:center;z-index:15;
+  padding:0 8px;}
+.revbar.hide{display:none;}
+.revbar button{flex:1;max-width:160px;border:none;border-radius:10px;padding:11px;font-weight:700;font-size:14px;cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);}
+.revbar .play{background:var(--cyan);color:#042;}
+.revbar .next{background:var(--amber);color:#3a2400;}
+/* overlay */
+.ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;z-index:30;
+  background:rgba(6,9,12,.86);backdrop-filter:blur(3px);}
+.ov.hide{display:none;}
+.card{width:100%;max-width:400px;background:linear-gradient(180deg,#16242e,#0e161c);
+  border:1px solid var(--line);border-radius:16px;padding:22px 20px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.card .tag{display:inline-block;color:var(--cyan);font-size:11px;letter-spacing:3px;margin-bottom:8px;font-family:"DotGothic16";}
+.card h1{font-family:"DotGothic16";font-size:30px;margin:0 0 8px;color:var(--ink);letter-spacing:2px;}
+.card p{font-size:13px;color:#bcd0db;line-height:1.7;margin:8px 0;}
+.card p b{color:var(--amber);}
+.btn{margin-top:14px;background:var(--cyan);color:#042;border:none;border-radius:999px;padding:13px 34px;
+  font-family:"DotGothic16";font-size:20px;letter-spacing:1px;cursor:pointer;box-shadow:0 6px 0 #11897a;}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 #11897a;}
+#yt{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.92);display:none;flex-direction:column;align-items:center;justify-content:center;padding:14px;}
+#yt.show{display:flex;}
+#ytbox{width:100%;max-width:560px;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;}
+#ytplayer{width:100%;height:100%;}
+#yt .yttitle{color:var(--cyan);font-size:13px;margin:10px 0;text-align:center;}
+#yt .ytclose{background:var(--cyan);color:#042;border:none;border-radius:999px;padding:11px 30px;font-family:"DotGothic16";font-size:17px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="brand"><div class="logo">ウキボリ</div><div class="sub">THUMBNAIL<br>PICROSS</div></div>
+    <div class="stats">
+      <div class="stat"><div class="k">SCORE</div><div class="v" id="score">0</div></div>
+      <div class="stat"><div class="k">BEST</div><div class="v" id="best">0</div></div>
+    </div>
+  </div>
+  <div class="timebar" id="timebarWrap"><i id="timebar"></i></div>
+
+  <div id="boardwrap">
+    <canvas id="cv" width="600" height="600"></canvas>
+    <div class="toast" id="toast"></div>
+    <div class="revbar hide" id="revbar">
+      <button class="play" id="bPlay">▶ 本編を見る</button>
+      <button class="next" id="bNext">次の問題 →</button>
+    </div>
+  </div>
+
+  <div class="tools">
+    <button class="tool on" id="tFill"><span>⬛</span>ぬる</button>
+    <button class="tool" id="tMark"><span>✕</span>マーク</button>
+    <button class="tool" id="tHint">💡ヒント <span class="cnt" id="hintCnt">3</span></button>
+    <button class="mutebtn" id="tMute">🔊</button>
+  </div>
+  <div class="hint" id="hintTxt">数字の手がかりを頼りにマスを塗る。塗りつぶすとサムネが浮き彫りに。</div>
+
+  <div class="ov" id="ov">
+    <div class="card">
+      <div class="tag">▶ THUMBNAIL PICROSS</div>
+      <h1>ウキボリ</h1>
+      <p>動画サムネから作った<b>お絵かきロジック</b>。<br>
+        行・列の<b>数字</b>はその列で連続して塗るマスの数。<br>正しく塗ると暗室の写真のように<b>本物のサムネが現像</b>される。</p>
+      <p>解くほど盤面は大きくなり、<b>制限時間</b>内に解き続けてスコアを稼ぐ。<br>解いた動画は<b>本編を再生</b>できる。</p>
+      <button class="btn" id="ovBtn">スタート</button>
+    </div>
+  </div>
+</div>
+
+<div id="yt">
+  <div id="ytbox"><div id="ytplayer"></div></div>
+  <div class="yttitle" id="yttitle"></div>
+  <button class="ytclose" id="ytclose">とじる ✕</button>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+"use strict";
+function $(id){return document.getElementById(id);}
+function rnd(n){return Math.floor(Math.random()*n);}
+function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=rnd(i+1),t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+/* ===== verified embeddable videos (高コントラストなサムネ多め) ===== */
+var VIDS=[
+  {id:"DyDfgMOUjCI",t:"Billie Eilish - bad guy"},
+  {id:"9bZkp7q19f0",t:"PSY - GANGNAM STYLE"},
+  {id:"CevxZvSJLk8",t:"Katy Perry - Roar"},
+  {id:"YQHsXMglC9A",t:"Adele - Hello"},
+  {id:"60ItHLz5WEA",t:"Alan Walker - Faded"},
+  {id:"uelHwf8o7_U",t:"Eminem - Love The Way You Lie"},
+  {id:"e-ORhEE9VVg",t:"Taylor Swift - Blank Space"},
+  {id:"JGwWNGJdvx8",t:"Ed Sheeran - Shape of You"},
+  {id:"dQw4w9WgXcQ",t:"Rick Astley - Never Gonna Give You Up"},
+  {id:"fJ9rUzIMcZQ",t:"Queen - Bohemian Rhapsody"},
+  {id:"7PCkvCPvDXk",t:"Meghan Trainor - All About That Bass"},
+  {id:"OPf0YbXqDm0",t:"Mark Ronson - Uptown Funk"},
+  {id:"450p7goxZqg",t:"John Legend - All of Me"},
+  {id:"hT_nvWreIhg",t:"OneRepublic - Counting Stars"},
+  {id:"kJQP7kiw5Fk",t:"Luis Fonsi - Despacito"},
+  {id:"XqZsoesa55w",t:"Baby Shark Dance"},
+  {id:"RgKAFK5djSk",t:"Wiz Khalifa - See You Again"},
+  {id:"2Vv-BfVoq4g",t:"Ed Sheeran - Perfect"},
+  {id:"papuvlVeZg8",t:"Clean Bandit - Rockabye"},
+  {id:"ru0K8uYEZWw",t:"Justin Timberlake - Can't Stop the Feeling"}
+];
+
+/* ===== audio ===== */
+var AC=null, muted=false;
+function audio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+    AC.onstatechange=function(){if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}}
+  return AC;
+}
+var silentEl=null;
+function silentWavUrl(){
+  var sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  function str(o,s){for(var i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);
+  v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(var i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  var p=silentEl.play(); if(p&&p.catch)p.catch(function(){});
+  audio(); if(!AC)return;
+  function done(){if(AC.state==="running"){["pointerdown","pointerup","touchend"].forEach(function(ev){document.removeEventListener(ev,unlockAudio,true);});}}
+  try{AC.resume().then(done);}catch(e){done();}
+}
+["pointerdown","pointerup","touchend"].forEach(function(ev){document.addEventListener(ev,unlockAudio,true);});
+document.addEventListener("visibilitychange",function(){if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){
+  if(muted||!audio())return;
+  try{var o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}
+}
+function sfxFill(){tone(520,0.03,"square",0.025);}
+function sfxMark(){tone(330,0.03,"triangle",0.02);}
+function sfxBad(){tone(180,0.12,"sawtooth",0.05,120);}
+function sfxClear(){tone(523,0.1,"triangle",0.06);setTimeout(function(){tone(784,0.1,"triangle",0.06);},100);setTimeout(function(){tone(1047,0.1,"triangle",0.06);},200);setTimeout(function(){tone(1568,0.25,"triangle",0.06);},300);}
+function sfxOver(){tone(330,0.25,"sawtooth",0.06,150);setTimeout(function(){tone(150,0.5,"sawtooth",0.06,60);},220);}
+function sfxBtn(){tone(680,0.04,"square",0.03);}
+
+/* ===== YouTube ===== */
+var ytPlayer=null, ytReady=false;
+window.onYouTubeIframeAPIReady=function(){
+  try{ytPlayer=new YT.Player("ytplayer",{
+    playerVars:{controls:1,modestbranding:1,rel:0,iv_load_policy:3,playsinline:1,origin:location.origin},
+    events:{"onReady":function(){ytReady=true;}}});}catch(e){}
+};
+function playVideo(v){
+  if(!v)return; $("yttitle").textContent=v.t;
+  $("yt").classList.add("show");
+  if(ytReady&&ytPlayer&&ytPlayer.loadVideoById){try{ytPlayer.loadVideoById(v.id);}catch(e){}}
+  else{$("ytplayer").innerHTML='<iframe width="100%" height="100%" src="https://www.youtube.com/embed/'+v.id+'?autoplay=1&playsinline=1&rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>';}
+}
+$("ytclose").addEventListener("pointerup",function(){
+  $("yt").classList.remove("show");
+  try{if(ytReady&&ytPlayer&&ytPlayer.stopVideo)ytPlayer.stopVideo();}catch(e){}
+});
+
+/* ===== canvas ===== */
+var cv=$("cv"), ctx=cv.getContext("2d");
+var dpr=1, CW=600, gutterF=0.30;
+function layout(){
+  var cssW=cv.clientWidth||cv.getBoundingClientRect().width||340;
+  dpr=Math.min(window.devicePixelRatio||1,2.5);
+  cv.width=Math.round(cssW*dpr); cv.height=cv.width;
+  CW=cssW;
+}
+
+/* ===== puzzle state ===== */
+var GRID=8, target=[], cellState=[], rowClues=[], colClues=[], targetSource="none";
+var curVid=null, curImg=null, imgReady=false;
+var GS="start"; // start, solving, revealing, solved, over
+var score=0, best=0, level=0, streak=0, hints=3;
+var timeLeft=0, timeMax=0, lastTs=0, revealT=0;
+var queue=[], qi=0;
+var nowt=0;
+try{best=parseInt(localStorage.getItem("ukibori.best")||"0",10)||0; $("best").textContent=best;}catch(e){}
+
+function gridForLevel(l){ var s=[8,9,10,11,12,13]; return s[Math.min(l,s.length-1)]; }
+function timeForGrid(g){ return 35 + g*g*0.9; } // seconds
+
+function nextVid(){
+  if(qi>=queue.length){ queue=shuffle(VIDS); qi=0; }
+  return queue[qi++];
+}
+
+/* build target from thumbnail luminance */
+function buildPuzzle(cb){
+  GRID=gridForLevel(level);
+  curVid=nextVid(); imgReady=false; curImg=null;
+  var img=new Image(); img.crossOrigin="anonymous";
+  img.onload=function(){
+    curImg=img; imgReady=true;
+    try{ computeTarget(img); }catch(e){ randomTarget(); }
+    buildClues(); resetCellState();
+    cb&&cb(true);
+  };
+  img.onerror=function(){ randomTarget(); buildClues(); resetCellState(); cb&&cb(false); };
+  img.src="https://i.ytimg.com/vi/"+curVid.id+"/hqdefault.jpg";
+}
+function computeTarget(img){
+  var off=document.createElement("canvas"); off.width=GRID; off.height=GRID;
+  var o=off.getContext("2d"); o.imageSmoothingEnabled=true;
+  // square crop of the center 16:9 area (480x270 from the 480x360 letterbox -> sy 45)
+  var sx=105, sy=45, side=270; // 270x270 centered square
+  o.drawImage(img, sx, sy, side, side, 0, 0, GRID, GRID);
+  var d=o.getImageData(0,0,GRID,GRID).data;
+  var lum=[];
+  for(var i=0;i<GRID*GRID;i++){ var r=d[i*4],g=d[i*4+1],b=d[i*4+2];
+    lum.push(0.299*r+0.587*g+0.114*b); }
+  // adaptive threshold to ~ target fill 0.45 (fill = darker than threshold)
+  var srt=lum.slice().sort(function(a,b){return a-b;});
+  var want=clamp(0.46,0.3,0.6);
+  var thr=srt[Math.floor(want*srt.length)];
+  target=[];
+  for(var r2=0;r2<GRID;r2++){ target[r2]=[];
+    for(var c=0;c<GRID;c++){ target[r2][c]= lum[r2*GRID+c] < thr ? 1:0; } }
+  // avoid degenerate (all same)
+  targetSource="image";
+  var sum=0; for(var rr=0;rr<GRID;rr++)for(var cc=0;cc<GRID;cc++)sum+=target[rr][cc];
+  if(sum<3 || sum>GRID*GRID-3) randomTarget();
+}
+function randomTarget(){
+  target=[]; for(var r=0;r<GRID;r++){target[r]=[];for(var c=0;c<GRID;c++)target[r][c]=Math.random()<0.5?1:0;}
+  targetSource="random";
+}
+function buildClues(){
+  rowClues=[]; colClues=[];
+  for(var r=0;r<GRID;r++){ rowClues.push(runLengths(target[r])); }
+  for(var c=0;c<GRID;c++){ var col=[]; for(var r2=0;r2<GRID;r2++)col.push(target[r2][c]); colClues.push(runLengths(col)); }
+}
+function runLengths(arr){ var res=[],run=0;
+  for(var i=0;i<arr.length;i++){ if(arr[i]){run++;} else { if(run){res.push(run);run=0;} } }
+  if(run)res.push(run); if(!res.length)res.push(0); return res;
+}
+function resetCellState(){ cellState=[]; for(var r=0;r<GRID;r++){cellState[r]=[];for(var c=0;c<GRID;c++)cellState[r][c]=0;} }
+
+function runsOf(line){ var res=[],run=0;
+  for(var i=0;i<line.length;i++){ if(line[i]){run++;} else { if(run){res.push(run);run=0;} } }
+  if(run)res.push(run); return res; }
+function lineMatch(line,clue){
+  var runs=runsOf(line);
+  if(clue.length===1&&clue[0]===0) return runs.length===0;
+  if(runs.length!==clue.length) return false;
+  for(var i=0;i<runs.length;i++) if(runs[i]!==clue[i]) return false;
+  return true;
+}
+function isSolved(){
+  for(var r=0;r<GRID;r++){ var rl=[]; for(var c=0;c<GRID;c++) rl.push(cellState[r][c]===1?1:0);
+    if(!lineMatch(rl,rowClues[r])) return false; }
+  for(var c2=0;c2<GRID;c2++){ var cl=[]; for(var r2=0;r2<GRID;r2++) cl.push(cellState[r2][c2]===1?1:0);
+    if(!lineMatch(cl,colClues[c2])) return false; }
+  return true;
+}
+
+/* ===== geometry ===== */
+function geom(){
+  var gut=Math.round(CW*gutterF);
+  var boardPx=CW-gut; var cs=boardPx/GRID;
+  return {gut:gut, cs:cs, ox:gut, oy:gut, boardPx:boardPx};
+}
+function cellAt(clientX,clientY){
+  var rect=cv.getBoundingClientRect();
+  var x=(clientX-rect.left)*(CW/rect.width), y=(clientY-rect.top)*(CW/rect.width);
+  var G=geom();
+  if(x<G.ox||y<G.oy) return null;
+  var c=Math.floor((x-G.ox)/G.cs), r=Math.floor((y-G.oy)/G.cs);
+  if(r<0||c<0||r>=GRID||c>=GRID) return null;
+  return {r:r,c:c};
+}
+
+/* ===== render ===== */
+function render(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,CW,CW);
+  var G=geom();
+  // background
+  ctx.fillStyle="#0a0f13"; ctx.fillRect(0,0,CW,CW);
+  if(GS==="start"||GS==="loading"){ return; }
+  // reveal: draw real thumbnail over board area
+  if((GS==="revealing"||GS==="solved") && curImg){
+    ctx.save();
+    roundClip(G.ox,G.oy,G.boardPx,G.boardPx,6);
+    ctx.globalAlpha=clamp(revealT,0,1);
+    ctx.drawImage(curImg,105,45,270,270,G.ox,G.oy,G.boardPx,G.boardPx);
+    ctx.restore();
+    ctx.globalAlpha=1;
+  }
+  // grid cells (fade out during reveal)
+  var cellAlpha = (GS==="revealing")? clamp(1-revealT*1.4,0,1) : (GS==="solved"?0:1);
+  if(cellAlpha>0){
+    ctx.globalAlpha=cellAlpha;
+    for(var r=0;r<GRID;r++)for(var c=0;c<GRID;c++){
+      var x=G.ox+c*G.cs, y=G.oy+r*G.cs, st=cellState[r][c];
+      if(st===1){ ctx.fillStyle="#dfe8ec"; ctx.fillRect(x+1,y+1,G.cs-2,G.cs-2); }
+      else { ctx.fillStyle=((r+c)%2)?"#0e161c":"#111c23"; ctx.fillRect(x+1,y+1,G.cs-2,G.cs-2);
+        if(st===2){ ctx.strokeStyle="#3a5160"; ctx.lineWidth=Math.max(1.4,G.cs*0.08);
+          var m=G.cs*0.28; ctx.beginPath();
+          ctx.moveTo(x+m,y+m);ctx.lineTo(x+G.cs-m,y+G.cs-m);
+          ctx.moveTo(x+G.cs-m,y+m);ctx.lineTo(x+m,y+G.cs-m);ctx.stroke(); }
+      }
+    }
+    ctx.globalAlpha=1;
+    drawGridLines(G);
+    drawClues(G);
+  }
+}
+function drawGridLines(G){
+  ctx.strokeStyle="#1c2a33"; ctx.lineWidth=1;
+  for(var i=0;i<=GRID;i++){
+    var x=G.ox+i*G.cs, y=G.oy+i*G.cs;
+    ctx.globalAlpha=(i%5===0)?0.9:0.4; ctx.strokeStyle=(i%5===0)?"#2f4756":"#1c2a33";
+    ctx.beginPath();ctx.moveTo(x,G.oy);ctx.lineTo(x,G.oy+G.boardPx);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(G.ox,y);ctx.lineTo(G.ox+G.boardPx,y);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+}
+function clueDone(clue, isRow, idx){
+  var line=[]; for(var k=0;k<GRID;k++){ line.push((isRow?(cellState[idx][k]===1):(cellState[k][idx]===1))?1:0); }
+  return lineMatch(line,clue);
+}
+function drawClues(G){
+  var fs=clamp(G.cs*0.42,9,18);
+  ctx.font="700 "+fs+"px 'Noto Sans JP', sans-serif";
+  ctx.textBaseline="middle";
+  // row clues (left gutter, right aligned)
+  for(var r=0;r<GRID;r++){
+    var cl=rowClues[r]; if(cl.length===1&&cl[0]===0) continue;
+    var done=clueDone(cl,true,r);
+    ctx.fillStyle=done?"#3a5160":"#9fc0cf"; ctx.textAlign="right";
+    var y=G.oy+r*G.cs+G.cs/2;
+    var step=Math.min(fs*1.25, (G.gut-4)/Math.max(cl.length,1));
+    for(var i=0;i<cl.length;i++){
+      var x=G.ox-4-(cl.length-1-i)*step;
+      ctx.fillText(cl[i], x, y);
+    }
+  }
+  // col clues (top gutter, bottom aligned)
+  ctx.textAlign="center";
+  for(var c=0;c<GRID;c++){
+    var cc=colClues[c]; if(cc.length===1&&cc[0]===0) continue;
+    var doneC=clueDone(cc,false,c);
+    ctx.fillStyle=doneC?"#3a5160":"#9fc0cf";
+    var x2=G.ox+c*G.cs+G.cs/2;
+    var step2=Math.min(fs*1.2,(G.gut-4)/Math.max(cc.length,1));
+    for(var j=0;j<cc.length;j++){
+      var y2=G.oy-4-(cc.length-1-j)*step2;
+      ctx.fillText(cc[j], x2, y2);
+    }
+  }
+}
+function roundClip(x,y,w,h,r){ ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();ctx.clip(); }
+
+/* ===== loop ===== */
+function loop(ts){
+  var dt=lastTs?(ts-lastTs)/1000:0; lastTs=ts; nowt=ts||0;
+  if(cv.clientWidth && Math.abs((cv.width/dpr)-cv.clientWidth)>1) layout();
+  if(GS==="solving"){
+    timeLeft-=dt; if(timeLeft<=0){ timeLeft=0; gameOver(); }
+    updateTimebar();
+  }
+  if(GS==="revealing"){ revealT+=dt/0.8; if(revealT>=1){ revealT=1; GS="solved"; onRevealDone(); } }
+  render();
+  requestAnimationFrame(loop);
+}
+function updateTimebar(){
+  var f=timeMax>0?clamp(timeLeft/timeMax,0,1):0;
+  $("timebar").style.width=(f*100)+"%";
+  $("timebarWrap").classList.toggle("warn", f<0.25);
+}
+
+/* ===== input (paint with drag) ===== */
+var paint=null; // {action:1 fill/0 erase/2 mark, mode}
+var mode="fill"; // fill or mark
+cv.addEventListener("pointerdown",function(e){
+  if(GS!=="solving")return;
+  var cell=cellAt(e.clientX,e.clientY); if(!cell)return;
+  var cur=cellState[cell.r][cell.c];
+  if(mode==="fill"){ paint={action: cur===1?0:1}; }
+  else { paint={action: cur===2?3:2}; } // 3 = clear-mark
+  applyPaint(cell);
+  if(cv.setPointerCapture){try{cv.setPointerCapture(e.pointerId);}catch(_){}}
+  e.preventDefault();
+},{passive:false});
+cv.addEventListener("pointermove",function(e){
+  if(GS!=="solving"||!paint)return;
+  var cell=cellAt(e.clientX,e.clientY); if(!cell)return;
+  applyPaint(cell); e.preventDefault();
+},{passive:false});
+function endPaint(){ paint=null; if(GS==="solving"&&isSolved()) solvePuzzle(); }
+cv.addEventListener("pointerup",function(e){endPaint();},{passive:true});
+cv.addEventListener("pointercancel",function(){endPaint();},{passive:true});
+function applyPaint(cell){
+  var r=cell.r,c=cell.c, cur=cellState[r][c], a=paint.action;
+  if(a===1){ if(cur!==1){ cellState[r][c]=1; sfxFill(); } }
+  else if(a===0){ if(cur===1){ cellState[r][c]=0; sfxMark(); } }
+  else if(a===2){ if(cur!==1){ cellState[r][c]=2; sfxMark(); } }
+  else if(a===3){ if(cur===2){ cellState[r][c]=0; } }
+}
+
+/* ===== flow ===== */
+function startPuzzle(){
+  GS="loading";
+  $("revbar").classList.add("hide");
+  $("hintTxt").textContent="サムネを読み込み中…";
+  buildPuzzle(function(){
+    timeMax=timeForGrid(GRID); timeLeft=timeMax; revealT=0;
+    GS="solving"; updateTimebar();
+    $("hintTxt").textContent=GRID+"×"+GRID+"：数字の手がかりを頼りにマスを塗る。";
+  });
+}
+function solvePuzzle(){
+  GS="revealing"; revealT=0; sfxClear();
+  var bonus=Math.round(timeLeft*8); var sizeB=GRID*GRID; var sB=1+streak*0.15;
+  var gained=Math.round((100+sizeB+bonus)*sB);
+  score+=gained; streak++;
+  if(score>best){best=score; try{localStorage.setItem("ukibori.best",String(best));}catch(e){}}
+  $("score").textContent=score; $("best").textContent=best;
+  toast("✨ 現像成功！ +"+gained+(streak>1?"（"+streak+"連続）":""));
+}
+function onRevealDone(){
+  $("revbar").classList.remove("hide");
+  $("hintTxt").textContent=curVid?curVid.t:"";
+}
+function gameOver(){
+  if(GS==="over")return;
+  GS="over"; sfxOver();
+  $("ov").querySelector(".tag").textContent="▶ TIME UP";
+  $("ov").querySelector("h1").textContent="タイムアップ";
+  var ps=$("ov").querySelectorAll(".card p");
+  ps[0].innerHTML="スコア <b>"+score+"</b><br>解いた数 <b>"+level+"</b>枚<br>ベスト <b>"+best+"</b>";
+  if(ps[1])ps[1].style.display="none";
+  $("ovBtn").textContent="もう一回";
+  $("ov").classList.remove("hide");
+}
+
+/* ===== buttons ===== */
+$("bNext").addEventListener("pointerup",function(){ sfxBtn(); level++; startPuzzle(); });
+$("bPlay").addEventListener("pointerup",function(){ sfxBtn(); playVideo(curVid); });
+$("tFill").addEventListener("pointerup",function(){ mode="fill"; $("tFill").classList.add("on"); $("tMark").classList.remove("on"); sfxBtn(); });
+$("tMark").addEventListener("pointerup",function(){ mode="mark"; $("tMark").classList.add("on"); $("tFill").classList.remove("on"); sfxBtn(); });
+$("tHint").addEventListener("pointerup",useHint);
+$("tMute").addEventListener("pointerup",function(){ muted=!muted; $("tMute").textContent=muted?"🔇":"🔊"; });
+function useHint(){
+  if(GS!=="solving"||hints<=0)return;
+  // find a target cell not yet filled, fill it; or a wrongly-filled cell, clear it
+  var cands=[];
+  for(var r=0;r<GRID;r++)for(var c=0;c<GRID;c++){
+    if(target[r][c]===1 && cellState[r][c]!==1) cands.push({r:r,c:c,fix:1});
+    else if(target[r][c]===0 && cellState[r][c]===1) cands.push({r:r,c:c,fix:0});
+  }
+  if(!cands.length)return;
+  var p=cands[rnd(cands.length)];
+  cellState[p.r][p.c]= p.fix===1?1:0;
+  hints--; $("hintCnt").textContent=hints; sfxFill();
+  timeLeft=clamp(timeLeft-3,0,timeMax);
+  $("tHint").classList.toggle("dead",hints<=0);
+  if(isSolved()) solvePuzzle();
+}
+
+/* ===== toast ===== */
+var toastTmr=0;
+function toast(m){var el=$("toast");el.textContent=m;el.classList.add("show");
+  clearTimeout(toastTmr);toastTmr=setTimeout(function(){el.classList.remove("show");},1800);}
+
+/* ===== start ===== */
+function startGame(){
+  score=0; level=0; streak=0; hints=3;
+  $("score").textContent="0"; $("hintCnt").textContent="3"; $("tHint").classList.remove("dead");
+  mode="fill"; $("tFill").classList.add("on"); $("tMark").classList.remove("on");
+  $("ov").classList.add("hide"); sfxBtn();
+  startPuzzle();
+}
+$("ovBtn").addEventListener("pointerup",startGame);
+
+/* prevent double-tap zoom */
+var lastTap=0;
+document.addEventListener("touchend",function(e){var n=Date.now();if(n-lastTap<350)e.preventDefault();lastTap=n;},{passive:false});
+document.addEventListener("gesturestart",function(e){e.preventDefault();});
+document.addEventListener("dblclick",function(e){e.preventDefault();});
+
+layout();
+requestAnimationFrame(loop);
+window.addEventListener("resize",layout);
+
+/* lightweight test hook (E2E用・通常プレイに影響なし) */
+window.__uki={
+  state:function(){return {GS:GS,level:level,score:score,GRID:GRID,src:targetSource,hints:hints,timeLeft:Math.round(timeLeft)};},
+  ytData:function(){try{return (ytPlayer&&ytPlayer.getVideoData)?ytPlayer.getVideoData():null;}catch(e){return {err:String(e)};}},
+  curVid:function(){return curVid?curVid.id:null;},
+  solveNow:function(){ if(GS!=="solving")return false;
+    for(var r=0;r<GRID;r++)for(var c=0;c<GRID;c++)cellState[r][c]=target[r][c];
+    if(isSolved()){solvePuzzle();return true;} return false; }
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>バズリ — 再生回数マージ</title>
+<meta name="description" content="動画サムネを合体させて再生回数を増やし、世界一バズったMV「ベイビーシャーク」を目指す2048系マージゲーム。到達した動画は殿堂入りして本編を再生できる。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="バズリ — 再生回数マージ">
+<meta property="og:description" content="サムネを合体して再生回数を増やせ。世界一バズったMVへ駆け上がる2048系マージ。到達した動画は殿堂で本編再生。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/bazuri/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/bazuri/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+JP:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0d; --panel:#15151b; --panel2:#1e1e26; --ink:#f4f1ea;
+  --red:#ff2d40; --amber:#ffcf4d; --dim:#8b8b96; --line:#2a2a34;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+html,body{margin:0;padding:0;background:#000;color:var(--ink);
+  font-family:"Noto Sans JP",system-ui,sans-serif;overscroll-behavior:none;
+  user-select:none;-webkit-user-select:none;}
+#app{position:relative;left:50%;transform:translateX(-50%);
+  width:100%;max-width:min(520px,62vh);min-height:100svh;
+  background:radial-gradient(120% 90% at 50% 0%, #16161e 0%, var(--bg) 55%, #050507 100%);
+  box-shadow:0 0 80px rgba(0,0,0,.6);
+  padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 14px);
+  display:flex;flex-direction:column;gap:10px;}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.brand{display:flex;align-items:baseline;gap:8px;}
+.brand .logo{font-family:"Anton",sans-serif;font-size:30px;letter-spacing:1px;
+  color:var(--ink);line-height:1;}
+.brand .logo b{color:var(--red);}
+.brand .sub{font-size:10px;color:var(--dim);letter-spacing:2px;}
+.stats{display:flex;gap:8px;}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:5px 11px;min-width:74px;text-align:right;}
+.stat .k{font-size:9px;color:var(--dim);letter-spacing:1px;}
+.stat .v{font-family:"Anton",sans-serif;font-size:19px;color:var(--amber);line-height:1.05;}
+.stat .v small{font-size:11px;color:var(--dim);font-family:"Noto Sans JP";}
+#boardwrap{position:relative;width:100%;}
+canvas{display:block;width:100%;height:auto;border-radius:14px;touch-action:none;
+  background:#101016;border:1px solid var(--line);}
+.tools{display:flex;gap:8px;}
+.tool{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);
+  border-radius:12px;padding:9px 6px;font-family:"Noto Sans JP";font-weight:700;font-size:13px;
+  display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;}
+.tool:active{transform:translateY(1px);}
+.tool .ic{font-size:16px;}
+.tool .cnt{font-family:"Anton";color:var(--amber);font-size:15px;}
+.tool.on{border-color:var(--red);box-shadow:0 0 0 2px rgba(255,45,64,.25) inset;}
+.tool.dead{opacity:.4;}
+.hint{text-align:center;font-size:11px;color:var(--dim);min-height:14px;}
+/* overlays */
+.ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  padding:20px;z-index:30;background:rgba(5,5,8,.82);backdrop-filter:blur(3px);}
+.ov.hide{display:none;}
+.card{width:100%;max-width:420px;background:linear-gradient(180deg,#1b1b23,#121218);
+  border:1px solid var(--line);border-radius:18px;padding:22px 20px;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.card h1{font-family:"Anton";font-size:40px;margin:0 0 2px;letter-spacing:1px;}
+.card h1 b{color:var(--red);}
+.card .tag{color:var(--amber);font-size:12px;letter-spacing:3px;margin-bottom:14px;}
+.card p{font-size:13px;color:#cfcdc6;line-height:1.7;margin:8px 0;}
+.card p b{color:var(--amber);}
+.btn{display:inline-block;margin-top:14px;background:var(--red);color:#fff;border:none;
+  border-radius:999px;padding:13px 34px;font-family:"Anton";font-size:22px;letter-spacing:1px;
+  cursor:pointer;box-shadow:0 6px 0 #a3101c;}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 #a3101c;}
+.btn.ghost{background:var(--panel2);color:var(--ink);box-shadow:0 6px 0 #000;}
+.btn.ghost:active{box-shadow:0 3px 0 #000;}
+.ladder{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:10px 0 2px;}
+.ladder span{font-size:10px;color:var(--dim);background:#000;border:1px solid var(--line);
+  border-radius:5px;padding:2px 5px;}
+/* hall of fame */
+#hall .card{max-width:440px;text-align:left;}
+.hofgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;max-height:52vh;overflow:auto;}
+.hof{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);
+  background:#000;cursor:pointer;aspect-ratio:16/9;}
+.hof img{width:100%;height:100%;object-fit:cover;display:block;}
+.hof.locked{filter:grayscale(1) brightness(.3);cursor:default;}
+.hof .lbl{position:absolute;left:0;right:0;bottom:0;padding:3px 6px;font-size:10px;
+  background:linear-gradient(transparent,rgba(0,0,0,.85));}
+.hof .lbl b{color:var(--amber);font-family:"Anton";}
+.hof .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:30px;color:#fff;text-shadow:0 1px 6px #000;opacity:.85;}
+.hof.locked .play{content:"🔒";}
+/* yt modal */
+#yt{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.92);display:none;
+  flex-direction:column;align-items:center;justify-content:center;padding:14px;}
+#yt.show{display:flex;}
+#ytbox{width:100%;max-width:560px;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;}
+#ytplayer{width:100%;height:100%;}
+#yt .yttitle{color:var(--amber);font-size:13px;margin:10px 0;text-align:center;max-width:560px;}
+#yt .ytclose{background:var(--red);color:#fff;border:none;border-radius:999px;
+  padding:11px 30px;font-family:"Anton";font-size:18px;cursor:pointer;}
+.toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:40;
+  background:var(--red);color:#fff;padding:9px 18px;border-radius:999px;font-weight:700;
+  font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;transition:opacity .3s, top .3s;
+  pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;top:22px;}
+.mutebtn{background:none;border:1px solid var(--line);color:var(--dim);border-radius:8px;
+  width:34px;height:34px;font-size:15px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">バ<b>ズ</b>リ</div>
+      <div class="sub">再生回数<br>MERGE</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">稼いだ再生回数</div><div class="v" id="score">0<small>億</small></div></div>
+      <div class="stat"><div class="k">BEST</div><div class="v" id="best">0<small>億</small></div></div>
+    </div>
+  </div>
+
+  <div id="boardwrap">
+    <canvas id="cv" width="600" height="600"></canvas>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div class="tools">
+    <button class="tool" id="tHall"><span class="ic">🏆</span>殿堂 <span class="cnt" id="hallCnt">0</span></button>
+    <button class="tool" id="tUndo"><span class="ic">↩</span>戻す <span class="cnt" id="undoCnt">1</span></button>
+    <button class="tool" id="tDel"><span class="ic">🚫</span>通報 <span class="cnt" id="delCnt">1</span></button>
+    <button class="mutebtn" id="tMute">🔊</button>
+  </div>
+  <div class="hint" id="hint">スワイプ / 矢印キーでサムネを寄せる。同じ動画が合体すると一段バズる。</div>
+
+  <!-- start / over overlay -->
+  <div class="ov" id="ov">
+    <div class="card">
+      <div class="tag" id="ovTag">▶ THUMBNAIL 2048</div>
+      <h1>バ<b>ズ</b>リ</h1>
+      <p id="ovMsg">サムネを<b>スワイプ</b>で寄せて、同じ動画どうしを<b>合体</b>。<br>
+        再生回数の階段を駆け上がり、世界一バズったMV<br><b>「ベイビーシャーク」160億回</b>を目指せ。</p>
+      <div class="ladder" id="ovLadder"></div>
+      <p style="font-size:11px;color:#8b8b96">到達した動画は<b>殿堂入り</b>して本編を再生できる。</p>
+      <button class="btn" id="ovBtn">スタート</button>
+    </div>
+  </div>
+
+  <!-- hall of fame -->
+  <div class="ov hide" id="hall">
+    <div class="card">
+      <div class="tag">▶ 殿堂入りした動画</div>
+      <h1 style="font-size:28px">殿<b>堂</b></h1>
+      <div class="hofgrid" id="hofgrid"></div>
+      <button class="btn ghost" id="hallClose" style="font-size:18px">とじる</button>
+    </div>
+  </div>
+</div>
+
+<!-- youtube modal -->
+<div id="yt">
+  <div id="ytbox"><div id="ytplayer"></div></div>
+  <div class="yttitle" id="yttitle"></div>
+  <button class="ytclose" id="ytclose">とじる ✕</button>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+"use strict";
+function $(id){return document.getElementById(id);}
+function rnd(n){return Math.floor(Math.random()*n);}
+function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+
+/* ============ ladder data (実在・埋め込み確認済み, 再生回数昇順) ============ */
+var TOP=10;
+var VIDS=[
+  {id:"JZjAg6fK-BQ",t:"Reminder",oku:9},
+  {id:"SlPhMPnQ58k",t:"Memories",oku:10},
+  {id:"ru0K8uYEZWw",t:"Can't Stop the Feeling",oku:12},
+  {id:"DyDfgMOUjCI",t:"bad guy",oku:14},
+  {id:"dQw4w9WgXcQ",t:"Never Gonna Give You Up",oku:16},
+  {id:"fJ9rUzIMcZQ",t:"Bohemian Rhapsody",oku:18},
+  {id:"uelHwf8o7_U",t:"Love The Way You Lie",oku:26},
+  {id:"CevxZvSJLk8",t:"Roar",oku:39},
+  {id:"9bZkp7q19f0",t:"GANGNAM STYLE",oku:54},
+  {id:"kJQP7kiw5Fk",t:"Despacito",oku:86},
+  {id:"XqZsoesa55w",t:"Baby Shark Dance",oku:160}
+];
+var RING=["#3a3a44","#4a5a8a","#3f8a7a","#8a6a3f","#b08020","#9a4fa0","#c05050",
+  "#d08020","#5080d0","#30b070","#ff2d40"];
+
+/* ============ thumbnails ============ */
+var thumbImg=[], thumbReady=[];
+for(var i=0;i<VIDS.length;i++){(function(k){
+  var im=new Image(); im.crossOrigin="anonymous";
+  im.onload=function(){thumbReady[k]=true;};
+  im.onerror=function(){thumbReady[k]=false;};
+  im.src="https://i.ytimg.com/vi/"+VIDS[k].id+"/hqdefault.jpg";
+  thumbImg[k]=im; thumbReady[k]=false;
+})(i);}
+
+/* ============ audio (iOS消音スイッチ対策込み) ============ */
+var AC=null, muted=false;
+function audio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+    AC.onstatechange=function(){if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}}
+  return AC;
+}
+var silentEl=null;
+function silentWavUrl(){
+  var sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  function str(o,s){for(var i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);
+  v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(var i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  var p=silentEl.play(); if(p&&p.catch)p.catch(function(){});
+  audio(); if(!AC)return;
+  function done(){if(AC.state==="running"){["pointerdown","pointerup","touchend"].forEach(function(ev){document.removeEventListener(ev,unlockAudio,true);});}}
+  try{AC.resume().then(done);}catch(e){done();}
+}
+["pointerdown","pointerup","touchend"].forEach(function(ev){document.addEventListener(ev,unlockAudio,true);});
+document.addEventListener("visibilitychange",function(){if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){
+  if(muted||!audio())return;
+  try{var o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}
+}
+function sfxSlide(){tone(220,0.06,"triangle",0.03,160);}
+function sfxMerge(tier){tone(380+tier*40,0.10,"square",0.05,560+tier*60);}
+function sfxBig(){tone(523,0.12,"triangle",0.07);setTimeout(function(){tone(784,0.12,"triangle",0.07);},110);setTimeout(function(){tone(1175,0.22,"triangle",0.07);},230);}
+function sfxOver(){tone(330,0.25,"sawtooth",0.06,160);setTimeout(function(){tone(150,0.5,"sawtooth",0.06,70);},220);}
+function sfxBtn(){tone(660,0.05,"square",0.03);}
+
+/* ============ YouTube player ============ */
+var ytPlayer=null, ytReady=false;
+window.onYouTubeIframeAPIReady=function(){
+  try{
+    ytPlayer=new YT.Player("ytplayer",{
+      playerVars:{controls:1,modestbranding:1,rel:0,iv_load_policy:3,fs:1,playsinline:1,origin:location.origin},
+      events:{ "onReady":function(){ytReady=true;} }
+    });
+  }catch(e){}
+};
+function playVideo(tier){
+  var v=VIDS[tier]; if(!v)return;
+  $("yttitle").textContent=v.t+" ／ 再生回数 約"+v.oku+"億回";
+  $("yt").classList.add("show");
+  if(ytReady&&ytPlayer&&ytPlayer.loadVideoById){try{ytPlayer.loadVideoById(v.id);}catch(e){}}
+  else{ // fallback: plain iframe if API slow
+    $("ytplayer").innerHTML='<iframe width="100%" height="100%" src="https://www.youtube.com/embed/'+v.id+'?autoplay=1&playsinline=1&rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
+  }
+}
+$("ytclose").addEventListener("pointerup",function(){
+  $("yt").classList.remove("show");
+  try{if(ytReady&&ytPlayer&&ytPlayer.stopVideo)ytPlayer.stopVideo();}catch(e){}
+});
+
+/* ============ canvas / layout ============ */
+var cv=$("cv"), ctx=cv.getContext("2d");
+var N=4, dpr=1, BW=600, gap=14, pad=14, cs=0, ox=pad, oy=pad;
+function layout(){
+  var cssW=cv.clientWidth||cv.getBoundingClientRect().width||340;
+  dpr=Math.min(window.devicePixelRatio||1,2.5);
+  cv.width=Math.round(cssW*dpr); cv.height=cv.width;
+  BW=cssW;
+  cs=(BW-pad*2-gap*(N-1))/N;
+  ox=pad; oy=pad;
+}
+function cx(c){return ox+c*(cs+gap)+cs/2;}
+function cyf(r){return oy+r*(cs+gap)+cs/2;}
+
+/* rounded rect path */
+function rr(x,y,w,h,r){ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+/* cover draw image into dest square keeping aspect */
+function coverThumb(tier,dx,dy,d){
+  var im=thumbImg[tier];
+  if(!thumbReady[tier]||!im){ctx.fillStyle="#202028";rr(dx,dy,d,d,d*0.16);ctx.fill();return;}
+  // source: center 480x270 of the 480x360 letterboxed thumb
+  var sx=0,sy=45,sw=480,sh=270; // 16:9
+  // cover into square: crop width
+  var scale=d/sh; var dw=sw*scale; var off=(dw-d)/2;
+  ctx.save(); rr(dx,dy,d,d,d*0.16); ctx.clip();
+  ctx.drawImage(im,sx,sy,sw,sh, dx-off, dy, dw, d);
+  ctx.restore();
+}
+
+/* ============ game state ============ */
+var grid=[]; for(var r=0;r<N;r++){grid[r]=[null,null,null,null];}
+var popAt=[]; for(var r2=0;r2<N;r2++){popAt[r2]=[0,0,0,0];}
+var score=0, best=0, highTier=0, merges=0;
+var unlocked={}; // tier -> true
+var undoCharges=1, delCharges=1, delMode=false;
+var prevGrid=null, prevScore=0, prevHigh=0; // undo
+var GS="start"; // start, play, over
+var wonOnce=false;
+var anim={on:false,t0:0,dur:120,movers:[]};
+var nowt=0;
+
+try{best=parseInt(localStorage.getItem("bazuri.best")||"0",10)||0;}catch(e){}
+$("best").innerHTML=best+'<small>億</small>';
+
+function emptyCells(){var a=[];for(var r=0;r<N;r++)for(var c=0;c<N;c++)if(grid[r][c]===null)a.push([r,c]);return a;}
+function spawn(){
+  var e=emptyCells(); if(!e.length)return null;
+  var p=e[rnd(e.length)];
+  grid[p[0]][p[1]]= (Math.random()<0.82)?0:1;
+  popAt[p[0]][p[1]]=nowt;
+  return p;
+}
+
+/* slide one line (front=index0). returns {result, moves, gained, mergedTargets} */
+function slideLine(line){
+  var arr=[]; for(var i=0;i<line.length;i++) if(line[i]!==null) arr.push({tier:line[i],idx:i});
+  var result=[null,null,null,null]; var moves=[]; var mergedTargets=[]; var gained=0;
+  var pos=0,j=0;
+  while(j<arr.length){
+    if(j+1<arr.length && arr[j].tier===arr[j+1].tier && arr[j].tier<TOP){
+      var nt=arr[j].tier+1;
+      result[pos]=nt;
+      moves.push({from:arr[j].idx,to:pos,tier:arr[j].tier});
+      moves.push({from:arr[j+1].idx,to:pos,tier:arr[j+1].tier});
+      mergedTargets.push(pos);
+      gained+=VIDS[nt].oku;
+      j+=2;
+    } else {
+      result[pos]=arr[j].tier;
+      moves.push({from:arr[j].idx,to:pos,tier:arr[j].tier});
+      j++;
+    }
+    pos++;
+  }
+  return {result:result,moves:moves,mergedTargets:mergedTargets,gained:gained};
+}
+
+/* build line cell coordinates for a direction */
+function lineCells(dir,k){ // k = row or col index
+  var cells=[];
+  if(dir==="left") for(var c=0;c<N;c++) cells.push([k,c]);
+  else if(dir==="right") for(var c2=N-1;c2>=0;c2--) cells.push([k,c2]);
+  else if(dir==="up") for(var r=0;r<N;r++) cells.push([r,k]);
+  else for(var r2=N-1;r2>=0;r2--) cells.push([r2,k]);
+  return cells;
+}
+
+function snapshot(){
+  prevGrid=grid.map(function(row){return row.slice();});
+  prevScore=score; prevHigh=highTier;
+}
+
+function move(dir){
+  if(GS!=="play"||anim.on) return;
+  var before=JSON.stringify(grid);
+  var newGrid=[]; for(var r=0;r<N;r++) newGrid[r]=[null,null,null,null];
+  var movers=[]; var totalGain=0; var anyMerge=false; var newHigh=highTier;
+  var mergedPositions=[]; // [r,c]
+  for(var k=0;k<N;k++){
+    var cells=lineCells(dir,k);
+    var line=cells.map(function(p){return grid[p[0]][p[1]];});
+    var s=slideLine(line);
+    for(var p2=0;p2<N;p2++){ var rc=cells[p2]; newGrid[rc[0]][rc[1]]=s.result[p2]; }
+    for(var m=0;m<s.moves.length;m++){
+      var mv=s.moves[m]; var fromRC=cells[mv.from], toRC=cells[mv.to];
+      movers.push({tier:mv.tier, fx:cx(fromRC[1]),fy:cyf(fromRC[0]), tx:cx(toRC[1]),ty:cyf(toRC[0])});
+    }
+    for(var mt=0;mt<s.mergedTargets.length;mt++){
+      var trc=cells[s.mergedTargets[mt]]; mergedPositions.push(trc);
+      anyMerge=true;
+      var newt=newGrid[trc[0]][trc[1]]; if(newt>newHigh) newHigh=newt;
+    }
+    totalGain+=s.gained;
+  }
+  // apply
+  grid=newGrid;
+  if(before===JSON.stringify(grid)){ return; } // no change
+  snapshotForUndo(before);
+  // animate movers
+  anim.on=true; anim.t0=nowt; anim.dur=110; anim.movers=movers;
+  anim.merged=mergedPositions; anim.afterDone=function(){
+    var nb=spawn();
+    for(var i=0;i<mergedPositions.length;i++){ popAt[mergedPositions[i][0]][mergedPositions[i][1]]=nowt; }
+    score+=totalGain; merges+=mergedPositions.length;
+    updateStats();
+    // unlock newly reached tiers
+    if(newHigh>highTier){
+      for(var t=highTier+1;t<=newHigh;t++){ unlocked[t]=true; }
+      highTier=newHigh;
+      $("hallCnt").textContent=Object.keys(unlocked).length;
+      if(newHigh>=TOP){ toast("👑 世界一にバズった！殿堂頂点！"); sfxBig(); wonOnce=true; }
+      else if(newHigh>=6){ toast("🏆 殿堂入り："+VIDS[newHigh].t); sfxBig(); }
+      else { sfxMerge(newHigh); }
+    } else if(anyMerge){ sfxMerge(highTier); }
+    // grant charges
+    grantCharges();
+    if(GS==="play" && !canMove()){ GS="over"; sfxOver(); setTimeout(showOver,500); }
+  };
+  if(anyMerge) sfxSlide(); else sfxSlide();
+}
+
+var lastMergeMilestone=0;
+function grantCharges(){
+  if(merges>=lastMergeMilestone+8){ lastMergeMilestone+=8;
+    if(undoCharges<3){undoCharges++;} else if(delCharges<3){delCharges++;}
+    updateTools();
+  }
+}
+
+var undoStack=null;
+function snapshotForUndo(beforeStr){
+  undoStack={grid:JSON.parse(beforeStr),score:score,high:highTier};
+}
+function doUndo(){
+  if(undoCharges<=0||!undoStack||anim.on||GS!=="play"){return;}
+  grid=undoStack.grid.map(function(r){return r.slice();});
+  score=undoStack.score; highTier=undoStack.high;
+  undoStack=null; undoCharges--; updateStats(); updateTools(); sfxBtn();
+}
+
+function canMove(){
+  if(emptyCells().length) return true;
+  for(var r=0;r<N;r++)for(var c=0;c<N;c++){
+    var t=grid[r][c];
+    if(c+1<N&&grid[r][c+1]===t) return true;
+    if(r+1<N&&grid[r+1][c]===t) return true;
+  }
+  return false;
+}
+
+function updateStats(){
+  $("score").innerHTML=fmt(score)+'<small>億</small>';
+  if(score>best){best=score; try{localStorage.setItem("bazuri.best",String(best));}catch(e){}}
+  $("best").innerHTML=fmt(best)+'<small>億</small>';
+}
+function fmt(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,",");}
+function updateTools(){
+  $("undoCnt").textContent=undoCharges; $("delCnt").textContent=delCharges;
+  $("hallCnt").textContent=Object.keys(unlocked).length;
+  $("tUndo").classList.toggle("dead",undoCharges<=0);
+  $("tDel").classList.toggle("dead",delCharges<=0);
+  $("tDel").classList.toggle("on",delMode);
+}
+
+/* ============ toast ============ */
+var toastTmr=0;
+function toast(msg){
+  var el=$("toast"); el.textContent=msg; el.classList.add("show");
+  clearTimeout(toastTmr); toastTmr=setTimeout(function(){el.classList.remove("show");},1900);
+}
+
+/* ============ rendering ============ */
+function easeOut(t){return 1-(1-t)*(1-t);}
+function popScale(birth){
+  var dt=nowt-birth; if(dt<0||dt>180) return 1;
+  var t=dt/180; return 1+0.18*Math.sin(t*Math.PI);
+}
+function drawTile(tier,centerX,centerY,size){
+  var d=size, x=centerX-d/2, y=centerY-d/2;
+  ctx.save();
+  // shadow
+  ctx.shadowColor="rgba(0,0,0,.5)"; ctx.shadowBlur=8; ctx.shadowOffsetY=3;
+  ctx.fillStyle="#000"; rr(x,y,d,d,d*0.16); ctx.fill();
+  ctx.restore();
+  coverThumb(tier,x,y,d);
+  // ring
+  ctx.lineWidth=Math.max(2,d*0.045); ctx.strokeStyle=RING[tier]||"#fff";
+  rr(x+ctx.lineWidth/2,y+ctx.lineWidth/2,d-ctx.lineWidth,d-ctx.lineWidth,d*0.16); ctx.stroke();
+  // view badge
+  var bh=d*0.26;
+  ctx.save(); rr(x,y+d-bh,d,bh,0); ctx.clip();
+  ctx.fillStyle="rgba(0,0,0,.62)"; ctx.fillRect(x,y+d-bh,d,bh);
+  ctx.restore();
+  ctx.fillStyle="#ffcf4d"; ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.font="900 "+(d*0.17)+"px Anton, sans-serif";
+  ctx.fillText("▶ "+VIDS[tier].oku+"億", x+d*0.07, y+d-bh*0.5+1);
+  // tier index small
+  ctx.fillStyle="rgba(255,255,255,.55)"; ctx.textAlign="right";
+  ctx.font="700 "+(d*0.13)+"px 'Noto Sans JP', sans-serif";
+  ctx.fillText("Lv"+(tier+1), x+d-d*0.06, y+d*0.12);
+}
+function render(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,BW,BW);
+  // board bg cells
+  for(var r=0;r<N;r++)for(var c=0;c<N;c++){
+    var x=ox+c*(cs+gap), y=oy+r*(cs+gap);
+    ctx.fillStyle="#191920"; rr(x,y,cs,cs,cs*0.16); ctx.fill();
+  }
+  if(anim.on){
+    var t=clamp((nowt-anim.t0)/anim.dur,0,1); var e=easeOut(t);
+    for(var i=0;i<anim.movers.length;i++){
+      var mv=anim.movers[i];
+      var px=mv.fx+(mv.tx-mv.fx)*e, py=mv.fy+(mv.ty-mv.fy)*e;
+      drawTile(mv.tier,px,py,cs);
+    }
+    if(t>=1){ anim.on=false; var cb=anim.afterDone; anim.afterDone=null; if(cb)cb(); }
+  } else {
+    for(var r3=0;r3<N;r3++)for(var c3=0;c3<N;c3++){
+      var tt=grid[r3][c3]; if(tt===null) continue;
+      var s=popScale(popAt[r3][c3]);
+      drawTile(tt,cx(c3),cyf(r3),cs*s);
+    }
+  }
+}
+function loop(ts){
+  nowt=ts||0;
+  if(cv.clientWidth && Math.abs((cv.width/dpr)-cv.clientWidth)>1) layout();
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ============ input ============ */
+var ps=null;
+cv.addEventListener("pointerdown",function(e){
+  ps={x:e.clientX,y:e.clientY,t:nowt,moved:false};
+},{passive:true});
+cv.addEventListener("pointermove",function(e){
+  if(!ps)return; if(Math.abs(e.clientX-ps.x)>10||Math.abs(e.clientY-ps.y)>10) ps.moved=true;
+},{passive:true});
+cv.addEventListener("pointerup",function(e){
+  if(!ps)return; var dx=e.clientX-ps.x, dy=e.clientY-ps.y;
+  var adx=Math.abs(dx), ady=Math.abs(dy); var p=ps; ps=null;
+  if(GS!=="play")return;
+  if(adx<24&&ady<24){ // tap
+    if(delMode){ handleDelete(p.x,p.y); }
+    return;
+  }
+  if(adx>ady) move(dx>0?"right":"left"); else move(dy>0?"down":"up");
+},{passive:true});
+cv.addEventListener("pointercancel",function(){ps=null;},{passive:true});
+
+function handleDelete(clientX,clientY){
+  if(delCharges<=0){delMode=false;updateTools();return;}
+  var rect=cv.getBoundingClientRect();
+  var lx=(clientX-rect.left), ly=(clientY-rect.top);
+  for(var r=0;r<N;r++)for(var c=0;c<N;c++){
+    if(grid[r][c]===null) continue;
+    var gx=ox+c*(cs+gap), gy=oy+r*(cs+gap);
+    if(lx>=gx&&lx<=gx+cs&&ly>=gy&&ly<=gy+cs){
+      snapshotForUndo(JSON.stringify(grid));
+      grid[r][c]=null; delCharges--; delMode=false; updateTools(); sfxBtn();
+      toast("通報して削除した");
+      return;
+    }
+  }
+  delMode=false; updateTools();
+}
+
+document.addEventListener("keydown",function(e){
+  if(GS!=="play")return;
+  var k=e.key;
+  if(k==="ArrowLeft"||k==="a"||k==="A"){move("left");e.preventDefault();}
+  else if(k==="ArrowRight"||k==="d"||k==="D"){move("right");e.preventDefault();}
+  else if(k==="ArrowUp"||k==="w"||k==="W"){move("up");e.preventDefault();}
+  else if(k==="ArrowDown"||k==="s"||k==="S"){move("down");e.preventDefault();}
+  else if(k==="z"||k==="Z"){doUndo();}
+});
+
+/* prevent double-tap zoom */
+var lastTap=0;
+document.addEventListener("touchend",function(e){
+  var n=Date.now(); if(n-lastTap<350){e.preventDefault();} lastTap=n;
+},{passive:false});
+document.addEventListener("gesturestart",function(e){e.preventDefault();});
+document.addEventListener("dblclick",function(e){e.preventDefault();});
+
+/* ============ buttons ============ */
+$("tUndo").addEventListener("pointerup",doUndo);
+$("tDel").addEventListener("pointerup",function(){
+  if(delCharges<=0||GS!=="play")return; delMode=!delMode; updateTools(); sfxBtn();
+  toast(delMode?"消したいサムネをタップ":"通報キャンセル");
+});
+$("tMute").addEventListener("pointerup",function(){
+  muted=!muted; $("tMute").textContent=muted?"🔇":"🔊";
+});
+$("tHall").addEventListener("pointerup",openHall);
+$("hallClose").addEventListener("pointerup",function(){$("hall").classList.add("hide");sfxBtn();});
+function openHall(){
+  sfxBtn();
+  var g=$("hofgrid"); g.innerHTML="";
+  for(var t=TOP;t>=0;t--){
+    var v=VIDS[t]; var div=document.createElement("div");
+    var got=!!unlocked[t]||t<=highTier;
+    div.className="hof"+(got?"":" locked");
+    div.innerHTML='<img src="https://i.ytimg.com/vi/'+v.id+'/hqdefault.jpg" alt="">'+
+      '<div class="play">'+(got?"▶":"🔒")+'</div>'+
+      '<div class="lbl">'+esc(v.t)+' <b>'+v.oku+'億</b></div>';
+    if(got){(function(tt){div.addEventListener("pointerup",function(){playVideo(tt);});})(t);}
+    g.appendChild(div);
+  }
+  $("hall").classList.remove("hide");
+}
+function esc(s){return s.replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+/* ============ start / over ============ */
+function buildLadder(){
+  var el=$("ovLadder"); el.innerHTML="";
+  for(var t=0;t<=TOP;t++){ var s=document.createElement("span"); s.textContent=VIDS[t].oku+"億"; el.appendChild(s); }
+}
+function startGame(){
+  for(var r=0;r<N;r++)for(var c=0;c<N;c++){grid[r][c]=null;popAt[r][c]=0;}
+  score=0; highTier=0; merges=0; lastMergeMilestone=0; unlocked={}; wonOnce=false;
+  undoCharges=1; delCharges=1; delMode=false; undoStack=null;
+  anim.on=false; anim.movers=[];
+  spawn(); spawn();
+  GS="play"; updateStats(); updateTools();
+  $("ov").classList.add("hide"); $("hall").classList.add("hide");
+  sfxBtn();
+}
+$("ovBtn").addEventListener("pointerup",startGame);
+function showOver(){
+  $("ovTag").textContent="▶ GAME OVER";
+  $("ov").querySelector("h1").innerHTML='ゲーム<b>終了</b>';
+  $("ovMsg").innerHTML=(wonOnce?"👑 <b>世界一を制覇！</b><br>":"")+
+    "最高到達：<b>"+VIDS[highTier].t+"（"+VIDS[highTier].oku+"億回）</b><br>"+
+    "稼いだ再生回数：<b>"+fmt(score)+"億回</b><br>殿堂入り "+Object.keys(unlocked).length+" 本。";
+  $("ovBtn").textContent="もう一回";
+  $("ovLadder").innerHTML="";
+  $("ov").classList.remove("hide");
+}
+
+/* ============ boot ============ */
+buildLadder();
+layout();
+requestAnimationFrame(loop);
+window.addEventListener("resize",layout);
+</script>
+</body>
+</html>

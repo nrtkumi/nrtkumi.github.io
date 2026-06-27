@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>爆アゲ — 登録者100万人への一発逆転</title>
+<meta name="description" content="バズった動画をネタに自分もバズれ。投稿してビューを稼ぎ、もう一本撮るか確定するかのプッシュユアラック。炎上で爆死すればモチベを失う。底辺YouTuberから伝説までの一発逆転ローグライト。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="爆アゲ — 登録者100万人への一発逆転">
+<meta property="og:description" content="投稿でビューを稼ぎ『もう一本撮るか／確定して寝るか』。炎上で爆死、バズで一発逆転。底辺から伝説までのプッシュユアラック。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/bakuage/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/bakuage/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Noto+Sans+JP:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fff7e8; --ink:#1a1410; --red:#ff2b2b; --yellow:#ffe000; --blue:#1166ff;
+  --green:#16b85a; --line:#1a1410; --paper:#fffdf6;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+html,body{margin:0;padding:0;background:#caa46a;color:var(--ink);
+  font-family:"Noto Sans JP",system-ui,sans-serif;overscroll-behavior:none;
+  user-select:none;-webkit-user-select:none;font-weight:700;}
+#app{position:relative;left:50%;transform:translateX(-50%);
+  width:100%;max-width:min(520px,64vh);min-height:100svh;background:var(--bg);
+  background-image:radial-gradient(rgba(0,0,0,.04) 1px,transparent 1px);background-size:9px 9px;
+  box-shadow:0 0 60px rgba(0,0,0,.4);
+  padding:calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 12px);
+  display:flex;flex-direction:column;gap:8px;}
+.head{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.subs{display:flex;flex-direction:column;}
+.subs .rank{display:inline-block;background:var(--ink);color:var(--yellow);
+  font-family:"Dela Gothic One";font-size:11px;padding:2px 9px;border-radius:6px;width:fit-content;}
+.subs .n{font-family:"Dela Gothic One";font-size:30px;line-height:1;margin-top:2px;}
+.subs .n small{font-size:13px;}
+.subs .lbl{font-size:9px;color:#8a7a5a;letter-spacing:1px;}
+.hud{display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.moti{font-size:17px;letter-spacing:1px;}
+.day{font-size:10px;color:#8a7a5a;}
+.hbtns{display:flex;gap:5px;margin-top:2px;}
+.hbtns button{border:2px solid var(--ink);background:var(--paper);border-radius:8px;
+  font-size:14px;width:34px;height:30px;cursor:pointer;font-weight:700;}
+/* pot meter */
+.pot{border:3px solid var(--ink);border-radius:12px;background:var(--paper);padding:8px 11px;
+  box-shadow:3px 3px 0 var(--ink);}
+.pot .row{display:flex;justify-content:space-between;align-items:baseline;}
+.pot .row .t{font-size:11px;color:#8a7a5a;}
+.pot .big{font-family:"Dela Gothic One";font-size:24px;color:var(--red);}
+.pot .big small{font-size:12px;color:var(--ink);}
+.bar{height:9px;background:#e8dcc0;border-radius:99px;margin-top:6px;overflow:hidden;border:1px solid #00000020;}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--yellow),var(--red));transition:width .25s;}
+.bar.risk i{background:linear-gradient(90deg,#ffae00,var(--red));}
+/* stage */
+.stage{flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;min-height:0;}
+.prompt{text-align:center;font-family:"Dela Gothic One";font-size:15px;}
+.prompt small{display:block;font-family:"Noto Sans JP";font-size:11px;color:#8a7a5a;font-weight:500;margin-top:2px;}
+.cards{display:flex;gap:8px;}
+.card{flex:1;border:3px solid var(--ink);border-radius:12px;background:var(--paper);
+  overflow:hidden;cursor:pointer;box-shadow:3px 3px 0 var(--ink);display:flex;flex-direction:column;}
+.card:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+.card .th{position:relative;aspect-ratio:16/9;background:#000;overflow:hidden;}
+.card .th img{width:100%;height:100%;object-fit:cover;display:block;}
+.card .th .kut{position:absolute;left:0;top:0;background:var(--red);color:#fff;font-size:9px;
+  padding:2px 5px;border-bottom-right-radius:7px;font-weight:700;}
+.card .meta{padding:5px 6px;}
+.card .ttl{font-size:10px;line-height:1.25;height:24px;overflow:hidden;}
+.card .src{font-size:8px;color:#8a7a5a;margin-top:1px;}
+.card .stat{display:flex;gap:4px;font-size:10px;margin-top:4px;flex-wrap:wrap;}
+.card .stat b{background:#f3ead2;border-radius:5px;padding:1px 4px;font-weight:700;}
+/* result panel */
+.result{border:3px solid var(--ink);border-radius:14px;background:var(--paper);
+  box-shadow:4px 4px 0 var(--ink);overflow:hidden;}
+.result .rth{position:relative;aspect-ratio:16/9;background:#000;}
+.result .rth img{width:100%;height:100%;object-fit:cover;}
+.result .splash{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;color:#fff;text-shadow:0 2px 0 #000,0 0 16px #000;}
+.result .splash .ev{font-family:"Dela Gothic One";font-size:34px;transform:rotate(-6deg);}
+.result .splash .gain{font-family:"Dela Gothic One";font-size:22px;color:var(--yellow);margin-top:4px;}
+.result .info{padding:9px 12px;text-align:center;}
+.result .info .pl{font-size:12px;color:#8a7a5a;}
+.result .info .pv{font-family:"Dela Gothic One";font-size:20px;}
+/* big choice buttons */
+.choices{display:flex;gap:8px;}
+.choice{flex:1;border:3px solid var(--ink);border-radius:12px;padding:12px 6px;cursor:pointer;
+  font-family:"Dela Gothic One";text-align:center;box-shadow:4px 4px 0 var(--ink);}
+.choice:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink);}
+.choice.more{background:var(--red);color:#fff;}
+.choice.bank{background:var(--green);color:#fff;}
+.choice .big{font-size:18px;display:block;}
+.choice .sm{font-size:10px;font-family:"Noto Sans JP";font-weight:700;display:block;margin-top:3px;opacity:.95;}
+/* overlay */
+.ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;z-index:40;
+  background:rgba(20,10,0,.55);}
+.ov.hide{display:none;}
+.modal{width:100%;max-width:420px;background:var(--paper);border:4px solid var(--ink);
+  border-radius:18px;padding:20px 18px;box-shadow:8px 8px 0 var(--ink);text-align:center;}
+.modal h1{font-family:"Dela Gothic One";font-size:34px;margin:0 0 4px;}
+.modal h1 .r{color:var(--red);}
+.modal .tag{display:inline-block;background:var(--ink);color:var(--yellow);font-size:11px;
+  padding:3px 10px;border-radius:6px;letter-spacing:2px;margin-bottom:10px;font-family:"Dela Gothic One";}
+.modal p{font-size:13px;line-height:1.7;margin:8px 0;color:#3a2e20;font-weight:500;}
+.modal p b{color:var(--red);}
+.go{margin-top:12px;border:3px solid var(--ink);background:var(--yellow);border-radius:999px;
+  padding:13px 36px;font-family:"Dela Gothic One";font-size:22px;cursor:pointer;box-shadow:5px 5px 0 var(--ink);}
+.go:active{transform:translate(2px,2px);box-shadow:3px 3px 0 var(--ink);}
+.go.green{background:var(--green);color:#fff;}
+.ranks{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:8px 0;}
+.ranks span{font-size:10px;border:2px solid var(--ink);border-radius:6px;padding:1px 6px;background:#fff;}
+.hofgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;max-height:50vh;overflow:auto;}
+.hof{position:relative;border:2px solid var(--ink);border-radius:8px;overflow:hidden;aspect-ratio:16/9;
+  background:#000;cursor:pointer;}
+.hof img{width:100%;height:100%;object-fit:cover;}
+.hof.locked{filter:grayscale(1) brightness(.4);cursor:default;}
+.hof .pl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:26px;color:#fff;text-shadow:0 1px 5px #000;}
+.hof .lb{position:absolute;left:0;right:0;bottom:0;font-size:9px;background:rgba(0,0,0,.7);color:#fff;padding:2px 4px;}
+.toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:50;
+  background:var(--ink);color:var(--yellow);padding:9px 18px;border-radius:999px;font-weight:700;font-size:13px;
+  box-shadow:0 6px 18px rgba(0,0,0,.4);opacity:0;transition:opacity .3s,top .3s;pointer-events:none;
+  font-family:"Dela Gothic One";white-space:nowrap;max-width:90%;}
+.toast.show{opacity:1;top:20px;}
+#yt{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.92);display:none;
+  flex-direction:column;align-items:center;justify-content:center;padding:14px;}
+#yt.show{display:flex;}
+#ytbox{width:100%;max-width:560px;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;}
+#ytplayer{width:100%;height:100%;}
+#yt .yttitle{color:var(--yellow);font-size:13px;margin:10px 0;text-align:center;font-weight:700;}
+#yt .ytclose{background:var(--red);color:#fff;border:none;border-radius:999px;padding:11px 30px;
+  font-family:"Dela Gothic One";font-size:18px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="head">
+    <div class="subs">
+      <span class="rank" id="rankName">底辺</span>
+      <span class="lbl">登録者</span>
+      <span class="n" id="subs">0<small>人</small></span>
+    </div>
+    <div class="hud">
+      <div class="moti" id="moti">❤️❤️❤️</div>
+      <div class="day" id="day">DAY 1</div>
+      <div class="hbtns">
+        <button id="bHall">🏆</button>
+        <button id="bMute">🔊</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pot">
+    <div class="row"><span class="t">今日の再生数（未確定）</span><span class="t" id="postsT">投稿 0本</span></div>
+    <div class="big" id="potN">0<small>人ぶん</small></div>
+    <div class="bar" id="barWrap"><i id="bar"></i></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <!-- filled by JS: cards or result -->
+  </div>
+</div>
+
+<!-- start / over -->
+<div class="ov" id="ov">
+  <div class="modal">
+    <div class="tag">▶ PUSH YOUR LUCK</div>
+    <h1>爆<span class="r">アゲ</span></h1>
+    <p>バズった神動画を<b>元ネタ</b>に、自分の動画を投稿してビューを稼ぐ。<br>
+      <b>「もう一本撮る」</b>ほど稼げるが、続けるほど<b>炎上→爆死</b>の確率が上がる。</p>
+    <p>稼ぎを<b>「寝て確定」</b>すれば登録者になる。爆死で<b>モチベ</b>を失い、ゼロで引退。<br>
+      <b>30日間</b>で底辺から<b>伝説（登録者1億）</b>へ駆け上がれ。</p>
+    <div class="ranks" id="rankList"></div>
+    <p style="font-size:11px;color:#8a7a5a">到達したランクの神動画は本編を再生できる。</p>
+    <button class="go" id="goBtn">スタート</button>
+  </div>
+</div>
+
+<!-- hall -->
+<div class="ov hide" id="hall">
+  <div class="modal">
+    <div class="tag">▶ 解放した神動画</div>
+    <h1 style="font-size:26px">殿<span class="r">堂</span></h1>
+    <div class="hofgrid" id="hofgrid"></div>
+    <button class="go green" id="hallClose" style="font-size:17px">とじる</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="yt">
+  <div id="ytbox"><div id="ytplayer"></div></div>
+  <div class="yttitle" id="yttitle"></div>
+  <button class="ytclose" id="ytclose">とじる ✕</button>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+"use strict";
+function $(id){return document.getElementById(id);}
+function rnd(n){return Math.floor(Math.random()*n);}
+function rf(){return Math.random();}
+function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+function pick(a){return a[rnd(a.length)];}
+
+/* ===== verified embeddable videos (元ネタ deck) ===== */
+var DECK=[
+  {id:"dQw4w9WgXcQ",t:"Never Gonna Give You Up",o:16},
+  {id:"9bZkp7q19f0",t:"GANGNAM STYLE",o:54},
+  {id:"kJQP7kiw5Fk",t:"Despacito",o:86},
+  {id:"XqZsoesa55w",t:"Baby Shark Dance",o:160},
+  {id:"hT_nvWreIhg",t:"Counting Stars",o:42},
+  {id:"JGwWNGJdvx8",t:"Shape of You",o:65},
+  {id:"RgKAFK5djSk",t:"See You Again",o:67},
+  {id:"OPf0YbXqDm0",t:"Uptown Funk",o:54},
+  {id:"fJ9rUzIMcZQ",t:"Bohemian Rhapsody",o:18},
+  {id:"60ItHLz5WEA",t:"Faded",o:36},
+  {id:"09R8_2nJtjg",t:"Sugar",o:40},
+  {id:"CevxZvSJLk8",t:"Roar",o:39},
+  {id:"YQHsXMglC9A",t:"Hello",o:34},
+  {id:"pRpeEdMmmQ0",t:"Waka Waka",o:40},
+  {id:"lp-EO5I60KA",t:"Thinking Out Loud",o:37},
+  {id:"2Vv-BfVoq4g",t:"Perfect",o:37},
+  {id:"e-ORhEE9VVg",t:"Blank Space",o:35},
+  {id:"450p7goxZqg",t:"All of Me",o:26},
+  {id:"1G4isv_Fylg",t:"Paradise",o:17},
+  {id:"JZjAg6fK-BQ",t:"Reminder",o:9},
+  {id:"KQ6zr6kCPj8",t:"Party Rock Anthem",o:19},
+  {id:"fLexgOxsZu0",t:"The Lazy Song",o:20},
+  {id:"papuvlVeZg8",t:"Rockabye",o:30},
+  {id:"uelHwf8o7_U",t:"Love The Way You Lie",o:26},
+  {id:"7PCkvCPvDXk",t:"All About That Bass",o:26},
+  {id:"SlPhMPnQ58k",t:"Memories",o:10},
+  {id:"DyDfgMOUjCI",t:"bad guy",o:14},
+  {id:"ru0K8uYEZWw",t:"Can't Stop the Feeling",o:12}
+];
+var KUT=["歌ってみた","踊ってみた","ゲーム実況","検証してみた","モッパン","ドッキリ","ASMR","開封","リアクション","解説","やってみた","切り抜き","Vlog","あるある","ものまね","料理"];
+var RANKS=[
+  {name:"底辺",sub:0,vid:"JZjAg6fK-BQ",vt:"Reminder"},
+  {name:"駆け出し",sub:10000,vid:"SlPhMPnQ58k",vt:"Memories"},
+  {name:"中堅",sub:100000,vid:"DyDfgMOUjCI",vt:"bad guy"},
+  {name:"人気",sub:500000,vid:"CevxZvSJLk8",vt:"Roar"},
+  {name:"トップ",sub:2000000,vid:"OPf0YbXqDm0",vt:"Uptown Funk"},
+  {name:"カリスマ",sub:10000000,vid:"9bZkp7q19f0",vt:"GANGNAM STYLE"},
+  {name:"伝説",sub:100000000,vid:"XqZsoesa55w",vt:"Baby Shark"}
+];
+
+/* ===== audio (iOS消音スイッチ対策込み) ===== */
+var AC=null, muted=false;
+function audio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+    AC.onstatechange=function(){if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}}
+  return AC;
+}
+var silentEl=null;
+function silentWavUrl(){
+  var sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  function str(o,s){for(var i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);
+  v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(var i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  var p=silentEl.play(); if(p&&p.catch)p.catch(function(){});
+  audio(); if(!AC)return;
+  function done(){if(AC.state==="running"){["pointerdown","pointerup","touchend"].forEach(function(ev){document.removeEventListener(ev,unlockAudio,true);});}}
+  try{AC.resume().then(done);}catch(e){done();}
+}
+["pointerdown","pointerup","touchend"].forEach(function(ev){document.addEventListener(ev,unlockAudio,true);});
+document.addEventListener("visibilitychange",function(){if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){
+  if(muted||!audio())return;
+  try{var o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}
+}
+function sfxPost(){tone(440,0.07,"square",0.04,660);}
+function sfxBuzz(){tone(523,0.10,"square",0.06);setTimeout(function(){tone(784,0.10,"square",0.06);},90);setTimeout(function(){tone(1175,0.2,"square",0.06);},190);}
+function sfxBank(){tone(660,0.08,"triangle",0.05);setTimeout(function(){tone(990,0.14,"triangle",0.05);},90);}
+function sfxBust(){tone(300,0.25,"sawtooth",0.08,90);setTimeout(function(){tone(150,0.5,"sawtooth",0.08,60);},200);}
+function sfxRank(){tone(523,0.1,"triangle",0.07);setTimeout(function(){tone(659,0.1,"triangle",0.07);},100);setTimeout(function(){tone(880,0.1,"triangle",0.07);},200);setTimeout(function(){tone(1175,0.25,"triangle",0.07);},300);}
+function sfxBtn(){tone(700,0.04,"square",0.03);}
+
+/* ===== YouTube ===== */
+var ytPlayer=null, ytReady=false;
+window.onYouTubeIframeAPIReady=function(){
+  try{ytPlayer=new YT.Player("ytplayer",{
+    playerVars:{controls:1,modestbranding:1,rel:0,iv_load_policy:3,playsinline:1,origin:location.origin},
+    events:{"onReady":function(){ytReady=true;}}});}catch(e){}
+};
+function playVideo(id,title){
+  $("yttitle").textContent=title||"";
+  $("yt").classList.add("show");
+  if(ytReady&&ytPlayer&&ytPlayer.loadVideoById){try{ytPlayer.loadVideoById(id);}catch(e){}}
+  else{$("ytplayer").innerHTML='<iframe width="100%" height="100%" src="https://www.youtube.com/embed/'+id+'?autoplay=1&playsinline=1&rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>';}
+}
+$("ytclose").addEventListener("pointerup",function(){
+  $("yt").classList.remove("show");
+  try{if(ytReady&&ytPlayer&&ytPlayer.stopVideo)ytPlayer.stopVideo();}catch(e){}
+});
+
+/* ===== tuning (bot-simで調整: 30日キャップ・乗算プレッシャー) ===== */
+var DAYS=30;
+var SEED0=0.05,SEED1=0.05, R0=0.05,R1=0.06, GBASE=1.2,GPOW=0.32,GBUZZ=0.8;
+
+/* ===== state ===== */
+var subs=0, best=0, rankIdx=0, moti=3, day=1;
+var pot=0, postsToday=0, unlocked={0:true}, wonOnce=false;
+var GS="start", curCards=[], lastVid=-1;
+try{best=parseInt(localStorage.getItem("bakuage.best")||"0",10)||0;}catch(e){}
+
+function gap(){var nx=RANKS[Math.min(rankIdx+1,RANKS.length-1)].sub, cur=RANKS[rankIdx].sub;
+  return Math.max(8000, nx-cur);}
+function fmtN(n){
+  n=Math.round(n);
+  if(n>=100000000) return (n/100000000).toFixed(n>=1000000000?0:2)+"億";
+  if(n>=10000) return (n/10000).toFixed(n>=1000000?0:1)+"万";
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,",");
+}
+function bustRiskNext(){ return clamp(R0+R1*postsToday, 0, 0.85); }
+
+/* ===== card draw ===== */
+function drawCards(){
+  curCards=[]; var used={};
+  if(lastVid>=0) used[lastVid]=true;
+  for(var i=0;i<3;i++){
+    var vi; var guard=0; do{vi=rnd(DECK.length);guard++;}while(used[vi]&&guard<30);
+    used[vi]=true;
+    var powTier=pick([0,0,1,1,1,2]); // 0 low,1 mid,2 high
+    var flameTier= powTier===2 ? pick([1,2,2]) : pick([0,0,1]); // high power -> riskier
+    var buzzTier=pick([0,1,1,2]);
+    curCards.push({
+      vi:vi, kut:pick(KUT),
+      powMul:[0.7,1.0,1.45][powTier], pT:powTier,
+      buzz:[0.12,0.2,0.32][buzzTier], bT:buzzTier,
+      flame:[0,0.05,0.10][flameTier], fT:flameTier
+    });
+  }
+}
+
+/* ===== render ===== */
+function stars(n,ch){var s="";for(var i=0;i<3;i++)s+= i<n?ch:"·";return s;}
+function renderHUD(){
+  $("subs").innerHTML=fmtN(subs)+'<small>人</small>';
+  $("rankName").textContent=RANKS[rankIdx].name;
+  $("moti").textContent="❤️".repeat(moti)+"🖤".repeat(clamp(3-moti,0,3));
+  $("day").textContent="DAY "+Math.min(day,DAYS)+" / "+DAYS;
+  $("postsT").textContent="投稿 "+postsToday+"本";
+  $("potN").innerHTML=fmtN(pot)+'<small>人ぶん</small>';
+  var g=gap();
+  $("bar").style.width=clamp(pot/g*100,0,100)+"%";
+  if(subs>best){best=subs;try{localStorage.setItem("bakuage.best",String(best));}catch(e){}}
+}
+function renderCards(){
+  var st=$("stage");
+  var html='<div class="prompt">どの神動画をネタにする？<small>パワー＝稼ぎ ／ 🔥＝炎上リスク ／ ✨＝バズ期待</small></div>';
+  html+='<div class="cards">';
+  for(var i=0;i<curCards.length;i++){
+    var c=curCards[i], v=DECK[c.vi];
+    html+='<div class="card" data-i="'+i+'">'+
+      '<div class="th"><span class="kut">'+c.kut+'</span>'+
+        '<img crossorigin="anonymous" src="https://i.ytimg.com/vi/'+v.id+'/hqdefault.jpg" alt=""></div>'+
+      '<div class="meta"><div class="ttl">'+esc(v.t)+'</div>'+
+        '<div class="src">元ネタ '+v.o+'億回</div>'+
+        '<div class="stat">'+
+          '<b>⚡'+stars(c.pT+1,"●")+'</b>'+
+          '<b>✨'+stars(c.bT+1,"●")+'</b>'+
+          '<b>🔥'+stars(c.fT,"●")+'</b>'+
+        '</div></div></div>';
+  }
+  html+='</div>';
+  st.innerHTML=html;
+  var cards=st.querySelectorAll(".card");
+  for(var k=0;k<cards.length;k++){(function(el){
+    el.addEventListener("pointerup",function(){ postCard(parseInt(el.getAttribute("data-i"),10)); });
+  })(cards[k]);}
+}
+function renderResult(ev,gain,v){
+  var st=$("stage");
+  var col= (ev.indexOf("バズ")>=0)?"#16b85a":"#1166ff";
+  var html='<div class="result"><div class="rth">'+
+    '<img crossorigin="anonymous" src="https://i.ytimg.com/vi/'+v.id+'/hqdefault.jpg" alt="">'+
+    '<div class="splash"><div class="ev" style="color:'+col+'">'+ev+'</div>'+
+    '<div class="gain">+'+fmtN(gain)+' 再生</div></div></div>'+
+    '<div class="info"><div class="pl">今日の合計（未確定）</div><div class="pv">'+fmtN(pot)+' 人ぶん</div></div></div>';
+  var risk=Math.round(bustRiskNext()*100);
+  html+='<div class="choices">'+
+    '<div class="choice more" id="cMore"><span class="big">🎬 もう一本</span><span class="sm">炎上で爆死 '+risk+'%</span></div>'+
+    '<div class="choice bank" id="cBank"><span class="big">😴 寝て確定</span><span class="sm">+'+fmtN(bankValue())+' 登録者</span></div>'+
+    '</div>';
+  st.innerHTML=html;
+  $("cMore").addEventListener("pointerup",function(){ sfxBtn(); nextPost(); });
+  $("cBank").addEventListener("pointerup",function(){ sfxBtn(); bank(); });
+}
+function bankValue(){ return Math.round(pot); }
+
+/* ===== flow ===== */
+function startDay(){
+  postsToday=0; pot=0; drawCards(); renderHUD(); renderCards();
+}
+function nextPost(){ drawCards(); renderCards(); renderHUD(); } // continuation: bust rolled on post
+
+function postCard(i){
+  if(GS!=="play")return;
+  var c=curCards[i], v=DECK[c.vi]; lastVid=c.vi;
+  // bust check on continuation posts
+  if(postsToday>=1){
+    var br=clamp(bustRiskNext()+c.flame,0,0.9);
+    if(rf()<br){ doBust(v); return; }
+  }
+  // outcome (multiplicative press-your-luck)
+  var ev, gainShown, before=pot;
+  var buzzHit=rf()<clamp(c.buzz+0.04*postsToday,0,0.6);
+  if(postsToday===0){
+    pot=gap()*(SEED0+rf()*SEED1)*c.powMul;
+    if(buzzHit){ pot*=2; ev="初手バズ!"; sfxBuzz(); } else { ev="投稿"; sfxPost(); }
+    gainShown=pot;
+  } else {
+    var g=GBASE+c.powMul*GPOW+(buzzHit?GBUZZ:0);
+    pot*=g;
+    gainShown=pot-before;
+    if(buzzHit){ ev="バズ!"; sfxBuzz(); } else { ev="伸びた"; sfxPost(); }
+  }
+  pot=Math.max(1,Math.round(pot)); postsToday++;
+  renderHUD();
+  if(buzzHit) toast("✨バズった！再生 ×"+(postsToday===1?2:(GBASE+c.powMul*GPOW+GBUZZ).toFixed(1)));
+  renderResult(ev,Math.round(gainShown),v);
+}
+function doBust(v){
+  moti--; var dead=moti<=0;
+  sfxBust();
+  var lost=pot;
+  var st=$("stage");
+  st.innerHTML='<div class="result"><div class="rth">'+
+    '<img crossorigin="anonymous" src="https://i.ytimg.com/vi/'+v.id+'/hqdefault.jpg" alt="" style="filter:grayscale(1) brightness(.5)">'+
+    '<div class="splash"><div class="ev" style="color:#ff2b2b;font-size:40px">爆死</div>'+
+    '<div class="gain" style="color:#fff">炎上で今日の '+fmtN(lost)+' 再生が消滅…</div></div></div>'+
+    '<div class="info"><div class="pl">モチベ</div><div class="pv">'+("❤️".repeat(Math.max(0,moti))||"なし")+'</div></div></div>'+
+    '<div class="choices"><div class="choice bank" id="cNext" style="background:#1a1410"><span class="big">'+(dead?"💀 引退する":"次の日へ →")+'</span></div></div>';
+  pot=0; renderHUD();
+  $("cNext").addEventListener("pointerup",function(){ sfxBtn(); if(dead){showEnd("引退");} else { advanceDay(); } });
+}
+function bank(){
+  var val=bankValue();
+  subs+=val; sfxBank();
+  toast("😴 +"+fmtN(val)+" 登録者");
+  var rankedUp=false;
+  while(rankIdx<RANKS.length-1 && subs>=RANKS[rankIdx+1].sub){
+    rankIdx++; unlocked[rankIdx]=true; rankedUp=true;
+    moti=clamp(moti+1,0,3);
+    if(rankIdx>=RANKS.length-1){ wonOnce=true; }
+  }
+  pot=0; renderHUD();
+  if(wonOnce){ sfxRank(); setTimeout(function(){ showEnd("制覇"); },500); return; }
+  if(rankedUp){
+    sfxRank();
+    var R=RANKS[rankIdx];
+    setTimeout(function(){ toast("🎉 "+R.name+"に昇格！神動画解放"); },650);
+  }
+  setTimeout(advanceDay, rankedUp?900:350);
+}
+function advanceDay(){
+  day++;
+  if(day>DAYS){ showEnd("時間切れ"); return; }
+  startDay();
+}
+function showEnd(reason){
+  GS="over";
+  var won=reason==="制覇"||wonOnce;
+  var tag = reason==="制覇"?"▶ 伝説達成": (reason==="引退"?"▶ 引退（モチベ消滅）":"▶ 30日終了");
+  var h = reason==="制覇"?'伝<span class="r">説</span>': (reason==="引退"?'引<span class="r">退</span>':'結<span class="r">果</span>');
+  $("ov").querySelector(".tag").textContent=tag;
+  $("ov").querySelector("h1").innerHTML=h;
+  var ps=$("ov").querySelectorAll(".modal p");
+  ps[0].innerHTML=
+    (won?"👑 <b>登録者1億・伝説の配信者に到達！</b><br>":"")+
+    "最終ランク：<b>"+RANKS[rankIdx].name+"</b><br>"+
+    "登録者：<b>"+fmtN(subs)+"人</b>（"+Math.min(day,DAYS)+"日経過）<br>"+
+    "ベスト：<b>"+fmtN(best)+"人</b>";
+  if(ps[1])ps[1].style.display="none";
+  $("rankList").innerHTML="";
+  $("goBtn").textContent="もう一回";
+  $("ov").classList.remove("hide");
+}
+
+/* ===== hall ===== */
+function openHall(){
+  sfxBtn(); var g=$("hofgrid"); g.innerHTML="";
+  for(var i=RANKS.length-1;i>=0;i--){
+    var R=RANKS[i], got=!!unlocked[i];
+    var d=document.createElement("div");
+    d.className="hof"+(got?"":" locked");
+    d.innerHTML='<img src="https://i.ytimg.com/vi/'+R.vid+'/hqdefault.jpg" alt="">'+
+      '<div class="pl">'+(got?"▶":"🔒")+'</div>'+
+      '<div class="lb">'+R.name+'：'+esc(R.vt)+'</div>';
+    if(got){(function(R){d.addEventListener("pointerup",function(){playVideo(R.vid,R.vt+" ／ "+R.name+"の神動画");});})(R);}
+    g.appendChild(d);
+  }
+  $("hall").classList.remove("hide");
+}
+$("bHall").addEventListener("pointerup",openHall);
+$("hallClose").addEventListener("pointerup",function(){$("hall").classList.add("hide");sfxBtn();});
+$("bMute").addEventListener("pointerup",function(){muted=!muted;$("bMute").textContent=muted?"🔇":"🔊";});
+
+/* ===== toast ===== */
+var toastTmr=0;
+function toast(m){var el=$("toast");el.textContent=m;el.classList.add("show");
+  clearTimeout(toastTmr);toastTmr=setTimeout(function(){el.classList.remove("show");},1800);}
+function esc(s){return s.replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+/* ===== start ===== */
+function buildRankList(){
+  var el=$("rankList");el.innerHTML="";
+  for(var i=0;i<RANKS.length;i++){var s=document.createElement("span");
+    s.textContent=RANKS[i].name+(RANKS[i].sub?(" "+fmtN(RANKS[i].sub)):"");el.appendChild(s);}
+}
+function startGame(){
+  subs=0;rankIdx=0;moti=3;day=1;pot=0;postsToday=0;unlocked={0:true};wonOnce=false;lastVid=-1;
+  GS="play";
+  $("ov").classList.add("hide");$("hall").classList.add("hide");
+  sfxBtn(); startDay();
+}
+$("goBtn").addEventListener("pointerup",startGame);
+
+/* prevent double-tap zoom */
+var lastTap=0;
+document.addEventListener("touchend",function(e){var n=Date.now();if(n-lastTap<350)e.preventDefault();lastTap=n;},{passive:false});
+document.addEventListener("gesturestart",function(e){e.preventDefault();});
+document.addEventListener("dblclick",function(e){e.preventDefault();});
+
+buildRankList();
+renderHUD();
+</script>
+</body>
+</html>
