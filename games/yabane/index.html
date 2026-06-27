@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>矢羽根 — 矢印スライドパズル</title>
+<meta name="description" content="グリッドの矢印を順にタップして盤外へ射出し、全部消す。弓道美の矢印パズルローグライト。">
+<meta property="og:title" content="矢羽根 — 矢印スライドパズル">
+<meta property="og:description" content="グリッドの矢印を順にタップして盤外へ射出し、全部消す。弓道美の矢印パズルローグライト。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/yabane/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/yabane/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+html, body { height:100%; }
+body {
+  background: #1a1510; color: #2c1a0e;
+  font-family: "Zen Kaku Gothic New", sans-serif;
+  overflow:hidden; overscroll-behavior:none;
+  -webkit-touch-callout:none; user-select:none; -webkit-user-select:none;
+  display:flex; flex-direction:column; align-items:center;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.wrap {
+  position:relative;
+  width: min(100vw, 480px, calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 0.62));
+  height:100%; margin:0 auto;
+  display:flex; flex-direction:column;
+  background: #f5f0e8;
+  box-shadow: 0 0 40px rgba(0,0,0,0.6);
+}
+canvas { display:block; touch-action:none; width:100%; flex:1; }
+#ui {
+  position:absolute; top:0; left:0; right:0; bottom:0;
+  pointer-events:none;
+}
+#hud {
+  position:absolute; top:0; left:0; right:0;
+  display:flex; justify-content:space-between; align-items:center;
+  padding: 8px 12px;
+  pointer-events:none;
+  font-family: "Zen Kaku Gothic New", sans-serif;
+}
+#hud-left { display:flex; flex-direction:column; gap:2px; }
+#stage-label { font-size:11px; color:#8b6914; font-weight:700; letter-spacing:0.08em; }
+#score-val { font-size:22px; color:#2c1a0e; font-weight:700; }
+#hud-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+#combo-display { font-size:14px; color:#c8332b; font-weight:700; min-height:18px; }
+#charges-display { font-size:12px; color:#8b6914; }
+#mute-btn {
+  position:absolute; top:8px; right:12px;
+  pointer-events:all; cursor:pointer;
+  font-size:18px; background:none; border:none;
+  color:#8b6914; padding:4px;
+}
+#overlay {
+  position:absolute; top:0; left:0; right:0; bottom:0;
+  background: rgba(245,240,232,0.95);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:16px; pointer-events:all;
+}
+#overlay.hidden { display:none; }
+.overlay-title {
+  font-family: "Yuji Syuku", serif;
+  font-size:48px; color:#2c1a0e;
+  letter-spacing:0.1em; text-align:center;
+}
+.overlay-sub {
+  font-size:13px; color:#5c4a2a; text-align:center; line-height:1.8;
+  max-width:280px;
+}
+.overlay-score { font-size:28px; color:#c8332b; font-weight:700; }
+.overlay-best { font-size:13px; color:#8b6914; }
+.btn {
+  pointer-events:all; cursor:pointer;
+  background: #c8332b; color:#f5f0e8;
+  border:none; border-radius:4px;
+  font-family:"Zen Kaku Gothic New",sans-serif; font-size:16px; font-weight:700;
+  padding:12px 36px; letter-spacing:0.1em;
+  transition: background 0.15s;
+}
+.btn:hover { background:#a02020; }
+.btn-secondary {
+  background:#8b6914; color:#f5f0e8;
+}
+.btn-secondary:hover { background:#6a5010; }
+#upgrade-overlay {
+  position:absolute; top:0; left:0; right:0; bottom:0;
+  background: rgba(245,240,232,0.97);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; pointer-events:all;
+}
+#upgrade-overlay.hidden { display:none; }
+.upgrade-title {
+  font-family:"Yuji Syuku",serif; font-size:26px; color:#2c1a0e;
+  letter-spacing:0.1em;
+}
+.upgrade-sub { font-size:12px; color:#8b6914; }
+.upgrade-cards {
+  display:flex; flex-direction:column; gap:10px; width:90%; max-width:320px;
+}
+.upgrade-card {
+  background:#fff8ee; border:1.5px solid #c8a24a; border-radius:6px;
+  padding:12px 16px; cursor:pointer; pointer-events:all;
+  transition: background 0.15s, border-color 0.15s;
+  display:flex; flex-direction:column; gap:4px;
+}
+.upgrade-card:hover { background:#ffeedd; border-color:#c8332b; }
+.upgrade-card-name { font-size:17px; color:#2c1a0e; font-weight:700; }
+.upgrade-card-desc { font-size:12px; color:#5c4a2a; line-height:1.5; }
+#hint-flash {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  pointer-events:none; font-size:14px; color:#c8332b; font-weight:700;
+  opacity:0; transition:opacity 0.3s;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <canvas id="cv"></canvas>
+  <div id="ui">
+    <div id="hud">
+      <div id="hud-left">
+        <span id="stage-label">STAGE 1</span>
+        <span id="score-val">0</span>
+      </div>
+      <div id="hud-right">
+        <span id="combo-display"></span>
+        <span id="charges-display"></span>
+      </div>
+    </div>
+    <button id="mute-btn" title="ミュート">🔊</button>
+    <div id="hint-flash"></div>
+  </div>
+  <div id="overlay">
+    <div class="overlay-title">矢羽根</div>
+    <div class="overlay-sub">
+      矢印をタップして盤外へ射出<br>
+      進路が空いていれば発射OK<br>
+      全部消してステージクリア
+    </div>
+    <div class="overlay-score" id="start-best"></div>
+    <button class="btn" id="start-btn">はじめる</button>
+  </div>
+  <div id="upgrade-overlay" class="hidden">
+    <div class="upgrade-title">お守りを選ぶ</div>
+    <div class="upgrade-sub">ステージクリア — 強化を1つ選んでください</div>
+    <div class="upgrade-cards" id="upgrade-cards"></div>
+  </div>
+</div>
+<script>
+'use strict';
+// ── Anti-zoom ──────────────────────────────────────────────────────────────
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 350) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive:false });
+document.addEventListener('dblclick', e => e.preventDefault());
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+// ── Audio ──────────────────────────────────────────────────────────────────
+let AC = null, muted = false;
+function audio(){
+  if(!AC){ try{
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    AC.onstatechange = () => { if(AC.state!=="running" && !document.hidden){ try{AC.resume();}catch(e){} } };
+  }catch(e){} }
+  if(AC && AC.state!=="running"){ try{AC.resume();}catch(e){} }
+  return AC;
+}
+let silentEl = null;
+function silentWavUrl(){
+  const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);
+  str(36,"data");v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){ silentEl=document.createElement("audio"); silentEl.setAttribute("playsinline","");
+    silentEl.loop=true; silentEl.volume=0.01; silentEl.src=silentWavUrl(); }
+  const p=silentEl.play(); if(p&&p.catch)p.catch(()=>{});
+  audio(); if(!AC) return;
+  const done=()=>{ if(AC.state==="running"){ ["pointerdown","pointerup","touchend","click"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true)); } };
+  try{ AC.resume().then(done); }catch(e){ done(); }
+}
+["pointerdown","pointerup","touchend","click"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) audio(); });
+function tone(f,d,type,vol,slideTo){
+  if(muted||!audio()) return;
+  try{ const o=AC.createOscillator(),g=AC.createGain();
+    o.type=type||"sine"; o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06; g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);
+  }catch(e){}
+}
+function noise(d,vol){
+  if(muted||!audio()) return;
+  try{ const n=Math.floor(AC.sampleRate*d); const buf=AC.createBuffer(1,n,AC.sampleRate);
+    const data=buf.getChannelData(0); for(let i=0;i<n;i++)data[i]=(Math.random()*2-1)*(1-i/n);
+    const src=AC.createBufferSource(); src.buffer=buf; const g=AC.createGain(); g.gain.value=vol||0.08;
+    src.connect(g);g.connect(AC.destination);src.start();
+  }catch(e){}
+}
+const vibe = ms => { try{ navigator.vibrate && navigator.vibrate(ms); }catch(e){} };
+function sfxFire(){
+  tone(440,0.15,"sawtooth",0.05,880);
+  noise(0.08,0.04);
+}
+function sfxIllegal(){
+  tone(200,0.12,"square",0.04,160);
+  vibe(20);
+}
+function sfxClear(){
+  tone(523,0.1,"sine",0.08,784);
+  setTimeout(()=>tone(784,0.15,"sine",0.07,1046),100);
+  setTimeout(()=>tone(1046,0.25,"sine",0.09),220);
+}
+function sfxStageClear(){
+  [523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,0.2,"sine",0.08),i*120));
+}
+function sfxUpgrade(){
+  tone(660,0.2,"sine",0.07,880);
+}
+function sfxWind(){
+  noise(0.2,0.1);
+  tone(330,0.25,"sawtooth",0.04,110);
+}
+
+// ── Persistence ────────────────────────────────────────────────────────────
+const store = {
+  load(k,fb){ try{ const r=localStorage.getItem(k); return r?JSON.parse(r):fb; }catch{ return fb; } },
+  save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} }
+};
+
+// ── Canvas ─────────────────────────────────────────────────────────────────
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let DPR = Math.min(devicePixelRatio||1, 2.5), W=0, H=0;
+function resize(){
+  const r = cv.getBoundingClientRect(); W=r.width; H=r.height;
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+}
+const ro = new ResizeObserver(resize);
+ro.observe(cv);
+resize();
+
+// ── Game constants / config ────────────────────────────────────────────────
+const DIRS = ['U','D','L','R'];
+const DIR_VEC = { U:[0,-1], D:[0,1], L:[-1,0], R:[1,0] };
+const COMBO_WINDOW_BASE = 1200; // ms
+
+// ── Upgrade definitions ────────────────────────────────────────────────────
+const ALL_UPGRADES = [
+  { id:'kaze',   name:'風（かぜ）',  desc:'チャージを1つ獲得。使うと詰まった矢を1本だけ強制発射（進路無視）。' },
+  { id:'modoshi',name:'戻し',        desc:'アンドゥチャージを1つ獲得。直前の発射を1回取り消せる。' },
+  { id:'keigan', name:'慧眼（けいがん）',desc:'使うと今すぐ撃てる矢を3秒間ハイライト表示する。自動発動。' },
+  { id:'ninoya', name:'二の矢',      desc:'連続して同じ向きの矢を撃つと得点×2。' },
+  { id:'tekichu',name:'的中',        desc:'矢1本あたりの基本得点が+5点増える。' },
+  { id:'seishin',name:'静心（せいしん）',desc:'コンボ継続ウィンドウが+0.6秒伸びる。' },
+];
+
+// ── Game state (ALL initialized at declaration) ────────────────────────────
+let scene = 'start'; // 'start' | 'play' | 'upgrade' | 'gameover'
+let grid = [];        // grid[r][c] = dir string or null
+let N = 4;
+let stage = 0;
+let score = 0;
+let best = store.load('yabane_best', 0);
+let comboCount = 0;
+let comboTimer = 0;
+let comboWindowMs = COMBO_WINDOW_BASE;
+let lastFireTime = 0;
+let lastFireDir = null;
+let windCharges = 0;
+let modoshiCharges = 0;
+let keiganActive = false;
+let keiganTimer = 0;
+let hasNinoya = false;
+let tekichuBonus = 0;
+let upgrades = []; // collected upgrade ids
+
+// Undo state
+let undoGrid = null;
+let undoScore = 0;
+let undoCombo = 0;
+
+// Animation state
+let anims = [];       // active animation objects
+let particles = [];   // particle objects
+let shakeUntil = 0;
+let shakeCell = null;
+
+// Cursor for keyboard nav
+let cursorR = 0, cursorC = 0;
+let windMode = false; // if true, next tap fires with wind charge
+
+// HUD elements
+const stageLabel = document.getElementById('stage-label');
+const scoreVal   = document.getElementById('score-val');
+const comboDisp  = document.getElementById('combo-display');
+const chargesDisp= document.getElementById('charges-display');
+const muteBtn    = document.getElementById('mute-btn');
+const hintFlash  = document.getElementById('hint-flash');
+
+// ── Solvability ────────────────────────────────────────────────────────────
+function canFire(g, r, c){
+  const dir = g[r][c];
+  if(!dir) return false;
+  const [dc,dr] = DIR_VEC[dir];
+  let cr=r+dr, cc=c+dc;
+  while(cr>=0 && cr<N && cc>=0 && cc<N){
+    if(g[cr][cc]) return false;
+    cr+=dr; cc+=dc;
+  }
+  return true;
+}
+
+function isSolvable(g){
+  // clone
+  const copy = g.map(row=>[...row]);
+  let changed = true;
+  while(changed){
+    changed = false;
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+      if(copy[r][c] && canFire(copy,r,c)){
+        copy[r][c]=null; changed=true;
+      }
+    }
+  }
+  return copy.every(row=>row.every(v=>!v));
+}
+
+// ── Board generation ───────────────────────────────────────────────────────
+function stageConfig(s){
+  // s: 0-indexed stage number
+  const size = Math.min(4 + Math.floor(s/2), 6);
+  const density = Math.min(0.45 + s*0.03, 0.72);
+  return { size, density };
+}
+
+function generateBoard(s){
+  const { size, density } = stageConfig(s);
+  N = size;
+  let attempts = 0;
+  while(attempts < 200){
+    attempts++;
+    const g = Array.from({length:N}, ()=>Array(N).fill(null));
+    const cells = [];
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++) cells.push([r,c]);
+    // shuffle
+    for(let i=cells.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [cells[i],cells[j]]=[cells[j],cells[i]];
+    }
+    const count = Math.round(N*N*density);
+    for(let i=0;i<count;i++){
+      const [r,c]=cells[i];
+      g[r][c]=DIRS[Math.floor(Math.random()*4)];
+    }
+    if(isSolvable(g)){
+      return g;
+    }
+    // reduce density if many fails
+    if(attempts>100){
+      // already handled by loop end
+    }
+  }
+  // fallback: sparse solvable board
+  return buildFallbackBoard(size);
+}
+
+function buildFallbackBoard(size){
+  N=size;
+  const g = Array.from({length:N},()=>Array(N).fill(null));
+  // place arrows that are trivially firable (on edge rows/cols pointing outward)
+  const edges=[];
+  for(let c=0;c<N;c++){ edges.push([0,c,'U']); edges.push([N-1,c,'D']); }
+  for(let r=1;r<N-1;r++){ edges.push([r,0,'L']); edges.push([r,N-1,'R']); }
+  for(let i=edges.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [edges[i],edges[j]]=[edges[j],edges[i]];
+  }
+  const count=Math.min(Math.round(N*N*0.4),edges.length);
+  for(let i=0;i<count;i++){
+    const [r,c,d]=edges[i];
+    g[r][c]=d;
+  }
+  return g;
+}
+
+// ── Game init / stage start ─────────────────────────────────────────────────
+function startGame(){
+  stage=0; score=0; comboCount=0; comboTimer=0; lastFireTime=0; lastFireDir=null;
+  windCharges=0; modoshiCharges=0; keiganActive=false; keiganTimer=0;
+  hasNinoya=false; tekichuBonus=0; upgrades=[];
+  comboWindowMs=COMBO_WINDOW_BASE;
+  anims=[]; particles=[]; shakeUntil=0; shakeCell=null; windMode=false;
+  undoGrid=null; undoScore=0; undoCombo=0;
+  cursorR=0; cursorC=0;
+  loadStage();
+  scene='play';
+  hideOverlay();
+  updateHUD();
+}
+
+function loadStage(){
+  grid = generateBoard(stage);
+  N = grid.length;
+  // trigger keigan auto if collected
+  if(upgrades.includes('keigan')){ keiganActive=true; keiganTimer=3000; }
+  anims=[]; particles=[]; shakeUntil=0; shakeCell=null; windMode=false;
+  cursorR=Math.floor(N/2); cursorC=Math.floor(N/2);
+}
+
+// ── Fire mechanics ─────────────────────────────────────────────────────────
+function tryFire(r,c, forceWind=false){
+  if(scene!=='play') return;
+  if(!grid[r][c]) return;
+  if(!forceWind && !canFire(grid,r,c)){
+    // illegal
+    shakeUntil=Date.now()+300; shakeCell=[r,c];
+    sfxIllegal();
+    return;
+  }
+
+  // save undo
+  undoGrid = grid.map(row=>[...row]);
+  undoScore = score; undoCombo = comboCount;
+
+  const dir = grid[r][c];
+  const [dc,dr] = DIR_VEC[dir];
+
+  // combo
+  const now=Date.now();
+  if(now - lastFireTime < comboWindowMs){ comboCount++; }
+  else { comboCount=1; }
+  lastFireTime=now;
+
+  // score calc
+  let pts = 10 + tekichuBonus;
+  pts *= comboCount;
+  if(hasNinoya && lastFireDir===dir) pts*=2;
+  lastFireDir=dir;
+
+  score+=pts;
+  if(score>best){ best=score; store.save('yabane_best',best); }
+
+  grid[r][c]=null;
+  sfxFire();
+  vibe(10);
+
+  // start fire animation
+  const cellSize=getCellSize();
+  const { ox, oy } = getBoardOrigin(cellSize);
+  const sx=ox+c*cellSize+cellSize/2, sy=oy+r*cellSize+cellSize/2;
+  anims.push({ type:'arrow', dir, x:sx, y:sy, vx:dc*cellSize*0.08, vy:dr*cellSize*0.08, life:1, maxLife:1, pts, r, c });
+  // particle burst
+  for(let i=0;i<8;i++) spawnParticle(sx,sy,'#c8332b');
+
+  updateHUD();
+
+  // check clear
+  setTimeout(()=>{
+    if(scene!=='play') return;
+    const empty=grid.every(row=>row.every(v=>!v));
+    if(empty){
+      sfxStageClear();
+      setTimeout(showUpgrade,400);
+    } else if(isSoftLocked()){
+      if(windCharges>0){
+        showHint('行き詰まり！風で切り抜けて');
+      } else {
+        setTimeout(showGameOver,500);
+      }
+    }
+  }, 50);
+}
+
+function isSoftLocked(){
+  if(scene!=='play') return false;
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    if(grid[r][c] && canFire(grid,r,c)) return false;
+  }
+  return grid.some(row=>row.some(v=>!!v));
+}
+
+function doUndo(){
+  if(!undoGrid || modoshiCharges<=0) return;
+  modoshiCharges--;
+  grid = undoGrid.map(row=>[...row]);
+  score = undoScore; comboCount = undoCombo;
+  undoGrid=null;
+  sfxUpgrade();
+  updateHUD();
+}
+
+function doWind(){
+  if(windCharges<=0) return;
+  windMode=!windMode;
+  updateHUD();
+}
+
+// ── Upgrades / overlay ─────────────────────────────────────────────────────
+function showUpgrade(){
+  stage++;
+  stageLabel.textContent = `STAGE ${stage+1}`;
+  // pick 3 random upgrades
+  const shuffled=[...ALL_UPGRADES].sort(()=>Math.random()-0.5);
+  const picks=shuffled.slice(0,3);
+  const cards=document.getElementById('upgrade-cards');
+  cards.innerHTML='';
+  picks.forEach(u=>{
+    const el=document.createElement('div');
+    el.className='upgrade-card';
+    el.innerHTML=`<div class="upgrade-card-name">${u.name}</div><div class="upgrade-card-desc">${u.desc}</div>`;
+    el.addEventListener('pointerdown',()=>{
+      applyUpgrade(u.id);
+      sfxUpgrade();
+      hideUpgradeOverlay();
+      loadStage();
+      scene='play';
+      updateHUD();
+    });
+    cards.appendChild(el);
+  });
+  scene='upgrade';
+  document.getElementById('upgrade-overlay').classList.remove('hidden');
+}
+
+function applyUpgrade(id){
+  upgrades.push(id);
+  if(id==='kaze') windCharges++;
+  else if(id==='modoshi') modoshiCharges++;
+  else if(id==='keigan'){ keiganActive=true; keiganTimer=3000; }
+  else if(id==='ninoya') hasNinoya=true;
+  else if(id==='tekichu') tekichuBonus+=5;
+  else if(id==='seishin') comboWindowMs+=600;
+}
+
+function hideUpgradeOverlay(){ document.getElementById('upgrade-overlay').classList.add('hidden'); }
+
+function showGameOver(){
+  scene='gameover';
+  document.getElementById('start-best').textContent = `ベスト: ${best}`;
+  const ov=document.getElementById('overlay');
+  ov.querySelector('.overlay-title').textContent='終局';
+  ov.querySelector('.overlay-sub').textContent=`STAGE ${stage+1}  スコア ${score}`;
+  ov.querySelector('.overlay-score').textContent=`Best: ${best}`;
+  document.getElementById('start-btn').textContent='もう一度';
+  ov.classList.remove('hidden');
+}
+
+function hideOverlay(){ document.getElementById('overlay').classList.add('hidden'); }
+
+// ── HUD ───────────────────────────────────────────────────────────────────
+function updateHUD(){
+  stageLabel.textContent=`STAGE ${stage+1}`;
+  scoreVal.textContent=score;
+  comboDisp.textContent = comboCount>1 ? `×${comboCount} COMBO` : '';
+  const parts=[];
+  if(windCharges>0) parts.push(`風×${windCharges}${windMode?'【発動中】':''}`);
+  if(modoshiCharges>0) parts.push(`戻し×${modoshiCharges}`);
+  chargesDisp.textContent=parts.join('  ');
+}
+
+function showHint(msg, ms=2000){
+  hintFlash.textContent=msg;
+  hintFlash.style.opacity='1';
+  setTimeout(()=>{ hintFlash.style.opacity='0'; },ms);
+}
+
+// ── Board drawing ─────────────────────────────────────────────────────────
+const HUD_H = 52; // px reserved at top for HUD
+
+function getCellSize(){
+  const availW = W;
+  const availH = H - HUD_H;
+  return Math.floor(Math.min(availW/(N+0.3), availH/(N+0.3)));
+}
+
+function getBoardOrigin(cs){
+  const bw=cs*N, bh=cs*N;
+  return { ox:(W-bw)/2, oy:HUD_H+(H-HUD_H-bh)*0.42 };
+}
+
+// washi paper texture noise cache
+let wasiCanvas=null;
+function getWasiTexture(){
+  if(wasiCanvas && wasiCanvas._n===N) return wasiCanvas;
+  const cs=getCellSize();
+  const bw=cs*N+4, bh=cs*N+4;
+  wasiCanvas=document.createElement('canvas');
+  wasiCanvas.width=bw; wasiCanvas.height=bh;
+  wasiCanvas._n=N;
+  const c=wasiCanvas.getContext('2d');
+  c.clearRect(0,0,bw,bh);
+  for(let i=0;i<4000;i++){
+    const x=Math.random()*bw, y=Math.random()*bh;
+    const a=Math.random()*0.06;
+    c.strokeStyle=`rgba(180,150,100,${a})`;
+    c.lineWidth=Math.random()<0.5?0.5:1;
+    c.beginPath(); c.moveTo(x,y);
+    c.lineTo(x+Math.random()*8-4,y+Math.random()*2-1);
+    c.stroke();
+  }
+  return wasiCanvas;
+}
+
+function drawArrow(x,y,size,dir,color,alpha=1){
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  ctx.translate(x,y);
+  // rotate based on direction
+  const rot={U:0,D:Math.PI,L:-Math.PI/2,R:Math.PI/2};
+  ctx.rotate(rot[dir]);
+
+  const s=size*0.38;
+
+  // Draw shaft
+  ctx.strokeStyle=color;
+  ctx.lineWidth=size*0.07;
+  ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(0,s*0.9);
+  ctx.lineTo(0,-s*0.5);
+  ctx.stroke();
+
+  // Arrowhead (鏃)
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.moveTo(0,-s);
+  ctx.lineTo(-s*0.32,-s*0.4);
+  ctx.lineTo(0,-s*0.55);
+  ctx.lineTo(s*0.32,-s*0.4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Fletching (矢羽根) — two triangles at tail
+  ctx.fillStyle=color;
+  ctx.globalAlpha=alpha*0.75;
+  // left feather
+  ctx.beginPath();
+  ctx.moveTo(0,s*0.55);
+  ctx.lineTo(-s*0.38,s*0.95);
+  ctx.lineTo(0,s*0.9);
+  ctx.closePath();
+  ctx.fill();
+  // right feather
+  ctx.beginPath();
+  ctx.moveTo(0,s*0.55);
+  ctx.lineTo(s*0.38,s*0.95);
+  ctx.lineTo(0,s*0.9);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawBoard(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  // background
+  ctx.fillStyle='#f5f0e8';
+  ctx.fillRect(0,0,W,H);
+
+  if(scene==='start') return;
+
+  const cs=getCellSize();
+  const {ox,oy}=getBoardOrigin(cs);
+
+  // washi texture
+  try{
+    const tex=getWasiTexture();
+    ctx.drawImage(tex,ox-2,oy-2);
+  }catch(e){}
+
+  // target ring decoration (的) — subtle concentric circles behind board
+  const cx2=ox+N*cs/2, cy2=oy+N*cs/2;
+  const maxR=N*cs*0.6;
+  for(let i=4;i>0;i--){
+    ctx.beginPath();
+    ctx.arc(cx2,cy2,maxR*(i/4),0,Math.PI*2);
+    ctx.strokeStyle=`rgba(200,162,74,${0.06*(5-i)})`;
+    ctx.lineWidth=1.5;
+    ctx.stroke();
+  }
+
+  // grid lines
+  ctx.strokeStyle='rgba(180,150,100,0.4)';
+  ctx.lineWidth=0.8;
+  for(let i=0;i<=N;i++){
+    ctx.beginPath(); ctx.moveTo(ox+i*cs,oy); ctx.lineTo(ox+i*cs,oy+N*cs); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox,oy+i*cs); ctx.lineTo(ox+N*cs,oy+i*cs); ctx.stroke();
+  }
+
+  // board border
+  ctx.strokeStyle='#8b6914';
+  ctx.lineWidth=2;
+  ctx.strokeRect(ox,oy,N*cs,N*cs);
+
+  const now2=Date.now();
+  const shaking = shakeUntil>now2;
+
+  // cells
+  for(let r=0;r<N;r++){
+    for(let c=0;c<N;c++){
+      const cellX=ox+c*cs, cellY=oy+r*cs;
+      const cx3=cellX+cs/2, cy3=cellY+cs/2;
+
+      // keigan highlight
+      if(keiganActive && grid[r] && grid[r][c] && canFire(grid,r,c)){
+        ctx.fillStyle='rgba(200,162,74,0.18)';
+        ctx.fillRect(cellX+1,cellY+1,cs-2,cs-2);
+      }
+
+      // wind mode hover
+      if(windMode && grid[r] && grid[r][c]){
+        ctx.fillStyle='rgba(100,180,240,0.12)';
+        ctx.fillRect(cellX+1,cellY+1,cs-2,cs-2);
+      }
+
+      // keyboard cursor
+      if(scene==='play' && r===cursorR && c===cursorC){
+        ctx.strokeStyle='rgba(200,51,43,0.6)';
+        ctx.lineWidth=2;
+        ctx.strokeRect(cellX+3,cellY+3,cs-6,cs-6);
+      }
+
+      if(!grid[r] || !grid[r][c]) continue;
+
+      // shake offset
+      let sx3=cx3, sy3=cy3;
+      if(shaking && shakeCell && shakeCell[0]===r && shakeCell[1]===c){
+        sx3+=Math.sin(now2*0.05)*4;
+      }
+
+      const firable=canFire(grid,r,c);
+      const arrowColor = firable ? '#2c1a0e' : '#7a6040';
+      drawArrow(sx3,sy3,cs,grid[r][c],arrowColor,firable?1:0.7);
+    }
+  }
+}
+
+function spawnParticle(x,y,color){
+  const angle=Math.random()*Math.PI*2;
+  const speed=1.5+Math.random()*3;
+  particles.push({
+    x,y,
+    vx:Math.cos(angle)*speed,
+    vy:Math.sin(angle)*speed,
+    life:1, color, r:2+Math.random()*3
+  });
+}
+
+function drawParticles(){
+  particles.forEach(p=>{
+    ctx.globalAlpha=p.life*0.9;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);
+    ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+
+function updateParticles(){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx; p.y+=p.vy;
+    p.vy+=0.1;
+    p.life-=0.045;
+    if(p.life<=0) particles.splice(i,1);
+  }
+}
+
+function drawAnims(dt){
+  const cs=getCellSize();
+  anims.forEach(a=>{
+    if(a.type==='arrow'){
+      a.x+=a.vx*dt*60; a.y+=a.vy*dt*60;
+      a.vx*=1.12; a.vy*=1.12; // accelerate
+      a.life-=dt*2;
+      // trail particles
+      if(Math.random()<0.4) spawnParticle(a.x,a.y,'#c8a24a');
+      drawArrow(a.x,a.y,cs,a.dir,'#c8332b',Math.max(0,a.life));
+      // score popup
+      if(a.pts){
+        ctx.globalAlpha=Math.min(1,a.life*2);
+        ctx.fillStyle='#c8332b';
+        ctx.font=`bold ${Math.round(cs*0.3)}px "Zen Kaku Gothic New"`;
+        ctx.textAlign='center';
+        ctx.fillText(`+${a.pts}`,a.x,a.y-cs*0.5);
+        ctx.globalAlpha=1;
+      }
+    }
+  });
+  for(let i=anims.length-1;i>=0;i--){
+    if(anims[i].life<=0) anims.splice(i,1);
+  }
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────
+cv.addEventListener('pointerdown', e=>{
+  if(scene!=='play') return;
+  const rect=cv.getBoundingClientRect();
+  const mx=(e.clientX-rect.left), my=(e.clientY-rect.top);
+  const cs=getCellSize();
+  const {ox,oy}=getBoardOrigin(cs);
+  const c=Math.floor((mx-ox)/cs), r=Math.floor((my-oy)/cs);
+  if(r<0||r>=N||c<0||c>=N) return;
+  cursorR=r; cursorC=c;
+
+  if(windMode && windCharges>0){
+    windCharges--; windMode=false;
+    sfxWind();
+    tryFire(r,c,true);
+    updateHUD();
+  } else {
+    tryFire(r,c,false);
+  }
+});
+
+document.addEventListener('keydown', e=>{
+  if(scene==='play'){
+    if(e.key==='ArrowUp'){ cursorR=Math.max(0,cursorR-1); e.preventDefault(); }
+    else if(e.key==='ArrowDown'){ cursorR=Math.min(N-1,cursorR+1); e.preventDefault(); }
+    else if(e.key==='ArrowLeft'){ cursorC=Math.max(0,cursorC-1); e.preventDefault(); }
+    else if(e.key==='ArrowRight'){ cursorC=Math.min(N-1,cursorC+1); e.preventDefault(); }
+    else if(e.key==='Enter'||e.key===' '){
+      e.preventDefault();
+      if(windMode && windCharges>0){ windCharges--; windMode=false; sfxWind(); tryFire(cursorR,cursorC,true); updateHUD(); }
+      else tryFire(cursorR,cursorC);
+    }
+    else if(e.key==='z'||e.key==='Z'){ doUndo(); }
+    else if(e.key==='w'||e.key==='W'){ doWind(); }
+  }
+  if(scene==='gameover'&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); startGame(); }
+});
+
+// start button
+document.getElementById('start-btn').addEventListener('pointerdown',()=>{
+  // reset overlay for restart
+  const ov=document.getElementById('overlay');
+  ov.querySelector('.overlay-title').textContent='矢羽根';
+  ov.querySelector('.overlay-sub').innerHTML='矢印をタップして盤外へ射出<br>進路が空いていれば発射OK<br>全部消してステージクリア';
+  document.getElementById('start-btn').textContent='はじめる';
+  startGame();
+});
+
+// mute
+muteBtn.addEventListener('pointerdown',()=>{
+  muted=!muted;
+  muteBtn.textContent=muted?'🔇':'🔊';
+});
+
+// wind / undo buttons — inject dynamically on game start
+function buildControlBar(){
+  // nothing to do; handled via keydown and HUD tap
+}
+
+// Long-press or double-tap on score area: undo / wind
+document.getElementById('score-val').parentElement.addEventListener('pointerdown',()=>{
+  if(scene==='play') doUndo();
+});
+document.getElementById('combo-display').addEventListener('pointerdown',()=>{
+  if(scene==='play') doWind();
+});
+
+// ── Main loop ─────────────────────────────────────────────────────────────
+let lastT=0;
+function frame(t){
+  const dt=Math.min((t-lastT)/1000, 0.1);
+  lastT=t;
+
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+
+  drawBoard();
+  updateParticles();
+  drawParticles();
+  if(scene==='play') drawAnims(dt);
+
+  // keigan timer
+  if(keiganActive){
+    keiganTimer-=dt*1000;
+    if(keiganTimer<=0){ keiganActive=false; }
+  }
+
+  // combo timer
+  if(comboCount>1){
+    if(Date.now()-lastFireTime > comboWindowMs){ comboCount=1; updateHUD(); }
+  }
+
+  requestAnimationFrame(frame);
+}
+
+// init best on start screen
+document.getElementById('start-best').textContent = best>0 ? `ベスト: ${best}` : '';
+requestAnimationFrame(frame);
+
+/* test hook (harmless) */
+window.__yb={ scene:()=>scene, state:()=>({stage,score,N,wind:windCharges,
+    remaining:grid.reduce((s,row)=>s+row.filter(Boolean).length,0)}),
+  firable:()=>{ const out=[]; for(let r=0;r<N;r++)for(let c=0;c<N;c++) if(grid[r][c]&&canFire(grid,r,c)) out.push({r,c}); return out; },
+  cellXY:(r,c)=>{ const cs=getCellSize(); const o=getBoardOrigin(cs); return {x:o.ox+c*cs+cs/2, y:o.oy+r*cs+cs/2}; } };
+</script>
+</body>
+</html>
