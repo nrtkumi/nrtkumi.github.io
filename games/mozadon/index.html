@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>モザドン — MOZADON｜モザイクの奥のMVを当てろ</title>
+<meta name="description" content="モザイクの奥に隠れた本物のミュージックビデオを、はっきり映る前に早押しで当てるクイズ・ローグライト。連続正解で倍率、㊙が尽きるまでエンドレス。正解すると本物のMVが流れる。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="モザドン — MOZADON｜モザイクの奥のMVを当てろ">
+<meta property="og:description" content="モザイクの奥に隠れた本物のMVを、はっきり映る前に早押しで当てる音楽クイズ・ローグライト。当たれば本物のミュージックビデオが流れる。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/mozadon/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/mozadon/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="モザドン — MOZADON">
+<meta name="twitter:description" content="モザイクの奥の本物のMVを早押しで当てる音楽クイズ・ローグライト。">
+<meta name="twitter:image" content="https://nrtkumi.github.io/games/mozadon/assets/ogp.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Orbitron:wght@600;800&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0a12; --bg2:#15121f; --panel:#1b1730; --panel2:#241f3d;
+  --ink:#f4eefb; --dim:#a99fc4; --line:#332b4d;
+  --mag:#ff2e7e; --cyan:#1fe3df; --gold:#ffcc3e; --good:#39e08a; --bad:#ff5a6a;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:manipulation;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #241a3a 0%, transparent 60%),
+    linear-gradient(180deg,#0c0a14,#06050b 80%);
+  color:var(--ink);
+  font-family:"Zen Maru Gothic",system-ui,sans-serif;
+  overflow:hidden; user-select:none; -webkit-user-select:none;
+}
+#app{
+  position:fixed; left:50%; top:0; transform:translateX(-50%);
+  width:100%; max-width:min(460px,100vw); height:100%;
+  display:flex; flex-direction:column;
+  padding:calc(env(safe-area-inset-top)) 12px calc(env(safe-area-inset-bottom) + 8px);
+  background:linear-gradient(180deg,#100d1c,#0a0813);
+  box-shadow:0 0 60px rgba(0,0,0,.6);
+  overflow:hidden;
+}
+/* ---------- HUD ---------- */
+#hud{display:flex; align-items:center; gap:8px; padding:8px 2px 6px; flex:0 0 auto;}
+.brand{font-family:"Anton",sans-serif; font-size:22px; letter-spacing:2px; color:var(--ink);
+  text-shadow:0 0 10px rgba(255,46,126,.5); line-height:1;}
+.brand b{color:var(--cyan);}
+.hud-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
+.score-wrap{text-align:right;}
+.score-lbl{font-size:9px; color:var(--dim); letter-spacing:2px;}
+.score{font-family:"Orbitron",monospace; font-weight:800; font-size:24px; color:var(--gold); line-height:1;
+  text-shadow:0 0 12px rgba(255,204,62,.4);}
+.iconbtn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--panel);
+  color:var(--ink);font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.statline{display:flex; gap:8px; align-items:center; padding:2px 2px 8px; flex:0 0 auto; font-size:12px;}
+.chip{background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:3px 10px; display:flex; align-items:center; gap:5px;}
+.chip b{font-family:"Orbitron",monospace; color:var(--cyan);}
+.lives{letter-spacing:2px; font-size:15px;}
+.combo{color:var(--mag); font-weight:700;}
+.combo b{font-family:"Orbitron",monospace;}
+.pts-fly{position:absolute; font-family:"Orbitron",monospace; font-weight:800; pointer-events:none; z-index:40;}
+
+/* ---------- STAGE ---------- */
+#stage{position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:14px; overflow:hidden;
+  border:1px solid var(--line); box-shadow:0 8px 28px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.03); flex:0 0 auto;}
+#mzcanvas{position:absolute; inset:0; width:100%; height:100%; display:block; image-rendering:pixelated;}
+#ytwrap{position:absolute; inset:0; opacity:0; pointer-events:none; transition:opacity .35s;}
+#ytwrap.show{opacity:1; pointer-events:auto;}
+#ytplayer{width:100%;height:100%;}
+/* MV表示中はプレーヤーの前面に何も重ねない（YouTube埋め込み規約への配慮） */
+#stage.clean .scanlines,#stage.clean .vig,#stage.clean .stage-tag,
+#stage.clean .clarity,#stage.clean .rec,#stage.clean .reveal-banner{display:none !important;}
+.scanlines{position:absolute; inset:0; pointer-events:none; mix-blend-mode:overlay; opacity:.5;
+  background:repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 3px);}
+.vig{position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 80px rgba(0,0,0,.6);}
+.stage-tag{position:absolute; left:10px; top:9px; z-index:5; font-family:"Orbitron",monospace; font-size:10px;
+  letter-spacing:2px; color:var(--cyan); background:rgba(0,0,0,.45); padding:3px 8px; border-radius:6px; border:1px solid rgba(31,227,223,.3);}
+.clarity{position:absolute; right:10px; top:9px; z-index:5; font-family:"Orbitron",monospace; font-size:10px;
+  color:var(--gold); background:rgba(0,0,0,.45); padding:3px 8px; border-radius:6px;}
+.rec{position:absolute; right:10px; bottom:9px; z-index:6; display:flex; align-items:center; gap:5px; font-size:10px;
+  font-family:"Orbitron",monospace; color:#fff; background:rgba(0,0,0,.5); padding:3px 8px; border-radius:6px;}
+.rec .dot{width:8px;height:8px;border-radius:50%;background:var(--bad); box-shadow:0 0 8px var(--bad); animation:blink 1s infinite;}
+@keyframes blink{50%{opacity:.25}}
+/* reveal banner */
+.reveal-banner{position:absolute; left:0; right:0; bottom:0; z-index:7; padding:10px 12px;
+  background:linear-gradient(0deg, rgba(5,4,10,.92), rgba(5,4,10,0)); transform:translateY(100%); transition:transform .3s; }
+.reveal-banner.show{transform:translateY(0);}
+.rb-verdict{font-family:"Anton",sans-serif; font-size:18px; letter-spacing:1px;}
+.rb-title{font-weight:700; font-size:15px; margin-top:1px;}
+.rb-artist{font-size:12px; color:var(--dim);}
+
+/* ---------- CHOICES ---------- */
+#play-area{flex:1 1 0; min-height:0; display:flex; flex-direction:column; gap:8px; padding-top:10px; overflow:hidden;}
+.prompt{text-align:center; font-size:12px; color:var(--dim); letter-spacing:1px; flex:0 0 auto;}
+#choices{display:flex; flex-direction:column; gap:8px; flex:1 1 0; min-height:0;}
+.choice{flex:1 1 0; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:2px;
+  border:1px solid var(--line); background:linear-gradient(180deg,var(--panel2),var(--panel));
+  border-radius:12px; padding:6px 14px; cursor:pointer; text-align:left; color:var(--ink);
+  font-family:inherit; transition:transform .08s, border-color .15s, background .15s; position:relative; overflow:hidden;}
+.choice:active{transform:scale(.985);}
+.choice .num{position:absolute; right:12px; top:50%; transform:translateY(-50%); font-family:"Orbitron",monospace;
+  font-size:13px; color:var(--dim); opacity:.6;}
+.choice .t{font-weight:700; font-size:16px; line-height:1.15; padding-right:24px;}
+.choice .a{font-size:11px; color:var(--dim);}
+.choice.correct{border-color:var(--good); background:linear-gradient(180deg,#10402c,#0c3322); }
+.choice.correct .t{color:var(--good);}
+.choice.wrong{border-color:var(--bad); background:linear-gradient(180deg,#451a22,#341219);}
+.choice.wrong .t{color:var(--bad);}
+.choice.dim{opacity:.32; filter:grayscale(.6);}
+.choice.disabled{pointer-events:none;}
+#nextbtn{flex:0 0 auto; display:none; border:none; border-radius:12px; padding:14px; cursor:pointer;
+  font-family:"Anton",sans-serif; letter-spacing:2px; font-size:20px; color:#10101a;
+  background:linear-gradient(180deg,var(--gold),#f0a818); box-shadow:0 6px 0 #9c6c08;}
+#nextbtn:active{transform:translateY(3px); box-shadow:0 3px 0 #9c6c08;}
+
+/* ---------- OVERLAYS (start / over / relic) ---------- */
+.overlay{position:absolute; inset:0; z-index:60; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:24px; text-align:center; background:rgba(8,6,14,.93); backdrop-filter:blur(3px);}
+.overlay.hidden{display:none;}
+.title-xl{font-family:"Anton",sans-serif; font-size:clamp(44px,16vw,68px); letter-spacing:3px; line-height:.95;
+  background:linear-gradient(180deg,#fff,#ff8fc0 60%,#ff2e7e); -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 0 30px rgba(255,46,126,.35); margin:0;}
+.title-sub{color:var(--cyan); font-weight:700; letter-spacing:4px; font-size:13px; margin:2px 0 18px; font-family:"Orbitron",monospace;}
+.lead{color:var(--dim); font-size:13.5px; line-height:1.7; max-width:340px; margin:0 0 22px;}
+.lead b{color:var(--ink);}
+.btn-main{border:none; border-radius:14px; padding:16px 46px; cursor:pointer; font-family:"Anton",sans-serif; letter-spacing:3px;
+  font-size:24px; color:#10101a; background:linear-gradient(180deg,var(--cyan),#0fbdb9); box-shadow:0 7px 0 #07807d;}
+.btn-main:active{transform:translateY(3px); box-shadow:0 4px 0 #07807d;}
+.mini{margin-top:16px; font-size:11px; color:var(--dim); line-height:1.6;}
+.best{font-family:"Orbitron",monospace; color:var(--gold); font-size:16px; margin-top:10px;}
+.go-score{font-family:"Orbitron",monospace; font-weight:800; font-size:52px; color:var(--gold); line-height:1; margin:6px 0;
+  text-shadow:0 0 24px rgba(255,204,62,.4);}
+.go-line{color:var(--dim); font-size:13px; margin:3px 0;}
+.go-line b{color:var(--ink); font-family:"Orbitron",monospace;}
+
+/* relic */
+.relic-h{font-family:"Anton",sans-serif; font-size:30px; letter-spacing:2px; color:var(--gold); margin:0 0 4px;}
+.relic-sub{color:var(--dim); font-size:12px; margin:0 0 18px;}
+.relic-cards{display:flex; flex-direction:column; gap:12px; width:100%; max-width:340px;}
+.relic{border:1px solid var(--line); background:linear-gradient(180deg,var(--panel2),var(--panel)); border-radius:14px;
+  padding:14px 16px; cursor:pointer; text-align:left; display:flex; gap:13px; align-items:center; transition:transform .08s,border-color .15s;}
+.relic:active{transform:scale(.98);}
+.relic .ic{font-size:30px; flex:0 0 auto;}
+.relic .rn{font-weight:900; font-size:16px; color:var(--ink);}
+.relic .rd{font-size:11.5px; color:var(--dim); line-height:1.45; margin-top:2px;}
+.owned-row{margin-top:14px; display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:340px;}
+.owned{font-size:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:2px 7px; position:relative;}
+.owned span{position:absolute; right:-4px; bottom:-6px; font-size:10px; font-family:"Orbitron",monospace; color:var(--gold);
+  background:#10101a; border-radius:6px; padding:0 3px;}
+.fade-in{animation:fade .4s ease;}
+@keyframes fade{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+.shake{animation:shake .35s;}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.loading{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:8; color:var(--dim);
+  font-family:"Orbitron",monospace; font-size:12px; letter-spacing:2px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="brand">モザ<b>ドン</b></div>
+    <div class="hud-right">
+      <div class="score-wrap"><div class="score-lbl">SCORE</div><div class="score" id="score">0</div></div>
+      <button class="iconbtn" id="muteBtn" aria-label="音">🔊</button>
+    </div>
+  </div>
+  <div class="statline">
+    <div class="chip lives" id="lives">㊙㊙㊙</div>
+    <div class="chip combo">COMBO <b id="combo">x1.0</b></div>
+    <div class="chip">LV <b id="level">1</b></div>
+  </div>
+
+  <div id="stage">
+    <canvas id="mzcanvas" width="480" height="270"></canvas>
+    <div id="ytwrap"><div id="ytplayer"></div></div>
+    <div class="scanlines"></div>
+    <div class="vig"></div>
+    <div class="stage-tag" id="stagetag">MOSAIC</div>
+    <div class="clarity" id="clarity">荒さ 100%</div>
+    <div class="rec" id="rec"><span class="dot"></span>REC</div>
+    <div class="loading" id="loading">読み込み中…</div>
+    <div class="reveal-banner" id="revealBanner">
+      <div class="rb-verdict" id="rbVerdict">⭕ せいかい！</div>
+      <div class="rb-title" id="rbTitle"></div>
+      <div class="rb-artist" id="rbArtist"></div>
+    </div>
+  </div>
+
+  <div id="play-area">
+    <div class="prompt" id="prompt">この曲は…？（早いほど高得点）</div>
+    <div id="choices"></div>
+    <button id="nextbtn">▶ つぎへ</button>
+  </div>
+
+  <!-- START -->
+  <div class="overlay" id="startScreen">
+    <h1 class="title-xl">モザドン</h1>
+    <div class="title-sub">M O Z A D O N</div>
+    <p class="lead">モザイクの奥に隠れた<b>本物のミュージックビデオ</b>。<br>
+      くっきり映る前に、4択から曲名を<b>早押し</b>で当てろ。<br>
+      正解すると、その<b>MVが本物で流れる</b>。<br>
+      連続正解で倍率アップ、㊙が尽きるまでエンドレス。</p>
+    <button class="btn-main" id="startBtn">スタート</button>
+    <div class="best" id="startBest"></div>
+    <div class="mini">タッチ / キー1〜4で回答・Spaceでつぎへ<br>世界のヒット曲＆J-POP 約60曲</div>
+  </div>
+
+  <!-- RELIC -->
+  <div class="overlay hidden" id="relicScreen">
+    <h2 class="relic-h">アイテム獲得！</h2>
+    <p class="relic-sub">1つ選んで強くなろう</p>
+    <div class="relic-cards" id="relicCards"></div>
+    <div class="owned-row" id="ownedRow"></div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div class="overlay hidden" id="overScreen">
+    <div class="title-sub" style="margin-bottom:4px">GAME OVER</div>
+    <div class="go-score" id="goScore">0</div>
+    <div class="go-line">LV <b id="goLevel">1</b> まで到達 ／ 正解 <b id="goCorrect">0</b></div>
+    <div class="go-line" id="goBest"></div>
+    <div style="height:18px"></div>
+    <button class="btn-main" id="retryBtn">もう一回</button>
+    <div class="mini" id="goTrivia"></div>
+  </div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+(function(){
+"use strict";
+
+/* ===================== 楽曲データ（全てoEmbedで実在＆埋め込み可を確認済み） =====================
+   g: 系統(w=洋楽ポップ e=ダンス/EDM r=ロック k=K-POP j=J-POP x=キッズ/定番)
+   y: 年   s: 正解後にMVを流す開始秒（サビ目安）                                                   */
+var SONGS = [
+ {id:"kJQP7kiw5Fk",t:"Despacito",a:"Luis Fonsi ft. Daddy Yankee",g:"w",y:2017,s:82},
+ {id:"JGwWNGJdvx8",t:"Shape of You",a:"Ed Sheeran",g:"w",y:2017,s:44},
+ {id:"OPf0YbXqDm0",t:"Uptown Funk",a:"Mark Ronson ft. Bruno Mars",g:"w",y:2014,s:73},
+ {id:"RgKAFK5djSk",t:"See You Again",a:"Wiz Khalifa ft. Charlie Puth",g:"w",y:2015,s:60},
+ {id:"09R8_2nJtjg",t:"Sugar",a:"Maroon 5",g:"w",y:2015,s:60},
+ {id:"CevxZvSJLk8",t:"Roar",a:"Katy Perry",g:"w",y:2013,s:49},
+ {id:"0KSOMA3QBU0",t:"Dark Horse",a:"Katy Perry ft. Juicy J",g:"w",y:2014,s:55},
+ {id:"DyDfgMOUjCI",t:"bad guy",a:"Billie Eilish",g:"w",y:2019,s:33},
+ {id:"hT_nvWreIhg",t:"Counting Stars",a:"OneRepublic",g:"w",y:2013,s:60},
+ {id:"YQHsXMglC9A",t:"Hello",a:"Adele",g:"w",y:2015,s:65},
+ {id:"nfWlot6h_JM",t:"Shake It Off",a:"Taylor Swift",g:"w",y:2014,s:50},
+ {id:"e-ORhEE9VVg",t:"Blank Space",a:"Taylor Swift",g:"w",y:2014,s:60},
+ {id:"lp-EO5I60KA",t:"Thinking Out Loud",a:"Ed Sheeran",g:"w",y:2014,s:60},
+ {id:"fRh_vgS2dFE",t:"Sorry",a:"Justin Bieber",g:"w",y:2015,s:50},
+ {id:"pRpeEdMmmQ0",t:"Waka Waka",a:"Shakira",g:"w",y:2010,s:45},
+ {id:"t4H_Zoh7G5A",t:"On The Floor",a:"Jennifer Lopez ft. Pitbull",g:"w",y:2011,s:50},
+ {id:"KQ6zr6kCPj8",t:"Party Rock Anthem",a:"LMFAO",g:"e",y:2011,s:60},
+ {id:"My2FRPA3Gf8",t:"Wrecking Ball",a:"Miley Cyrus",g:"w",y:2013,s:55},
+ {id:"nlcIKh6sBtc",t:"Royals",a:"Lorde",g:"w",y:2013,s:50},
+ {id:"ZbZSe6N_BXs",t:"Happy",a:"Pharrell Williams",g:"w",y:2013,s:60},
+ {id:"7PCkvCPvDXk",t:"All About That Bass",a:"Meghan Trainor",g:"w",y:2014,s:50},
+ {id:"tg00YEETFzg",t:"We Found Love",a:"Rihanna ft. Calvin Harris",g:"e",y:2011,s:60},
+ {id:"PT2_F-1esPk",t:"Closer",a:"The Chainsmokers ft. Halsey",g:"e",y:2016,s:60},
+ {id:"r7qovpFAGrQ",t:"Old Town Road",a:"Lil Nas X ft. Billy Ray Cyrus",g:"w",y:2019,s:30},
+ {id:"Pkh8UtuejGw",t:"Señorita",a:"Shawn Mendes & Camila Cabello",g:"w",y:2019,s:50},
+ {id:"4NRXx6U8ABQ",t:"Blinding Lights",a:"The Weeknd",g:"w",y:2019,s:60},
+ {id:"2Vv-BfVoq4g",t:"Perfect",a:"Ed Sheeran",g:"w",y:2017,s:60},
+ {id:"TUVcZfQe-Kw",t:"Levitating",a:"Dua Lipa",g:"w",y:2020,s:50},
+ {id:"tQ0yjYUFKAE",t:"Peaches",a:"Justin Bieber",g:"w",y:2021,s:50},
+ {id:"kffacxfA7G4",t:"Baby",a:"Justin Bieber ft. Ludacris",g:"w",y:2010,s:30},
+ {id:"ru0K8uYEZWw",t:"Can't Stop the Feeling!",a:"Justin Timberlake",g:"w",y:2016,s:55},
+ {id:"papuvlVeZg8",t:"Rockabye",a:"Clean Bandit ft. Sean Paul & Anne-Marie",g:"e",y:2016,s:60},
+ {id:"PIh2xe4jnpk",t:"Rude",a:"MAGIC!",g:"w",y:2014,s:50},
+ {id:"60ItHLz5WEA",t:"Faded",a:"Alan Walker",g:"e",y:2015,s:60},
+ {id:"YqeW9_5kURI",t:"Lean On",a:"Major Lazer & DJ Snake ft. MØ",g:"e",y:2015,s:55},
+ {id:"fJ9rUzIMcZQ",t:"Bohemian Rhapsody",a:"Queen",g:"r",y:1975,s:0},
+ {id:"kXYiU_JCYtU",t:"Numb",a:"Linkin Park",g:"r",y:2003,s:55},
+ {id:"eVTXPUF4Oz4",t:"In The End",a:"Linkin Park",g:"r",y:2000,s:0},
+ {id:"hTWKbfoikeg",t:"Smells Like Teen Spirit",a:"Nirvana",g:"r",y:1991,s:0},
+ {id:"1w7OgIMMRc4",t:"Sweet Child O' Mine",a:"Guns N' Roses",g:"r",y:1987,s:0},
+ {id:"7wtfhZwyrcc",t:"Believer",a:"Imagine Dragons",g:"r",y:2017,s:60},
+ {id:"fKopy74weus",t:"Thunder",a:"Imagine Dragons",g:"r",y:2017,s:50},
+ {id:"djV11Xbc914",t:"Take On Me",a:"a-ha",g:"r",y:1985,s:0},
+ {id:"dQw4w9WgXcQ",t:"Never Gonna Give You Up",a:"Rick Astley",g:"w",y:1987,s:0},
+ {id:"9bZkp7q19f0",t:"Gangnam Style",a:"PSY",g:"k",y:2012,s:0},
+ {id:"ASO_zypdnsQ",t:"Gentleman",a:"PSY",g:"k",y:2013,s:30},
+ {id:"gdZLi9oWNZg",t:"Dynamite",a:"BTS",g:"k",y:2020,s:50},
+ {id:"WMweEpGlu_U",t:"Butter",a:"BTS",g:"k",y:2021,s:30},
+ {id:"d9IxdwEFk1c",t:"Palette",a:"IU ft. G-Dragon",g:"k",y:2017,s:40},
+ {id:"x8VYWazR5mE",t:"夜に駆ける",a:"YOASOBI",g:"j",y:2019,s:30},
+ {id:"ZRtdQ81jPUQ",t:"アイドル",a:"YOASOBI",g:"j",y:2023,s:30},
+ {id:"TQ8WlA2GXbk",t:"Pretender",a:"Official髭男dism",g:"j",y:2019,s:50},
+ {id:"SX_ViT4Ra7k",t:"Lemon",a:"米津玄師",g:"j",y:2018,s:50},
+ {id:"Qp3b-RXtz4w",t:"うっせぇわ",a:"Ado",g:"j",y:2020,s:40},
+ {id:"ony539T074w",t:"白日",a:"King Gnu",g:"j",y:2019,s:50},
+ {id:"0xSiBpUdW4E",t:"マリーゴールド",a:"あいみょん",g:"j",y:2018,s:45},
+ {id:"XqZsoesa55w",t:"Baby Shark",a:"Pinkfong",g:"x",y:2016,s:0},
+ {id:"L0MK7qz13bU",t:"Let It Go",a:"Idina Menzel (Frozen)",g:"x",y:2013,s:60}
+];
+
+/* ===================== ユーティリティ ===================== */
+function rnd(n){return Math.floor(Math.random()*n);}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=rnd(i+1);var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function $(id){return document.getElementById(id);}
+function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+
+/* ===================== 音（iOS消音スイッチ対策込み） ===================== */
+var AC=null, muted=false;
+function audio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+    AC.onstatechange=function(){if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}}
+  return AC;
+}
+var silentEl=null;
+function silentWavUrl(){
+  var sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  function str(o,s){for(var i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);
+  v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(var i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  var p=silentEl.play(); if(p&&p.catch)p.catch(function(){});
+  audio(); if(!AC)return;
+  function done(){if(AC.state==="running"){["pointerdown","pointerup","touchend"].forEach(function(ev){document.removeEventListener(ev,unlockAudio,true);});}}
+  try{AC.resume().then(done);}catch(e){done();}
+}
+["pointerdown","pointerup","touchend"].forEach(function(ev){document.addEventListener(ev,unlockAudio,true);});
+document.addEventListener("visibilitychange",function(){if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){
+  if(muted||!audio())return;
+  try{var o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}
+}
+function sfxTick(){tone(640,0.04,"square",0.025);}
+function sfxCorrect(){tone(660,0.10,"square",0.05);setTimeout(function(){tone(880,0.10,"square",0.05);},90);setTimeout(function(){tone(1320,0.18,"square",0.05);},190);}
+function sfxWrong(){tone(200,0.30,"sawtooth",0.07,90);}
+function sfxRelic(){tone(523,0.12,"triangle",0.06);setTimeout(function(){tone(784,0.12,"triangle",0.06);},110);setTimeout(function(){tone(1047,0.22,"triangle",0.06);},230);}
+function sfxOver(){tone(330,0.25,"sawtooth",0.06,160);setTimeout(function(){tone(160,0.5,"sawtooth",0.06,70);},220);}
+
+/* ===================== YouTube IFrame API ===================== */
+var ytPlayer=null, ytReady=false;
+window.onYouTubeIframeAPIReady=function(){
+  try{
+    ytPlayer=new YT.Player("ytplayer",{
+      videoId:"dQw4w9WgXcQ",
+      playerVars:{controls:1,modestbranding:1,rel:0,iv_load_policy:3,fs:0,disablekb:1,playsinline:1,
+        origin:location.origin},
+      events:{
+        "onReady":function(){ytReady=true;},
+        "onError":function(){ /* 再生不可：リビール演出だけスキップ */ }
+      }
+    });
+  }catch(e){}
+};
+
+/* ===================== 描画（モザイク） ===================== */
+var canvas=$("mzcanvas"), ctx=canvas.getContext("2d");
+var CW=480, CH=270;
+var small=document.createElement("canvas"), sctx=small.getContext("2d");
+var curImg=null, imgReady=false;
+function loadThumb(song, cb){
+  imgReady=false; curImg=null;
+  var img=new Image();
+  img.crossOrigin="anonymous";
+  img.onload=function(){curImg=img; imgReady=true; cb&&cb(true);};
+  img.onerror=function(){cb&&cb(false);};
+  img.src="https://i.ytimg.com/vi/"+song.id+"/hqdefault.jpg";
+}
+function drawMosaic(cols){
+  cols=Math.max(4,Math.round(cols));
+  var rows=Math.max(3,Math.round(cols*9/16));
+  small.width=cols; small.height=rows;
+  sctx.imageSmoothingEnabled=true;
+  // hqdefault は 480x360 に 16:9 をレターボックス。中央 480x270 を切り出す
+  if(curImg) sctx.drawImage(curImg,0,45,480,270,0,0,cols,rows);
+  ctx.imageSmoothingEnabled=false;
+  ctx.clearRect(0,0,CW,CH);
+  if(curImg) ctx.drawImage(small,0,0,cols,rows,0,0,CW,CH);
+  else {ctx.fillStyle="#111";ctx.fillRect(0,0,CW,CH);}
+}
+function drawSolid(){ctx.fillStyle="#0a0a12";ctx.fillRect(0,0,CW,CH);}
+
+/* ===================== ゲーム状態 ===================== */
+var GS="start"; // start, guess, reveal, relic, over
+var score=0, best=0, bestLevel=0, combo=0, level=1, corrects=0, lives=3, maxLives=3;
+var current=null;        // {song, choices}
+var clearTime=8;         // 全モザイク解除までの秒数
+var elapsed=0;           // 経過秒
+var playing=false;       // モザイク進行中
+var lastTs=0;
+var recent=[];           // 直近の出題ID
+var answered=false;
+var relics={};           // {key:count}
+var guardCharges=0;
+var roundHintUsed=false;
+
+try{best=parseInt(localStorage.getItem("mozadon.best")||"0",10)||0;
+    bestLevel=parseInt(localStorage.getItem("mozadon.bestlv")||"0",10)||0;}catch(e){}
+
+var RELIC_DEFS={
+  slow:{ic:"🐢",rn:"スロー再生",rd:"モザイクが解けるのが25%ゆっくりに。考える時間が増える。",stack:true},
+  life:{ic:"㊙",rn:"予備の㊙",rd:"㊙を1つ回復し、最大値も+1。",stack:true},
+  big: {ic:"💰",rn:"高得点ブースト",rd:"獲得スコアが25%アップ。",stack:true},
+  hint:{ic:"💡",rn:"カンペ",rd:"毎ラウンド、不正解の選択肢を1つ自動で消す。",stack:false},
+  combo:{ic:"🔥",rn:"コンボ番長",rd:"連続正解の倍率の伸びが1.5倍に。",stack:true},
+  guard:{ic:"🛡️",rn:"お守り",rd:"間違えても㊙を失わない権利を2回ぶんチャージ。",stack:true}
+};
+
+/* ===================== HUD更新 ===================== */
+function comboMult(){
+  var growth=0.1*(1+0.5*(relics.combo||0));
+  return 1+Math.min(combo,12)*growth;
+}
+function scoreMult(){return 1+0.25*(relics.big||0);}
+function updateHUD(){
+  $("score").textContent=score;
+  var l="";for(var i=0;i<maxLives;i++)l+= i<lives?"㊙":"·";
+  $("lives").textContent=l;
+  $("combo").textContent="x"+comboMult().toFixed(1);
+  $("level").textContent=level;
+}
+
+/* ===================== ラウンド進行 ===================== */
+function pickTarget(){
+  var pool=SONGS.filter(function(s){return recent.indexOf(s.id)<0;});
+  if(!pool.length)pool=SONGS;
+  var t=pool[rnd(pool.length)];
+  recent.push(t.id); if(recent.length>16)recent.shift();
+  return t;
+}
+function buildChoices(target){
+  var simP=clamp(0.15+level*0.07,0.15,0.9);
+  var sameG=SONGS.filter(function(s){return s.id!==target.id&&s.g===target.g;});
+  var others=[], used={}; used[target.id]=1;
+  var guard=0;
+  while(others.length<3 && guard++<200){
+    var pool;
+    if(Math.random()<simP && sameG.some(function(s){return !used[s.id];})) pool=sameG;
+    else pool=SONGS;
+    pool=pool.filter(function(s){return !used[s.id];});
+    if(!pool.length)pool=SONGS.filter(function(s){return !used[s.id];});
+    if(!pool.length)break;
+    var s=pool[rnd(pool.length)]; used[s.id]=1; others.push(s);
+  }
+  return shuffle([target].concat(others));
+}
+function newRound(){
+  GS="guess"; answered=false; roundHintUsed=false; playing=false; elapsed=0;
+  current={song:pickTarget(),choices:null};
+  current.choices=buildChoices(current.song);
+  // 難易度: レベルで解除を速く
+  clearTime=clamp(8.5-(level-1)*0.32,3.4,8.5)*(1+0.25*(relics.slow||0));
+  // UI
+  $("ytwrap").classList.remove("show");
+  $("stage").classList.remove("clean");
+  $("nextbtn").style.display="none";
+  $("rec").style.display="flex";
+  $("stagetag").textContent="MOSAIC";
+  $("prompt").textContent="この曲は…？（早いほど高得点）";
+  $("loading").style.display="flex";
+  if(ytPlayer&&ytReady){try{ytPlayer.stopVideo();}catch(e){}}
+  drawSolid();
+  renderChoices();
+  loadThumb(current.song,function(ok){
+    if(!ok){ // 読めなければ別の曲に差し替え
+      newRound(); return;
+    }
+    $("loading").style.display="none";
+    playing=true; lastTs=performance.now();
+    // ヒント発動
+    if(relics.hint){applyHint();}
+  });
+}
+function renderChoices(){
+  var c=$("choices"); c.innerHTML="";
+  current.choices.forEach(function(s,i){
+    var b=document.createElement("button");
+    b.className="choice"; b.dataset.id=s.id;
+    b.innerHTML='<span class="num">'+(i+1)+'</span><span class="t"></span><span class="a"></span>';
+    b.querySelector(".t").textContent=s.t;
+    b.querySelector(".a").textContent=s.a;
+    b.addEventListener("pointerup",function(ev){ev.preventDefault();onAnswer(s,b);});
+    c.appendChild(b);
+  });
+}
+function applyHint(){
+  if(roundHintUsed)return; roundHintUsed=true;
+  var wrong=[].slice.call(document.querySelectorAll(".choice")).filter(function(b){return b.dataset.id!==current.song.id;});
+  if(wrong.length){var w=wrong[rnd(wrong.length)]; w.classList.add("dim","disabled");}
+}
+
+function curPoints(){
+  var n=clamp(elapsed/clearTime,0,1);
+  return Math.max(100,Math.round(1000*(1-n)));
+}
+function onAnswer(song,btn){
+  if(GS!=="guess"||answered)return;
+  answered=true; playing=false; GS="reveal";
+  var ok=song.id===current.song.id;
+  // 全ボタン無効化＋正解表示
+  [].slice.call(document.querySelectorAll(".choice")).forEach(function(b){
+    b.classList.add("disabled");
+    if(b.dataset.id===current.song.id)b.classList.add("correct");
+  });
+  if(!ok)btn.classList.add("wrong");
+
+  if(ok){
+    var gained=Math.round(curPoints()*comboMult()*scoreMult());
+    score+=gained; combo++; corrects++; level++;
+    sfxCorrect();
+    flyPoints("+"+gained, btn, true);
+    showVerdict(true);
+  }else{
+    sfxWrong();
+    $("stage").classList.add("shake"); setTimeout(function(){$("stage").classList.remove("shake");},360);
+    if(guardCharges>0){
+      guardCharges--; combo=0;
+      showVerdict(false,"🛡️ お守りで㊙を守った！");
+    }else{
+      lives--; combo=0;
+      showVerdict(false);
+    }
+  }
+  updateHUD();
+  revealVideo();
+  // つぎへボタン
+  var nb=$("nextbtn"); nb.style.display="block";
+  nb.textContent = (lives<=0) ? "▶ 結果へ" : "▶ つぎへ";
+}
+function showVerdict(ok,customVerdict){
+  var v=customVerdict||(ok?"⭕ せいかい！":"❌ ざんねん…");
+  var col=ok?"var(--good)":"var(--bad)";
+  $("prompt").innerHTML='<span style="font-weight:700;font-size:14px;color:'+col+'">'+v+'</span>'+
+    '　<b style="color:var(--ink)">'+current.song.t+'</b> ／ '+current.song.a+'・'+current.song.y;
+}
+function revealVideo(){
+  // まずクリア画像を描く（埋め込み待ちの間）
+  drawMosaic(72);
+  $("stage").classList.add("clean");
+  if(ytPlayer&&ytReady){
+    try{
+      ytPlayer.loadVideoById({videoId:current.song.id,startSeconds:current.song.s||0});
+      $("ytwrap").classList.add("show");
+    }catch(e){}
+  }
+}
+
+function flyPoints(txt,btn,good){
+  var el=document.createElement("div");
+  el.className="pts-fly"; el.textContent=txt;
+  el.style.color=good?"var(--gold)":"var(--bad)";
+  el.style.fontSize="26px";
+  var st=$("stage").getBoundingClientRect(), ap=$("app").getBoundingClientRect();
+  el.style.left=(st.left-ap.left+st.width/2-30)+"px";
+  el.style.top=(st.top-ap.top+st.height/2-14)+"px";
+  $("app").appendChild(el);
+  var t0=performance.now();
+  (function anim(t){var k=(t-t0)/700; if(k>=1){el.remove();return;}
+    el.style.transform="translateY("+(-50*k)+"px)"; el.style.opacity=String(1-k);
+    requestAnimationFrame(anim);})(t0);
+}
+
+/* つぎへ */
+function onNext(){
+  if(GS!=="reveal")return;
+  if(ytPlayer&&ytReady){try{ytPlayer.stopVideo();}catch(e){}}
+  $("ytwrap").classList.remove("show");
+  $("clarity").textContent="荒さ 100%";
+  if(lives<=0){gameOver();return;}
+  // 5正解ごとにアイテム
+  if(corrects>0 && corrects%5===0 && corrects!==lastRelicAt){
+    lastRelicAt=corrects; openRelic(); return;
+  }
+  newRound();
+}
+var lastRelicAt=-1;
+
+/* ===================== アイテム ===================== */
+function openRelic(){
+  GS="relic"; sfxRelic();
+  var keys=Object.keys(RELIC_DEFS).filter(function(k){
+    if(!RELIC_DEFS[k].stack && relics[k])return false; return true;});
+  keys=shuffle(keys).slice(0,3);
+  var box=$("relicCards"); box.innerHTML="";
+  keys.forEach(function(k){
+    var d=RELIC_DEFS[k];
+    var el=document.createElement("button");
+    el.className="relic";
+    el.innerHTML='<div class="ic">'+d.ic+'</div><div><div class="rn">'+d.rn+'</div><div class="rd">'+d.rd+'</div></div>';
+    el.addEventListener("pointerup",function(ev){ev.preventDefault();takeRelic(k);});
+    box.appendChild(el);
+  });
+  renderOwned();
+  $("relicScreen").classList.remove("hidden");
+  $("relicScreen").classList.add("fade-in");
+}
+function renderOwned(){
+  var row=$("ownedRow"); row.innerHTML="";
+  Object.keys(relics).forEach(function(k){
+    if(!relics[k])return;
+    var el=document.createElement("div"); el.className="owned";
+    el.innerHTML=RELIC_DEFS[k].ic+(relics[k]>1?'<span>x'+relics[k]+'</span>':'');
+    row.appendChild(el);
+  });
+}
+function takeRelic(k){
+  relics[k]=(relics[k]||0)+1;
+  if(k==="life"){maxLives++; lives++;}
+  if(k==="guard"){guardCharges+=2;}
+  sfxCorrect();
+  updateHUD();
+  $("relicScreen").classList.add("hidden");
+  newRound();
+}
+
+/* ===================== ゲームオーバー ===================== */
+function gameOver(){
+  GS="over"; playing=false; sfxOver();
+  if(score>best){best=score; try{localStorage.setItem("mozadon.best",String(best));}catch(e){}}
+  if(level>bestLevel){bestLevel=level; try{localStorage.setItem("mozadon.bestlv",String(bestLevel));}catch(e){}}
+  $("goScore").textContent=score;
+  $("goLevel").textContent=level;
+  $("goCorrect").textContent=corrects;
+  $("goBest").innerHTML="BEST <b>"+best+"</b> ／ 最高LV <b>"+bestLevel+"</b>";
+  $("goTrivia").textContent="出題は世界のヒット曲＆J-POP 約"+SONGS.length+"曲からランダム。";
+  $("overScreen").classList.remove("hidden");
+  $("overScreen").classList.add("fade-in");
+}
+
+/* ===================== メインループ ===================== */
+function tick(ts){
+  requestAnimationFrame(tick);
+  if(!lastTs)lastTs=ts;
+  var dt=(ts-lastTs)/1000; lastTs=ts;
+  if(GS==="guess"&&playing&&imgReady){
+    elapsed+=dt;
+    var n=clamp(elapsed/clearTime,0,1);
+    var cols=6+(72-6)*Math.pow(n,1.5);
+    drawMosaic(cols);
+    var coarse=Math.round((1-n)*100);
+    $("clarity").textContent="荒さ "+coarse+"%";
+    // 進行に応じてREC tick音
+    tickSoundAccum+=dt;
+    if(tickSoundAccum>0.5){tickSoundAccum=0; sfxTick();}
+  }
+}
+var tickSoundAccum=0;
+requestAnimationFrame(tick);
+
+/* ===================== 開始 / リトライ ===================== */
+function startGame(){
+  score=0; combo=0; level=1; corrects=0; lives=3; maxLives=3;
+  relics={}; guardCharges=0; recent=[]; lastRelicAt=-1;
+  $("startScreen").classList.add("hidden");
+  $("overScreen").classList.add("hidden");
+  $("relicScreen").classList.add("hidden");
+  updateHUD();
+  unlockAudio();
+  // 初回タップ(ジェスチャ)内で最初のラウンドを開始 → iOSのMV再生許可を確保
+  newRound();
+}
+
+/* ボタン配線 */
+$("startBtn").addEventListener("pointerup",function(e){e.preventDefault();startGame();});
+$("retryBtn").addEventListener("pointerup",function(e){e.preventDefault();startGame();});
+$("nextbtn").addEventListener("pointerup",function(e){e.preventDefault();onNext();});
+$("muteBtn").addEventListener("pointerup",function(e){e.preventDefault();muted=!muted;
+  $("muteBtn").textContent=muted?"🔇":"🔊";
+  if(ytPlayer&&ytReady){try{muted?ytPlayer.mute():ytPlayer.unMute();}catch(err){}}});
+
+/* キーボード（PC） */
+document.addEventListener("keydown",function(e){
+  if(GS==="guess"&&!answered){
+    var idx=({"1":0,"2":1,"3":2,"4":3})[e.key];
+    if(idx!=null){var btns=document.querySelectorAll(".choice");
+      if(btns[idx]&&!btns[idx].classList.contains("disabled")){
+        onAnswer(current.choices[idx],btns[idx]);}}
+  }else if(GS==="reveal"&&e.key===" "){e.preventDefault();onNext();}
+  else if((GS==="start"||GS==="over")&&(e.key===" "||e.key==="Enter")){e.preventDefault();startGame();}
+});
+
+/* ダブルタップズーム無効化 */
+var lastTouchEnd=0;
+document.addEventListener("touchend",function(e){
+  var now=Date.now(); if(now-lastTouchEnd<=350){e.preventDefault();} lastTouchEnd=now;
+},{passive:false});
+document.addEventListener("gesturestart",function(e){e.preventDefault();});
+document.addEventListener("dblclick",function(e){e.preventDefault();});
+
+/* 初期表示 */
+$("startBest").innerHTML = best>0 ? ("BEST <b style='font-family:Orbitron'>"+best+"</b>") : "";
+updateHUD(); drawSolid();
+
+/* デバッグ用フック（E2Eテスト） */
+window.__mz={ get state(){return GS;}, get score(){return score;}, get lives(){return lives;},
+  get current(){return current;}, answer:function(correct){
+    if(GS!=="guess")return false;
+    var target=current.song, pick=correct?target:current.choices.filter(function(s){return s.id!==target.id;})[0];
+    var btns=document.querySelectorAll(".choice"); var b=null;
+    for(var i=0;i<current.choices.length;i++){if(current.choices[i].id===pick.id){b=btns[i];break;}}
+    onAnswer(pick,b); return true;
+  }, next:function(){onNext();}, start:startGame, songs:SONGS.length };
+
+})();
+</script>
+</body>
+</html>
