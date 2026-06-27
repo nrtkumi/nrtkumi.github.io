@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>色水 — IROMIZU 藍染め工房</title>
+<meta name="description" content="染桶に積もった色水を注ぎ分け、各桶を一色にそろえる。反物の注文をこなすほど色が増え、道具で挑む水ソート・ローグライト。">
+<meta property="og:title" content="色水 — IROMIZU 藍染め工房">
+<meta property="og:description" content="染桶に積もった色水を注ぎ分け、各桶を一色にそろえる。反物の注文をこなすほど色が増え、道具で挑む水ソート・ローグライト。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/iromizu/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/iromizu/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@600;700;900&family=Klee+One:wght@600&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --asa:#ece2cc; --asa2:#e2d5b8; --wood:#6b4f33; --wood2:#8a6a44;
+    --ai:#1c3a63; --ink:#2a2418; --paper:#f3ecdb; --muted:#8a7c5f;
+    --accent:#1c3a63; --accent2:#c1873b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  html,body{height:100%;}
+  body{
+    background:#15110b; color:var(--ink);
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    overflow:hidden; overscroll-behavior:none;
+    -webkit-touch-callout:none; user-select:none; -webkit-user-select:none;
+    display:flex; flex-direction:column; align-items:center;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .wrap{
+    position:relative;
+    width:min(100vw,480px,calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 0.60));
+    height:100%; margin:0 auto;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.015) 0 2px, transparent 2px 4px),
+      linear-gradient(#efe6d0,#e3d6ba);
+    box-shadow:0 0 40px rgba(0,0,0,.55);
+    display:flex; flex-direction:column;
+  }
+  .hud{
+    display:flex; align-items:center; gap:9px;
+    padding:9px 12px 6px; flex:0 0 auto; color:var(--ink);
+    border-bottom:1px solid rgba(107,79,51,.3);
+  }
+  .hud .b{ font-family:"Zen Old Mincho",serif; font-weight:700; font-size:.7rem; color:var(--muted); line-height:1.1; }
+  .hud .b b{ display:block; color:var(--ink); font-size:.98rem; }
+  .hud .sp{ flex:1; }
+  .ic{ width:30px;height:30px;border-radius:7px;border:1px solid var(--wood);
+    background:rgba(255,255,255,.35); color:var(--ink); font-size:.85rem;
+    display:flex;align-items:center;justify-content:center; }
+  .ic:active{ background:rgba(255,255,255,.6); }
+  canvas{ display:block; touch-action:none; flex:1 1 auto; width:100%; }
+
+  .overlay{ position:absolute; inset:0; z-index:10; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; padding:26px 24px;
+    background:radial-gradient(120% 90% at 50% 25%, rgba(28,58,99,.35), rgba(18,14,9,.9)); }
+  .overlay.hidden{ display:none; }
+  .title{ font-family:"Zen Old Mincho",serif; font-weight:900; font-size:3.1rem; letter-spacing:.18em;
+    color:var(--paper); text-shadow:0 2px 0 #000, 0 0 30px rgba(60,110,170,.5); }
+  .title .en{ display:block; font-size:.8rem; letter-spacing:.5em; color:var(--accent2); margin-top:8px; }
+  .sub{ color:#d8cdb2; font-size:.86rem; line-height:1.8; margin-top:18px; max-width:18em; }
+  .sub b{ color:var(--paper); }
+  .btn{ margin-top:22px; font-family:"Zen Old Mincho",serif; font-weight:900; font-size:1.1rem; letter-spacing:.14em;
+    color:#f3ecdb; background:linear-gradient(#2b517f,#1c3a63); border:none; border-radius:10px; padding:13px 40px;
+    box-shadow:0 4px 0 #102844, 0 6px 14px rgba(0,0,0,.4); }
+  .btn:active{ transform:translateY(2px); box-shadow:0 2px 0 #102844; }
+  .btn.sm{ font-size:.92rem; padding:10px 22px; margin-top:14px; background:linear-gradient(#7a5d3a,#5e4528); box-shadow:0 3px 0 #3a2c18; }
+  .best{ color:var(--accent2); font-size:.78rem; margin-top:16px; font-family:"Zen Old Mincho",serif; }
+  .cards{ display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; justify-content:center; }
+  .card{ width:128px; background:rgba(243,236,219,.95); border:2px solid var(--wood); border-radius:12px;
+    padding:14px 10px; color:var(--ink); box-shadow:0 5px 14px rgba(0,0,0,.4); }
+  .card:active{ transform:translateY(2px); }
+  .card .nm{ font-family:"Zen Old Mincho",serif; font-weight:900; font-size:1.02rem; color:var(--ai); }
+  .card .ds{ font-size:.72rem; line-height:1.5; margin-top:7px; color:#5a4d36; }
+  .rule{ background:rgba(243,236,219,.96); border:1px solid var(--wood); border-radius:12px; padding:16px 18px; max-width:20em; }
+  .rule h3{ font-family:"Zen Old Mincho",serif; color:var(--ai); font-size:1rem; margin-bottom:8px; }
+  .rule p{ color:var(--ink); font-size:.8rem; line-height:1.75; text-align:left; }
+  .rule p span{ color:var(--muted); }
+  .head{ font-family:"Zen Old Mincho",serif; font-weight:900; font-size:2rem; color:var(--paper); }
+  .head.good{ color:#9fd0a0; } .head.bad{ color:#e08a7a; }
+  a.src{ color:var(--muted); font-size:.66rem; text-decoration:none; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hud">
+    <div class="b">注文<b id="hLv">1</b></div>
+    <div class="b">手数<b id="hMoves">0</b></div>
+    <div class="b">得点<b id="hScore">0</b></div>
+    <div class="sp"></div>
+    <button class="ic" id="btnUndo" title="色見本(戻す)">↶</button>
+    <button class="ic" id="btnRule">?</button>
+    <button class="ic" id="btnMute">♪</button>
+  </div>
+  <canvas id="cv"></canvas>
+
+  <div class="overlay" id="ovStart">
+    <div class="title">色水<span class="en">IROMIZU</span></div>
+    <div class="sub">染桶の<b>色水</b>を注ぎ分け、<br>それぞれの桶を<b>一色</b>にそろえる。<br>注文をこなすほど色が増え、<br>道具を選んで挑む<b>水ソート</b>。</div>
+    <button class="btn" id="btnStart">藍場に立つ</button>
+    <div class="best" id="bestLine"></div>
+  </div>
+
+  <div class="overlay hidden" id="ovRule">
+    <div class="rule">
+      <h3>遊び方</h3>
+      <p>① 桶をタップで<span>持ち上げ</span>、もう一つの桶をタップで<b>注ぐ</b>。<br><br>
+      ② 注げるのは<b>注ぎ口の色が同じ</b>か<b>空の桶</b>で、空きがある時だけ。同じ色は続けて流れる。<br><br>
+      ③ すべての桶を<b>一色だけ</b>(または空)にできれば反物の完成。<br><br>
+      ④ 手詰まりになったら道具(一掬い/漉し布)で打開。道具も尽きれば仕事じまい。</p>
+    </div>
+    <button class="btn sm" id="btnRuleClose">閉じる</button>
+  </div>
+
+  <div class="overlay hidden" id="ovUp">
+    <div class="head good">反物 完成</div>
+    <div class="sub" id="upSub"></div>
+    <div class="cards" id="upCards"></div>
+  </div>
+
+  <div class="overlay hidden" id="ovEnd">
+    <div class="head bad" id="endHead">仕事じまい</div>
+    <div class="sub" id="endSub"></div>
+    <button class="btn" id="btnAgain">もう一度</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* anti double-tap zoom */
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{const n=Date.now();if(n-lastTouchEnd<=350)e.preventDefault();lastTouchEnd=n;},{passive:false});
+document.addEventListener('dblclick',e=>e.preventDefault());
+document.addEventListener('gesturestart',e=>e.preventDefault());
+
+/* iOS audio */
+let AC=null,muted=false;
+function audio(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+  AC.onstatechange=()=>{if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}} return AC; }
+let silentEl=null;
+function silentWavUrl(){ const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);
+  str(36,"data");v.setUint32(40,n,true); for(let i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"})); }
+function unlockAudio(){ if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  const p=silentEl.play();if(p&&p.catch)p.catch(()=>{}); audio();if(!AC)return;
+  const done=()=>{if(AC.state==="running"){["pointerdown","pointerup","touchend","click"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true));}};
+  try{AC.resume().then(done);}catch(e){done();} }
+["pointerdown","pointerup","touchend","click"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){ if(muted||!audio())return;
+  try{const o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){} }
+function noise(d,vol){ if(muted||!audio())return; try{const n=Math.floor(AC.sampleRate*d);
+    const buf=AC.createBuffer(1,n,AC.sampleRate);const data=buf.getChannelData(0);
+    for(let i=0;i<n;i++)data[i]=(Math.random()*2-1)*(1-i/n);
+    const src=AC.createBufferSource();src.buffer=buf;const g=AC.createGain();g.gain.value=vol||0.06;
+    src.connect(g);g.connect(AC.destination);src.start();}catch(e){} }
+const vibe=ms=>{try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}};
+const sLift=()=>tone(420,0.06,"sine",0.05,560);
+const sPour=(lvl)=>{tone(300+lvl*60,0.12,"sine",0.05,220);noise(0.1,0.03);};
+const sErr=()=>tone(150,0.12,"sawtooth",0.05,90);
+const sDone=()=>[523,659,784].forEach((f,i)=>setTimeout(()=>tone(f,0.18,"sine",0.06),i*70));
+const sClear=()=>[659,880,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,0.24,"triangle",0.06),i*100));
+const sTool=()=>[784,1047].forEach((f,i)=>setTimeout(()=>tone(f,0.14,"triangle",0.06),i*60));
+const sOver=()=>[392,311,247,196].forEach((f,i)=>setTimeout(()=>tone(f,0.32,"sawtooth",0.05),i*150));
+
+/* persistence */
+const store={ load(k,fb){try{const r=localStorage.getItem(k);return r?JSON.parse(r):fb;}catch{return fb;}},
+  save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}} };
+let best=store.load("iromizu_best",{score:0,level:0});
+
+/* colors: traditional dye colors + colorblind 紋 (mark) */
+const COLORS=[
+  {name:"藍",  c:"#27548a", d:"#1b3c63", mark:"dot"},
+  {name:"紅",  c:"#b8413f", d:"#8a2c2b", mark:"stripe"},
+  {name:"萌黄",c:"#7ba23f", d:"#5a7c2c", mark:"cross"},
+  {name:"山吹",c:"#e0a300", d:"#b07e00", mark:"ring"},
+  {name:"紫",  c:"#6e5398", d:"#4f3a72", mark:"tri"},
+  {name:"茶",  c:"#9b6a3c", d:"#714c28", mark:"wave"},
+  {name:"鼠",  c:"#7c7d86", d:"#5a5b64", mark:"square"},
+];
+
+/* state (all init at declaration) */
+const CAP_BASE=4;
+let scene="start";
+let level=1, score=0, moves=0, par=0, streak=0;
+let cap=CAP_BASE;
+let vessels=[];          // array of arrays (bottom..top) of color indices
+let selected=-1;
+let history=[];          // snapshots for undo
+let charges={undo:2, scoop:1, filter:1};
+let extraEmpty=0;        // from 予備桶 upgrade
+let anim=null;           // pour animation {from,to,col,n,t}
+let parts=[];
+let toast="", toastT=0;
+let tNow=0, last=0;
+let hitV=[];             // vessel hit rects
+
+/* ---- pour rules ---- */
+function topColor(v){ return v.length?v[v.length-1]:-1; }
+function topRun(v){ if(!v.length)return 0; const c=v[v.length-1]; let n=0; for(let i=v.length-1;i>=0&&v[i]===c;i--)n++; return n; }
+function canPour(state,i,j){
+  if(i===j) return 0;
+  const a=state[i], b=state[j];
+  if(!a.length) return 0;
+  if(b.length>=cap) return 0;
+  if(b.length && topColor(b)!==topColor(a)) return 0;
+  const run=topRun(a), room=cap-b.length;
+  return Math.min(run,room);
+}
+function doPour(state,i,j){ const n=canPour(state,i,j); if(!n)return 0;
+  const c=topColor(state[i]); for(let k=0;k<n;k++){ state[i].pop(); state[j].push(c); } return n; }
+function isSorted(v){ return v.length===0 || (v.length===cap && v.every(x=>x===v[0])); }
+function solvedAll(state){ return state.every(isSorted); }
+function anyMove(state){ for(let i=0;i<state.length;i++)for(let j=0;j<state.length;j++) if(canPour(state,i,j))return true; return false; }
+
+/* ---- solver (DFS + visited, node-capped) ---- */
+function keyOf(state){ return state.map(v=>v.join(",")).sort().join("|"); }
+function solvable(state){
+  const start=state.map(v=>[...v]);
+  if(solvedAll(start)) return true;
+  const seen=new Set(); const stack=[start]; let nodes=0;
+  while(stack.length){
+    if(++nodes>120000) return false;
+    const s=stack.pop(); const k=keyOf(s);
+    if(seen.has(k)) continue; seen.add(k);
+    if(solvedAll(s)) return true;
+    for(let i=0;i<s.length;i++)for(let j=0;j<s.length;j++){
+      if(canPour(s,i,j)){ const ns=s.map(v=>[...v]); doPour(ns,i,j);
+        // avoid useless moves: pouring into an identical empty when source already pure & full elsewhere handled by visited
+        if(!seen.has(keyOf(ns))) stack.push(ns); }
+    }
+  }
+  return false;
+}
+
+/* ---- level generation (random fill + solver verify) ---- */
+function levelConfig(L){
+  // colors K grows; empties shrink with extraEmpty bonus
+  const K=Math.min(COLORS.length, 3+Math.floor((L-1)/2));
+  let empties = (L<=2?3:2) + extraEmpty;
+  // every few levels, make it tighter
+  if(L>=6 && extraEmpty===0) empties=Math.max(1,empties-0); // keep >=1
+  return {K, empties};
+}
+function genLevel(L){
+  const {K,empties}=levelConfig(L);
+  cap=CAP_BASE;
+  for(let attempt=0; attempt<80; attempt++){
+    // pool: each color cap times
+    let pool=[]; for(let c=0;c<K;c++) for(let n=0;n<cap;n++) pool.push(c);
+    // shuffle
+    for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+    const filled=K; const state=[];
+    for(let f=0;f<filled;f++) state.push(pool.splice(0,cap));
+    for(let e=0;e<empties;e++) state.push([]);
+    if(solvedAll(state)) continue;
+    if(solvable(state)){ vessels=state; par=estimatePar(state); return true; }
+  }
+  // fallback: solved-1 scramble (guaranteed solvable, easy)
+  const state=[]; for(let c=0;c<K;c++){ const col=[]; for(let n=0;n<cap;n++)col.push(c); state.push(col); }
+  for(let e=0;e<empties;e++) state.push([]);
+  // one split to make it non-trivial
+  if(state[0].length){ const c=state[0].pop(); state[state.length-1].push(c); }
+  vessels=state; par=estimatePar(state); return true;
+}
+function estimatePar(state){ // rough: count segments needing to move
+  let m=0; state.forEach(v=>{ for(let i=0;i<v.length-1;i++) if(v[i]!==v[i+1]) m++; }); return Math.max(4,m+2); }
+
+/* ---- flow ---- */
+function startRun(){
+  scene="play"; level=1; score=0; streak=0; extraEmpty=0;
+  charges={undo:2, scoop:1, filter:1};
+  newLevel(); syncHud();
+}
+function newLevel(){ genLevel(level); moves=0; selected=-1; history=[]; anim=null; syncHud(); }
+function pushHistory(){ history.push(vessels.map(v=>[...v])); if(history.length>40)history.shift(); }
+function pourAction(i,j){
+  const n=canPour(vessels,i,j); if(!n){ sErr(); flash("注げない"); return; }
+  pushHistory();
+  const c=topColor(vessels[i]);
+  anim={from:i,to:j,col:c,n, t:0};
+  doPour(vessels,i,j);
+  moves++; sPour(vessels[j].length); vibe(6);
+  // completion flair
+  if(isSorted(vessels[j]) && vessels[j].length===cap) setTimeout(sDone,90);
+  selected=-1; syncHud();
+  checkState();
+}
+function checkState(){
+  if(solvedAll(vessels)){ onLevelDone(); return; }
+  if(!anyMove(vessels)){ onStuck(); }
+}
+function onLevelDone(){
+  const bonus=Math.max(0, par-moves)*15;
+  const lvlScore=80+level*20+bonus;
+  score+=lvlScore; streak++;
+  if(streak>1) score+=streak*5;
+  best.score=Math.max(best.score,score); best.level=Math.max(best.level,level);
+  store.save("iromizu_best",best);
+  sClear(); vibe(20);
+  scene="levelup";
+  upSub.innerHTML="注文 第"+level+" を納品。<br>+"+lvlScore+" 点"+(bonus>0?"(手際よし +"+bonus+")":"")+(streak>1?"<br>連続"+streak+"反!":"");
+  buildUpgradeCards();
+  ovUp.classList.remove("hidden");
+}
+function onStuck(){
+  // soft-lock: offer recovery via tools if available, else end
+  if(charges.scoop>0 || charges.filter>0 || charges.undo>0){ flash("手詰まり…道具で打開を"); sErr(); return; }
+  endRun("手詰まり。打つ手なし。");
+}
+function endRun(reason){
+  scene="over"; sOver(); vibe(40);
+  endHead.textContent="仕事じまい"; endHead.className="head bad";
+  endSub.innerHTML=reason+"<br><br>到達: 第 "+level+" 注文<br>得点 "+score+"<br><span style='color:#c1873b'>最高 "+best.score+" 点 / 第 "+best.level+" 注文</span>";
+  ovEnd.classList.remove("hidden");
+}
+
+/* ---- upgrades ---- */
+const UPGRADES=[
+  {id:"yobi",  nm:"予備桶", ds:"空の染桶を1つ増やす(以降ずっと)"},
+  {id:"koshi", nm:"漉し布", ds:"どれか1段を取り除く札 +1"},
+  {id:"mihon", nm:"色見本", ds:"手を戻す(アンドゥ)札 +2"},
+  {id:"sukui", nm:"一掬い", ds:"色を無視して1段だけ注ぐ札 +1"},
+  {id:"hayami",nm:"早見え", ds:"今すぐ有効な一手を光らせる札 +2"},
+  {id:"oke",   nm:"大桶",   ds:"全桶の容量+1(より多く積める)"},
+];
+let pendingHint=0, scoopMode=false, filterMode=false;
+function buildUpgradeCards(){
+  const picks=[...UPGRADES].sort(()=>Math.random()-0.5).slice(0,3);
+  upCards.innerHTML="";
+  picks.forEach(u=>{
+    const el=document.createElement("div"); el.className="card";
+    el.innerHTML='<div class="nm">'+u.nm+'</div><div class="ds">'+u.ds+'</div>';
+    el.addEventListener("pointerdown",()=>{ applyUpgrade(u.id); sTool(); ovUp.classList.add("hidden");
+      level++; scene="play"; newLevel(); });
+    upCards.appendChild(el);
+  });
+}
+function applyUpgrade(id){
+  if(id==="yobi") extraEmpty++;
+  else if(id==="koshi") charges.filter++;
+  else if(id==="mihon") charges.undo+=2;
+  else if(id==="sukui") charges.scoop++;
+  else if(id==="hayami") pendingHint+=2;
+  else if(id==="oke") { /* applied at gen via CAP? simple: bump base */ window.__capBump=(window.__capBump||0)+1; }
+}
+/* allow 大桶 to raise capacity */
+const _genLevel=genLevel;
+genLevel=function(L){ const r=_genLevel(L); if(window.__capBump){ cap=CAP_BASE+window.__capBump;
+  // regenerate with new cap
+  const {K,empties}=levelConfig(L);
+  for(let attempt=0;attempt<80;attempt++){ let pool=[];for(let c=0;c<K;c++)for(let n=0;n<cap;n++)pool.push(c);
+    for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+    const st=[];for(let f=0;f<K;f++)st.push(pool.splice(0,cap));for(let e=0;e<empties;e++)st.push([]);
+    if(!solvedAll(st)&&solvable(st)){vessels=st;par=estimatePar(st);break;} } }
+  return r; };
+
+function useUndo(){ if(scene!=="play")return; if(!history.length||charges.undo<=0){ sErr(); flash(charges.undo<=0?"色見本がない":"戻せない"); return; }
+  vessels=history.pop(); charges.undo--; selected=-1; moves=Math.max(0,moves-1); sTool(); flash("一手戻した"); syncHud(); }
+
+/* ---- canvas ---- */
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+let DPR=Math.min(devicePixelRatio||1,2.5), W=0, H=0;
+function resize(){ const r=cv.getBoundingClientRect(); W=Math.max(1,r.width); H=Math.max(1,r.height);
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); }
+window.addEventListener('resize',resize);
+
+function layoutVessels(){
+  hitV=[];
+  const n=vessels.length;
+  const cols=n<=4?n:Math.ceil(n/2);
+  const rows=Math.ceil(n/cols);
+  const padX=16, padTop=16, padBot=66;
+  const areaW=W-padX*2, areaH=H-padTop-padBot;
+  const colGap=12, rowGap=24;
+  const vw=Math.min((areaW-(cols-1)*colGap)/cols, 94);
+  const segH=Math.min(50, Math.max(20,(areaH/rows-rowGap-16)/cap));
+  const vh=segH*cap+16;
+  const totalH=rows*vh+(rows-1)*rowGap;
+  const startY=padTop+Math.max(0,(areaH-totalH)/2);
+  for(let i=0;i<n;i++){
+    const row=Math.floor(i/cols), col=i%cols;
+    const rowCount=Math.min(cols, n-row*cols);
+    const rowW=rowCount*vw+(rowCount-1)*colGap;
+    const offX=(W-rowW)/2;
+    const x=offX+col*(vw+colGap);
+    const cy=startY+row*(vh+rowGap)+vh/2;
+    hitV.push({i, x, y:cy-vh/2, w:vw, h:vh, cx:x+vw/2, cy, segH});
+  }
+}
+function drawVessel(slot){
+  const v=vessels[slot.i];
+  const lift=(selected===slot.i)?-10:0;
+  const x=slot.x, y=slot.y+lift, w=slot.w, h=slot.h, segH=slot.segH;
+  const innerX=x+5, innerW=w-10, baseY=y+h-8;
+  // wooden vat body
+  ctx.save();
+  ctx.fillStyle="#6b4f33"; rr(x-3,y-3,w+6,h+6,9); ctx.fill();
+  ctx.fillStyle="#caa46e"; rr(x,y,w,h,8); ctx.fill();
+  // inner well
+  ctx.fillStyle="#efe6d0"; rr(innerX,y+6,innerW,h-12,5); ctx.fill();
+  // liquid segments (bottom..top)
+  for(let s=0;s<v.length;s++){
+    const col=COLORS[v[s]];
+    const segY=baseY-(s+1)*segH;
+    ctx.fillStyle=col.c; rr(innerX,segY,innerW,segH+0.5,0); ctx.fill();
+    // separator + mark
+    ctx.fillStyle=col.d; ctx.fillRect(innerX,segY,innerW,2);
+    drawMark(col.mark, innerX+innerW/2, segY+segH/2, segH*0.26, col.d);
+  }
+  // wavy top surface of the top segment
+  if(v.length){ const col=COLORS[v[v.length-1]]; const topY=baseY-v.length*segH;
+    ctx.fillStyle=col.c; ctx.beginPath(); ctx.moveTo(innerX,topY+3);
+    for(let xx=0;xx<=innerW;xx+=6){ ctx.lineTo(innerX+xx, topY+3+Math.sin((xx*0.18)+tNow*4)*1.6); }
+    ctx.lineTo(innerX+innerW,topY+6); ctx.lineTo(innerX,topY+6); ctx.closePath(); ctx.fill(); }
+  // hoops (箍)
+  ctx.strokeStyle="rgba(80,55,30,.5)"; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(x,y+h*0.32); ctx.lineTo(x+w,y+h*0.32); ctx.moveTo(x,y+h*0.7); ctx.lineTo(x+w,y+h*0.7); ctx.stroke();
+  // rim
+  ctx.strokeStyle="#5a4020"; ctx.lineWidth=2; rr(x,y,w,h,8); ctx.stroke();
+  // selection / hint glow
+  if(selected===slot.i){ ctx.strokeStyle="#1c3a63"; ctx.lineWidth=3; rr(x-3,y-3,w+6,h+6,9); ctx.stroke(); }
+  ctx.restore();
+}
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawMark(m,cx,cy,s,col){
+  ctx.save(); ctx.strokeStyle="rgba(255,255,255,.55)"; ctx.fillStyle="rgba(255,255,255,.55)"; ctx.lineWidth=Math.max(1.4,s*0.22);
+  ctx.beginPath();
+  if(m==="dot"){ ctx.arc(cx,cy,s*0.5,0,7); ctx.fill(); }
+  else if(m==="stripe"){ ctx.moveTo(cx-s,cy); ctx.lineTo(cx+s,cy); ctx.stroke(); }
+  else if(m==="cross"){ ctx.moveTo(cx-s*0.7,cy-s*0.7); ctx.lineTo(cx+s*0.7,cy+s*0.7); ctx.moveTo(cx+s*0.7,cy-s*0.7); ctx.lineTo(cx-s*0.7,cy+s*0.7); ctx.stroke(); }
+  else if(m==="ring"){ ctx.arc(cx,cy,s*0.6,0,7); ctx.stroke(); }
+  else if(m==="tri"){ ctx.moveTo(cx,cy-s*0.7); ctx.lineTo(cx+s*0.7,cy+s*0.6); ctx.lineTo(cx-s*0.7,cy+s*0.6); ctx.closePath(); ctx.stroke(); }
+  else if(m==="wave"){ ctx.moveTo(cx-s,cy); ctx.quadraticCurveTo(cx-s*0.5,cy-s*0.7,cx,cy); ctx.quadraticCurveTo(cx+s*0.5,cy+s*0.7,cx+s,cy); ctx.stroke(); }
+  else if(m==="square"){ ctx.rect(cx-s*0.55,cy-s*0.55,s*1.1,s*1.1); ctx.stroke(); }
+  ctx.restore();
+}
+
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+  // workshop backdrop: noren + hanging cloth hint
+  ctx.fillStyle="rgba(28,58,99,.05)"; ctx.fillRect(0,0,W,H);
+  if(scene==="play"||scene==="levelup"||scene==="over"){
+    layoutVessels();
+    // hanging dyed cloth strips at top
+    for(let k=0;k<4;k++){ const cx=W*(0.16+k*0.23); ctx.fillStyle=k%2?"rgba(39,84,138,.10)":"rgba(184,65,63,.08)";
+      ctx.fillRect(cx-14,0,28,40+ (k%2?16:0)); }
+    hitV.forEach(drawVessel);
+    drawPourAnim();
+    // hint glow
+    if(pendingHint>0 && hintMove){ const a=hitV[hintMove.i], b=hitV[hintMove.j];
+      ctx.strokeStyle="rgba(225,170,40,"+(0.4+0.3*Math.sin(tNow*6))+")"; ctx.lineWidth=3;
+      [a,b].forEach(s=>{ rr(s.x-4,s.y-4,s.w+8,s.h+8,10); ctx.stroke(); }); }
+    drawToolbar();
+  }
+  parts.forEach(p=>{ ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); ctx.globalAlpha=1; });
+  drawToast();
+}
+let hintMove=null;
+function computeHint(){ hintMove=null; if(pendingHint<=0)return;
+  for(let i=0;i<vessels.length;i++)for(let j=0;j<vessels.length;j++){ if(canPour(vessels,i,j)){
+    // prefer a move that completes or empties
+    hintMove={i,j}; if(isSorted([...vessels[j], ...Array(canPour(vessels,i,j)).fill(topColor(vessels[i]))]))return; } } }
+function drawPourAnim(){
+  if(!anim) return; anim.t+=0.06; if(anim.t>=1){ anim=null; return; }
+  const a=hitV[anim.from], b=hitV[anim.to]; if(!a||!b)return;
+  const col=COLORS[anim.col];
+  const ax=a.cx, ay=a.y+10, bx=b.cx, by=b.y+10;
+  ctx.strokeStyle=col.c; ctx.lineWidth=5; ctx.lineCap="round";
+  ctx.beginPath(); ctx.moveTo(ax,ay);
+  const mx=(ax+bx)/2, my=Math.min(ay,by)-30;
+  ctx.quadraticCurveTo(mx,my,bx,by); ctx.stroke();
+  if(Math.random()<0.5) parts.push({x:bx+(Math.random()-0.5)*10,y:by,r:2+Math.random()*2,col:col.c,life:0.5,vy:1});
+}
+function drawToolbar(){
+  const y=H-54, h=44, bw=(W-36)/3, gap=6;
+  const tools=[["一掬い",charges.scoop,"sukui"],["漉し布",charges.filter,"koshi"],["色見本",charges.undo,"mihon"]];
+  tbBtns=[];
+  tools.forEach((t,k)=>{ const x=18+k*(bw+gap)-(k>0?gap*0:0); const xx=18+k*((W-36-gap*2)/3+gap);
+    const w=(W-36-gap*2)/3;
+    const active=(t[2]==="sukui"&&scoopMode)||(t[2]==="koshi"&&filterMode);
+    ctx.fillStyle=active?"#1c3a63":(t[1]>0?"rgba(255,255,255,.55)":"rgba(180,168,140,.4)");
+    rr(xx,y,w,h,9); ctx.fill();
+    ctx.strokeStyle="#6b4f33"; ctx.lineWidth=1.5; rr(xx,y,w,h,9); ctx.stroke();
+    ctx.fillStyle=active?"#f3ecdb":(t[1]>0?"#2a2418":"#8a7c5f"); ctx.font="700 13px 'Zen Old Mincho'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(t[0]+" ×"+t[1], xx+w/2, y+h/2);
+    tbBtns.push({x:xx,y,w,h,tool:t[2],n:t[1]});
+  });
+}
+let tbBtns=[];
+function drawToast(){ if(toastT<=0)return; ctx.globalAlpha=Math.min(1,toastT*2);
+  ctx.fillStyle="rgba(28,58,99,.92)"; rr(W/2-95,H*0.5-20,190,40,10); ctx.fill();
+  ctx.fillStyle="#f3ecdb"; ctx.font="700 14px 'Zen Old Mincho'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(toast,W/2,H*0.5); ctx.globalAlpha=1; }
+function flash(m){ toast=m; toastT=1.3; }
+
+/* ---- input ---- */
+function xy(e){ const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; }
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault(); audio();
+  if(scene!=="play") return;
+  const {x,y}=xy(e);
+  // toolbar
+  for(const b of tbBtns){ if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){ onTool(b.tool); return; } }
+  // vessels
+  for(const s of hitV){ if(x>=s.x-6&&x<=s.x+s.w+6&&y>=s.y-14&&y<=s.y+s.h+6){ onVessel(s.i); return; } }
+  selected=-1;
+},{passive:false});
+function onVessel(i){
+  if(scoopMode){ // remove top segment
+    if(vessels[i].length){ pushHistory(); vessels[i].pop(); charges.filter; /* noop */ }
+    return;
+  }
+  if(filterMode){ if(vessels[i].length){ pushHistory(); vessels[i].pop(); sTool(); flash("一段 漉した"); filterMode=false; checkState(); syncHud(); } else { sErr(); } return; }
+  if(scoopActive){ // 一掬い: pour one ignoring color
+    if(selected<0){ if(vessels[i].length){ selected=i; sLift(); } }
+    else if(selected===i){ selected=-1; }
+    else { if(vessels[selected].length && vessels[i].length<cap){ pushHistory(); const c=vessels[selected].pop(); vessels[i].push(c);
+        charges.scoop--; scoopActive=false; selected=-1; moves++; sTool(); flash("一掬い"); checkState(); syncHud(); } else { sErr(); } }
+    return;
+  }
+  if(selected<0){ if(vessels[i].length){ selected=i; sLift(); vibe(4); } }
+  else if(selected===i){ selected=-1; }
+  else { pourAction(selected,i); }
+}
+let scoopActive=false;
+function onTool(t){
+  if(t==="mihon"){ useUndo(); return; }
+  if(t==="koshi"){ if(charges.filter<=0){ sErr(); flash("漉し布がない"); return; } filterMode=!filterMode; scoopActive=false; selected=-1; flash(filterMode?"取り除く段をタップ":""); return; }
+  if(t==="sukui"){ if(charges.scoop<=0){ sErr(); flash("一掬いがない"); return; } scoopActive=!scoopActive; filterMode=false; selected=-1; flash(scoopActive?"移す元→先をタップ":""); return; }
+}
+// keyboard: number keys pick vessels, U undo
+window.addEventListener('keydown',e=>{
+  if(scene==="play"){
+    const n=parseInt(e.key,10);
+    if(!isNaN(n)&&n>=1&&n<=vessels.length){ onVessel(n-1); }
+    if(e.key==="u"||e.key==="U") useUndo();
+    if(e.key==="Escape"){ selected=-1; scoopActive=false; filterMode=false; }
+  }
+  if(scene==="over"&&(e.key==="Enter"||e.key===" ")){ ovEnd.classList.add("hidden"); startRun(); }
+});
+
+/* ---- HUD / overlays ---- */
+const hLv=document.getElementById('hLv'),hMoves=document.getElementById('hMoves'),hScore=document.getElementById('hScore');
+const ovStart=document.getElementById('ovStart'),ovRule=document.getElementById('ovRule'),ovUp=document.getElementById('ovUp'),ovEnd=document.getElementById('ovEnd');
+const upSub=document.getElementById('upSub'),upCards=document.getElementById('upCards');
+const endHead=document.getElementById('endHead'),endSub=document.getElementById('endSub'),bestLine=document.getElementById('bestLine');
+function syncHud(){ hLv.textContent=level; hMoves.textContent=moves+(par?(" / 目安"+par):""); hScore.textContent=score; }
+document.getElementById('btnStart').addEventListener('click',()=>{ ovStart.classList.add('hidden'); startRun(); });
+document.getElementById('btnRule').addEventListener('click',()=>ovRule.classList.remove('hidden'));
+document.getElementById('btnRuleClose').addEventListener('click',()=>ovRule.classList.add('hidden'));
+document.getElementById('btnUndo').addEventListener('click',()=>useUndo());
+document.getElementById('btnMute').addEventListener('click',e=>{ muted=!muted; e.target.textContent=muted?"🔇":"♪"; if(!muted)sLift(); });
+document.getElementById('btnAgain').addEventListener('click',()=>{ ovEnd.classList.add('hidden'); startRun(); });
+bestLine.textContent=best.score>0?("最高 "+best.score+" 点 / 第 "+best.level+" 注文"):"";
+
+/* ---- main loop (from start) ---- */
+function frame(ts){
+  if(!last)last=ts; let dt=(ts-last)/1000; last=ts; if(dt>0.1)dt=0.1; tNow+=dt;
+  if(toastT>0)toastT-=dt;
+  if(pendingHint>0) computeHint();
+  for(let i=parts.length-1;i>=0;i--){ const p=parts[i]; p.y+=(p.vy||0); p.life-=dt*2; if(p.life<=0)parts.splice(i,1); }
+  resize(); draw();
+  requestAnimationFrame(frame);
+}
+resize();
+requestAnimationFrame(frame);
+
+/* test hook (harmless) */
+function solvePath(){
+  const start=vessels.map(v=>[...v]); if(solvedAll(start))return [];
+  const seen=new Set(); const stack=[{s:start,path:[]}]; let nodes=0;
+  while(stack.length){ if(++nodes>120000)return null; const {s,path}=stack.pop(); const k=keyOf(s);
+    if(seen.has(k))continue; seen.add(k); if(solvedAll(s))return path;
+    for(let i=0;i<s.length;i++)for(let j=0;j<s.length;j++){ if(canPour(s,i,j)){ const ns=s.map(v=>[...v]); doPour(ns,i,j);
+      if(!seen.has(keyOf(ns)))stack.push({s:ns,path:[...path,[i,j]]}); } } }
+  return null;
+}
+window.__im={ scene:()=>scene, state:()=>({level,score,moves,vessels:vessels.map(v=>[...v]),cap,charges:{...charges}}),
+  hint:()=>{ for(let i=0;i<vessels.length;i++)for(let j=0;j<vessels.length;j++) if(canPour(vessels,i,j)) return {i,j}; return null; },
+  vXY:(i)=>{ const s=hitV.find(s=>s.i===i); return s?{x:s.cx,y:s.cy}:null; },
+  solvePath, solved:()=>solvedAll(vessels) };
+</script>
+</body>
+</html>
