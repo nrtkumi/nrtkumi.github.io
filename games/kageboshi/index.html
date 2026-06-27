@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>影法師一座 — KAGEBOSHI</title>
+<meta name="description" content="切り絵の役者を舞台に並べ、隣り合わせでシナジーを組む。幕が上がれば自動で芝居=戦い。勝てば次の宿場へ巡業する、影絵芝居のオートバトラー・ローグライト。">
+<meta property="og:title" content="影法師一座 — KAGEBOSHI">
+<meta property="og:description" content="切り絵の役者を舞台に並べ、隣り合わせでシナジーを組む。幕が上がれば自動で芝居=戦い。勝てば次の宿場へ巡業する、影絵芝居のオートバトラー・ローグライト。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/kageboshi/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/kageboshi/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Shippori+Mincho:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#16120e; --night2:#221a12;
+    --wood:#3a2a1c; --wood2:#4d3724;
+    --screen0:#f6e7c1; --screen1:#dcb878; --screen2:#b98c4f;
+    --ink:#1c130b; --paper:#f0e6d2; --muted:#b39c78;
+    --vermil:#cf3a2c; --gold:#d3a64a; --jade:#6f8f4f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  html,body{height:100%;}
+  body{
+    background:#0c0a07; color:var(--paper);
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    overflow:hidden; overscroll-behavior:none;
+    -webkit-touch-callout:none; user-select:none; -webkit-user-select:none;
+    display:flex; flex-direction:column; align-items:center;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .wrap{
+    position:relative;
+    width:min(100vw,480px,calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 0.60));
+    height:100%; margin:0 auto;
+    display:flex; flex-direction:column;
+    background:var(--night);
+    box-shadow:0 0 40px rgba(0,0,0,.6);
+  }
+  .hud{
+    display:flex; align-items:center; gap:8px;
+    padding:8px 10px 6px; flex:0 0 auto;
+    background:linear-gradient(#241b12,#1a140d);
+    border-bottom:1px solid #3a2c1c;
+  }
+  .hud .badge{
+    font-family:"Shippori Mincho",serif; font-weight:700;
+    font-size:.72rem; color:var(--muted); line-height:1.15;
+  }
+  .hud .badge b{ color:var(--paper); font-size:.95rem; display:block; }
+  .hud .spacer{ flex:1; }
+  .iconbtn{
+    width:30px;height:30px;border-radius:6px;border:1px solid #4a3826;
+    background:#2a2014; color:var(--paper); font-size:.85rem;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .iconbtn:active{ background:#3a2c1b; }
+  canvas{ display:block; touch-action:none; flex:1 1 auto; width:100%; }
+
+  .overlay{
+    position:absolute; inset:0; z-index:10;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:26px 24px;
+    background:radial-gradient(120% 90% at 50% 18%, rgba(40,30,18,.5), rgba(10,8,5,.92));
+    backdrop-filter:blur(1px);
+  }
+  .overlay.hidden{ display:none; }
+  .title-jp{
+    font-family:"Yuji Syuku",serif; font-size:2.7rem; line-height:1.05;
+    color:var(--paper); letter-spacing:.08em;
+    text-shadow:0 2px 0 #000, 0 0 24px rgba(207,58,44,.35);
+  }
+  .title-en{ font-family:"Shippori Mincho",serif; letter-spacing:.5em; color:var(--gold); font-size:.78rem; margin:8px 0 0 6px; }
+  .sub{ color:var(--muted); font-size:.84rem; line-height:1.7; margin-top:16px; max-width:18em; }
+  .sub b{ color:var(--paper); }
+  .btn{
+    margin-top:22px; font-family:"Shippori Mincho",serif; font-weight:800;
+    font-size:1.12rem; letter-spacing:.12em; color:#1a120a;
+    background:linear-gradient(#e9c25f,#cf9a37);
+    border:none; border-radius:10px; padding:13px 40px;
+    box-shadow:0 4px 0 #7a5418, 0 6px 14px rgba(0,0,0,.4);
+  }
+  .btn:active{ transform:translateY(2px); box-shadow:0 2px 0 #7a5418; }
+  .btn.sm{ font-size:.92rem; padding:10px 22px; margin-top:14px; }
+  .btn.ghost{ background:#2a2014; color:var(--paper); box-shadow:0 3px 0 #000; border:1px solid #4a3826; }
+  .meta-line{ color:var(--gold); font-size:.74rem; margin-top:18px; font-family:"Shippori Mincho",serif; }
+  .result-head{ font-family:"Yuji Syuku",serif; font-size:2.4rem; }
+  .result-head.win{ color:var(--gold); text-shadow:0 0 26px rgba(211,166,74,.5); }
+  .result-head.lose{ color:var(--vermil); }
+  .rule-card{ background:rgba(26,20,12,.85); border:1px solid #4a3826; border-radius:12px; padding:16px 18px; max-width:20em; }
+  .rule-card h3{ font-family:"Shippori Mincho",serif; color:var(--gold); font-size:.95rem; margin-bottom:8px; }
+  .rule-card p{ color:var(--paper); font-size:.8rem; line-height:1.7; text-align:left; }
+  .rule-card p span{ color:var(--muted); }
+  .tip{ color:var(--muted); font-size:.72rem; margin-top:10px; }
+  a.src{ color:var(--muted); font-size:.66rem; text-decoration:none; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hud">
+    <div class="badge">宿場<b id="hudStage">1 / 10</b></div>
+    <div class="badge">銭<b id="hudCoin">0</b></div>
+    <div class="badge">命<b id="hudLife">♥♥♥</b></div>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="btnRule">?</button>
+    <button class="iconbtn" id="btnMute">♪</button>
+  </div>
+  <canvas id="cv"></canvas>
+
+  <!-- START -->
+  <div class="overlay" id="ovStart">
+    <div class="title-jp">影法師一座</div>
+    <div class="title-en">KAGEBOSHI</div>
+    <div class="sub">切り絵の役者を<b>舞台</b>に並べよ。<br>隣り合わせると<b>力が響き合う</b>。<br>幕が上がれば、あとは<b>芝居まかせ</b>。<br>勝てば次の<b>宿場</b>へ巡業する。</div>
+    <button class="btn" id="btnStart">一座を旗揚げ</button>
+    <div class="meta-line" id="metaLine"></div>
+    <a class="src" href="https://store.steampowered.com/app/2071230/Backpack_Battles/" target="_blank" rel="noopener">着想: インベントリ型オートバトラーの潮流より</a>
+  </div>
+
+  <!-- RULES -->
+  <div class="overlay hidden" id="ovRule">
+    <div class="rule-card">
+      <h3>遊び方</h3>
+      <p>① <b>支度</b>: 下の控え／店から役者・小道具を<span>舞台へドラッグ</span>。<br><br>
+      ② <b>隣接シナジー</b>: 太鼓は隣の手数を速め、提灯は隣の攻を上げる。種族の隣接でも力が増す。<br><br>
+      ③ <b>幕を上げる</b>と自動で芝居(戦闘)。相手の気力を先に削れば勝ち。<br><br>
+      ④ 勝てば銭を得て次の宿場へ。負けると命が減り、命が尽きると一巻の終わり。</p>
+    </div>
+    <button class="btn sm ghost" id="btnRuleClose">閉じる</button>
+  </div>
+
+  <!-- RESULT -->
+  <div class="overlay hidden" id="ovResult">
+    <div class="result-head" id="resHead">勝</div>
+    <div class="sub" id="resSub"></div>
+    <button class="btn" id="btnResNext">次へ</button>
+  </div>
+
+  <!-- GAMEOVER / CLEAR -->
+  <div class="overlay hidden" id="ovEnd">
+    <div class="result-head" id="endHead">千秋楽</div>
+    <div class="sub" id="endSub"></div>
+    <button class="btn" id="btnEndAgain">もう一座、旗揚げ</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ===================== boilerplate: anti double-tap zoom ===================== */
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTouchEnd<=350)e.preventDefault();lastTouchEnd=now;},{passive:false});
+document.addEventListener('dblclick',e=>e.preventDefault());
+document.addEventListener('gesturestart',e=>e.preventDefault());
+
+/* ===================== boilerplate: iOS audio ===================== */
+let AC=null,muted=false;
+function audio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+    AC.onstatechange=()=>{if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}}
+  return AC;
+}
+let silentEl=null;
+function silentWavUrl(){
+  const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);
+  str(36,"data");v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  const p=silentEl.play();if(p&&p.catch)p.catch(()=>{});
+  audio();if(!AC)return;
+  const done=()=>{if(AC.state==="running"){["pointerdown","pointerup","touchend","click"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true));}};
+  try{AC.resume().then(done);}catch(e){done();}
+}
+["pointerdown","pointerup","touchend","click"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){
+  if(muted||!audio())return;
+  try{const o=AC.createOscillator(),g=AC.createGain();
+    o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}
+}
+function noise(d,vol){
+  if(muted||!audio())return;
+  try{const n=Math.floor(AC.sampleRate*d);const buf=AC.createBuffer(1,n,AC.sampleRate);
+    const data=buf.getChannelData(0);for(let i=0;i<n;i++)data[i]=(Math.random()*2-1)*(1-i/n);
+    const src=AC.createBufferSource();src.buffer=buf;const g=AC.createGain();g.gain.value=vol||0.08;
+    src.connect(g);g.connect(AC.destination);src.start();}catch(e){}
+}
+const vibe=ms=>{try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}};
+const sPick=()=>tone(620,0.06,"triangle",0.05,880);
+const sPlace=()=>{tone(300,0.05,"sine",0.05);noise(0.03,0.03);};
+const sBuy=()=>[660,990].forEach((f,i)=>setTimeout(()=>tone(f,0.12,"triangle",0.05),i*60));
+const sErr=()=>tone(150,0.12,"sawtooth",0.05,90);
+const sStrike=()=>{tone(420,0.05,"square",0.03,180);noise(0.04,0.04);};
+const sHurt=()=>tone(200,0.08,"sawtooth",0.05,120);
+const sDrum=()=>{tone(110,0.16,"sine",0.09,70);};
+const sWin=()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,0.26,"triangle",0.06),i*110));
+const sLose=()=>[392,311,247,196].forEach((f,i)=>setTimeout(()=>tone(f,0.34,"sawtooth",0.05),i*150));
+const sCurtain=()=>{noise(0.5,0.05);[180,160,140].forEach((f,i)=>setTimeout(()=>tone(f,0.4,"sine",0.05),i*120));};
+
+/* ===================== persistence ===================== */
+const store={
+  load(k,fb){try{const r=localStorage.getItem(k);return r?JSON.parse(r):fb;}catch{return fb;}},
+  save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+};
+let meta=store.load("kageboshi_meta",{bestStage:0,runs:0});
+
+/* ===================== piece definitions ===================== */
+// tag colors (paper-cut fills lit on the screen)
+const TAGCOL={ "人":"#36608c", "鬼":"#cf3a2c", "妖":"#7a5392", "獣":"#6f8f3f", "巫":"#caa23f", "道具":"#8a6a3e" };
+// units: atk damage to enemy side per action; cad seconds between actions
+const UNITS={
+  musha:{key:"musha",name:"武者",tag:"人",cost:4,atk:6,cad:1.6,hpc:14,fig:{weapon:"sword",horns:true},
+    desc:"堅実な一太刀。"},
+  yumi:{key:"yumi",name:"弓取",tag:"人",cost:3,atk:3,cad:0.9,hpc:8,fig:{weapon:"bow"},
+    desc:"速射。手数で押す。"},
+  miko:{key:"miko",name:"巫女",tag:"巫",cost:5,atk:1,cad:2.0,hpc:10,heal:7,fig:{weapon:"staff",robe:true},
+    desc:"行動ごとに座の気力を回復。"},
+  shishi:{key:"shishi",name:"獅子",tag:"獣",cost:7,atk:13,cad:2.6,hpc:18,fig:{beast:true,bulky:true},
+    desc:"遅いが一撃が重い。"},
+  oni:{key:"oni",name:"鬼",tag:"鬼",cost:6,atk:8,cad:1.8,hpc:16,enrage:true,fig:{weapon:"club",horns:true,bulky:true},
+    desc:"気力が減ると猛る。鬼同士で更に。"},
+  tengu:{key:"tengu",name:"烏天狗",tag:"妖",cost:5,atk:2,cad:1.4,hpc:8,dot:2.4,dotdur:4,fig:{wings:true,beak:true},
+    desc:"呪い(継続)を相手に付す。"},
+  kappa:{key:"kappa",name:"河童",tag:"妖",cost:4,atk:2,cad:1.5,hpc:10,block:7,fig:{beast:true,beak:true},
+    desc:"行動ごとに座へ守りを張る。"},
+  kitsu:{key:"kitsu",name:"狐火",tag:"妖",cost:6,atk:4,cad:1.3,hpc:7,accel:true,fig:{flame:true},
+    desc:"撃つほど手が速くなる。"},
+};
+const PROPS={
+  taiko:{key:"taiko",name:"太鼓",tag:"道具",cost:5,aura:"haste",fig:"drum",
+    desc:"隣の役者の手数を速める(×0.82)。"},
+  chochin:{key:"chochin",name:"提灯",tag:"道具",cost:3,aura:"atk",fig:"lantern",
+    desc:"隣の役者の攻を上げる(+2)。"},
+  gohei:{key:"gohei",name:"御幣",tag:"道具",cost:4,aura:"lifesteal",fig:"gohei",
+    desc:"隣の役者の行動で座を+2回復。"},
+  suzu:{key:"suzu",name:"鈴",tag:"道具",cost:4,aura:"yokai",fig:"bell",
+    desc:"隣の妖の攻を大きく上げる(+4)。"},
+  men:{key:"men",name:"面",tag:"道具",cost:4,aura:"fierce",fig:"mask",
+    desc:"隣の鬼・獣の攻を上げる(+3)。"},
+  byobu:{key:"byobu",name:"屏風",tag:"道具",cost:5,timed:"block",fig:"screen",
+    desc:"2秒ごとに座へ守り+9。"},
+  mosen:{key:"mosen",name:"毛氈",tag:"道具",cost:5,aura:"maxhp",fig:"rug",
+    desc:"隣の役者ぶん座の最大気力+12。"},
+};
+function pieceDef(key){ return UNITS[key]||PROPS[key]; }
+function isProp(key){ return !!PROPS[key]; }
+
+/* ===================== encounters (handcrafted) ===================== */
+const ENC=[
+  {name:"影鼠の群れ",hp:58,units:[{atk:3,cad:1.1},{atk:2,cad:1.3}]},
+  {name:"提灯小僧",hp:82,units:[{atk:3,cad:1.0},{atk:3,cad:1.2}]},
+  {name:"傘化け",hp:112,units:[{atk:5,cad:1.2},{atk:3,cad:1.0}]},
+  {name:"ろくろ首",hp:140,units:[{atk:4,cad:0.9},{atk:6,cad:1.4}],block:5},
+  {name:"化け猫",hp:172,units:[{atk:6,cad:1.0},{atk:3,cad:0.8,dot:2,dotdur:4}]},
+  {name:"がしゃどくろ",hp:206,units:[{atk:10,cad:1.3},{atk:4,cad:1.0}]},
+  {name:"鵺",hp:244,units:[{atk:7,cad:0.9},{atk:6,cad:1.2,dot:3,dotdur:4}]},
+  {name:"大蛇",hp:288,units:[{atk:10,cad:1.1},{atk:7,cad:1.0}],block:8},
+  {name:"鬼神",hp:336,units:[{atk:9,cad:0.8},{atk:9,cad:1.2}]},
+  {name:"大百足",boss:true,hp:315,units:[{atk:7,cad:0.75},{atk:8,cad:1.1,dot:2,dotdur:5},{atk:6,cad:1.2}],block:5},
+];
+
+/* ===================== run state (all init at declaration) ===================== */
+const COLS=5, ROWS=3;
+let scene="start"; // start | prep | battle | result | end
+let stage=1, coin=7, life=3;
+let grid=[];           // grid[r][c] = pieceId|null
+let bench=[];          // [pieceId]
+let owned={};          // id -> {id,key}
+let pieceSeq=1;
+let shop=[];           // [{id,key,cost,sold}]
+let rerollCost=1;
+let drag=null;         // {id,from,fromIdx|{r,c},gx,gy,ox,oy}
+let hitRegions=[];     // {x,y,w,h,act,data}
+let toast="", toastT=0;
+let battle=null;       // combat state
+let battleSpeed=1;
+let result=null;
+let parts=[];          // particles
+let tNow=0, last=0;
+
+function newPiece(key){ const id=pieceSeq++; owned[id]={id,key}; return id; }
+function resetRun(){
+  scene="prep"; stage=1; coin=7; life=3;
+  grid=Array.from({length:ROWS},()=>Array(COLS).fill(null));
+  bench=[]; owned={}; pieceSeq=1; shop=[]; rerollCost=1;
+  // starting troupe
+  const a=newPiece("musha"), b=newPiece("yumi"), c=newPiece("chochin");
+  grid[1][1]=a; grid[1][2]=c; grid[1][3]=b;
+  rollShop();
+  syncHud();
+}
+
+/* ===================== shop ===================== */
+function rollShop(){
+  const pool=[...Object.keys(UNITS),...Object.keys(PROPS)];
+  // weight by stage: later stages show stronger pieces a bit more
+  shop=[];
+  const n=4;
+  for(let i=0;i<n;i++){
+    const key=pool[Math.floor(Math.random()*pool.length)];
+    const d=pieceDef(key);
+    shop.push({id:"s"+i+"_"+Math.random().toString(36).slice(2,6),key,cost:d.cost,sold:false});
+  }
+}
+function buyShop(idx){
+  const s=shop[idx]; if(!s||s.sold) return;
+  if(coin<s.cost){ flash("銭が足りぬ"); sErr(); return; }
+  coin-=s.cost; s.sold=true;
+  bench.push(newPiece(s.key));
+  sBuy(); vibe(8); syncHud();
+}
+function doReroll(){
+  if(coin<rerollCost){ flash("銭が足りぬ"); sErr(); return; }
+  coin-=rerollCost; rollShop(); sPick(); syncHud();
+}
+function sellPiece(id){
+  const key=owned[id].key; const refund=Math.max(1,Math.floor(pieceDef(key).cost/2));
+  coin+=refund;
+  // remove from grid/bench/owned
+  removeFromBoard(id); delete owned[id];
+  flash("+"+refund+" 銭"); sBuy(); syncHud();
+}
+function removeFromBoard(id){
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++) if(grid[r][c]===id) grid[r][c]=null;
+  const bi=bench.indexOf(id); if(bi>=0) bench.splice(bi,1);
+}
+
+/* ===================== adjacency / battle prep ===================== */
+function placedUnits(){
+  const list=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const id=grid[r][c]; if(id==null) continue;
+    list.push({id,key:owned[id].key,r,c});
+  }
+  return list;
+}
+function neighborsOf(r,c){
+  const out=[];
+  [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+    const nr=r+dr,nc=c+dc;
+    if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&grid[nr][nc]!=null) out.push({r:nr,c:nc,key:owned[grid[nr][nc]].key});
+  });
+  return out;
+}
+// compute player troupe stats for a battle
+function buildPlayerTroupe(){
+  const placed=placedUnits();
+  let maxhp=95;
+  const actors=[]; const timed=[];
+  placed.forEach(p=>{
+    const d=pieceDef(p.key);
+    if(isProp(p.key)){
+      if(d.timed==="block") timed.push({type:"block",val:9,every:2,t:2});
+      return;
+    }
+    let atk=d.atk, cad=d.cad;
+    const nb=neighborsOf(p.r,p.c);
+    let healAura=0;
+    nb.forEach(n=>{
+      const nd=pieceDef(n.key);
+      if(!isProp(n.key)){
+        // same-tag unit synergy
+        if(n.key===p.key) atk+=1;
+        if(p.key==="oni"&&n.key==="oni") atk+=3;
+        return;
+      }
+      if(nd.aura==="haste") cad*=0.82;
+      else if(nd.aura==="atk") atk+=2;
+      else if(nd.aura==="yokai"&&d.tag==="妖") atk+=4;
+      else if(nd.aura==="fierce"&&(d.tag==="鬼"||d.tag==="獣")) atk+=3;
+      else if(nd.aura==="lifesteal") healAura+=2;
+      else if(nd.aura==="maxhp") maxhp+=12;
+    });
+    cad=Math.max(0.45,cad);
+    actors.push({
+      id:p.id,key:p.key,r:p.r,c:p.c,side:"P",
+      atk, cad, baseCad:cad, t:cad*(0.3+Math.random()*0.5),
+      heal:(d.heal||0)+healAura, block:d.block||0,
+      dot:d.dot||0, dotdur:d.dotdur||0,
+      enrage:!!d.enrage, accel:!!d.accel,
+      lunge:0
+    });
+  });
+  return {maxhp,actors,timed};
+}
+function buildEnemyTroupe(enc){
+  const actors=[]; const timed=[];
+  enc.units.forEach((u,i)=>{
+    actors.push({id:"E"+i,key:"oni",side:"E",atk:u.atk,cad:u.cad,baseCad:u.cad,
+      t:u.cad*(0.3+Math.random()*0.5),heal:0,block:0,dot:u.dot||0,dotdur:u.dotdur||0,
+      enrage:false,accel:false,lunge:0});
+  });
+  if(enc.block) timed.push({type:"block",val:enc.block,every:2.4,t:2.4});
+  return {maxhp:enc.hp,actors,timed};
+}
+
+/* ===================== battle ===================== */
+function startBattle(){
+  const placed=placedUnits().filter(p=>!isProp(p.key));
+  if(placed.length===0){ flash("舞台に役者を!"); sErr(); return; }
+  const enc=ENC[stage-1];
+  const P=buildPlayerTroupe(), E=buildEnemyTroupe(enc);
+  battle={
+    enc,
+    P:{...P,hp:P.maxhp,block:0,dots:[]},
+    E:{...E,hp:E.maxhp,block:0,dots:[]},
+    clock:0, over:false, win:false, floats:[], shake:0, flash:0, ended:0
+  };
+  scene="battle"; battleSpeed=1;
+  sCurtain(); vibe(20);
+}
+function sideOf(s){ return s==="P"?battle.P:battle.E; }
+function dealDamage(target, amt, x, y){
+  const t=sideOf(target);
+  let dmg=amt;
+  if(t.block>0){ const ab=Math.min(t.block,dmg); t.block-=ab; dmg-=ab; }
+  t.hp-=dmg;
+  if(t.hp<0) t.hp=0;
+  battle.floats.push({x,y,vy:-26,life:0.9,txt:Math.round(amt),col:target==="P"?"#ff9a8a":"#ffe2a0"});
+  if(target==="P"){ battle.shake=Math.min(8,battle.shake+3); }
+}
+function actorPos(a){
+  // map to stage drawing coords; computed during render and cached
+  return a._px!=null?{x:a._px,y:a._py}:{x:0,y:0};
+}
+function stepBattle(dt){
+  const b=battle; if(!b||b.over) { if(b&&b.over){ b.ended+=dt; } return; }
+  b.clock+=dt;
+  // dots
+  ["P","E"].forEach(side=>{
+    const s=sideOf(side);
+    for(let i=s.dots.length-1;i>=0;i--){
+      const d=s.dots[i]; const tick=d.dps*dt; s.hp-=tick; d.left-=dt;
+      if(d.left<=0) s.dots.splice(i,1);
+    }
+    if(s.hp<0)s.hp=0;
+  });
+  // timed props (player + enemy)
+  [["P",b.P],["E",b.E]].forEach(([side,s])=>{
+    (s.timed||[]).forEach(tm=>{
+      tm.t-=dt;
+      if(tm.t<=0){ tm.t+=tm.every; if(tm.type==="block"){ s.block+=tm.val; if(side==="P") b.floats.push({x:60,y:b._pY||200,vy:-18,life:0.7,txt:"守+"+tm.val,col:"#9fd0ff"}); } }
+    });
+  });
+  // actors
+  const all=[...b.P.actors.map(a=>(a.side="P",a)),...b.E.actors.map(a=>(a.side="E",a))];
+  all.forEach(a=>{
+    if(a.lunge>0) a.lunge=Math.max(0,a.lunge-dt*3.5);
+    a.t-=dt;
+    if(a.t<=0){
+      let cad=a.baseCad;
+      if(a.accel){ a.baseCad=Math.max(0.45,a.baseCad*0.92); cad=a.baseCad; }
+      a.t+=cad;
+      const me=sideOf(a.side), foe=a.side==="P"?"E":"P";
+      let atk=a.atk;
+      if(a.enrage && me.hp < me.maxhp*0.4) atk=Math.round(atk*1.5);
+      const pos=actorPos(a);
+      a.lunge=1;
+      // effects
+      if(a.heal){ me.hp=Math.min(me.maxhp,me.hp+a.heal); b.floats.push({x:pos.x,y:pos.y-10,vy:-22,life:0.8,txt:"+"+a.heal,col:"#aef0b0"}); }
+      if(a.block){ me.block+=a.block; }
+      if(a.dot){ const fs=sideOf(foe); fs.dots.push({dps:a.dot,left:a.dotdur}); }
+      if(atk>0){ const fp=foe==="P"?{x:60,y:b._pY||200}:{x:(b._eX||300),y:(b._eY||120)};
+        dealDamage(foe,atk,fp.x,fp.y); }
+      if(a.side==="P"){ if(a.key==="taiko") sDrum(); else sStrike(); } else sHurt();
+      if(me.hp<=0){} // handled below
+    }
+  });
+  // win/lose
+  if(b.E.hp<=0 && !b.over){ b.over=true; b.win=true; b.flash=1; onBattleEnd(true); }
+  else if(b.P.hp<=0 && !b.over){ b.over=true; b.win=false; b.flash=1; onBattleEnd(false); }
+  // timeout
+  if(b.clock>45 && !b.over){ b.over=true; b.win=(b.P.hp/b.P.maxhp)>=(b.E.hp/b.E.maxhp); onBattleEnd(b.win); }
+  if(b.shake>0) b.shake=Math.max(0,b.shake-dt*30);
+  if(b.flash>0) b.flash=Math.max(0,b.flash-dt*1.5);
+}
+function onBattleEnd(win){
+  if(win){
+    const reward=5+stage+Math.round((battle.P.hp/battle.P.maxhp)*4);
+    result={win:true,reward,stage,boss:!!battle.enc.boss};
+    setTimeout(()=>{ sWin(); },300);
+  }else{
+    result={win:false,stage};
+    setTimeout(()=>{ sLose(); },300);
+  }
+  setTimeout(()=>{ showResult(); }, 950);
+}
+function showResult(){
+  scene="result";
+  const r=result;
+  if(r.win){
+    coin+=r.reward;
+    meta.bestStage=Math.max(meta.bestStage,stage);
+    store.save("kageboshi_meta",meta);
+    if(r.boss){
+      ovEnd.classList.remove("hidden"); endHead.textContent="大入り!"; endHead.className="result-head win";
+      endSub.innerHTML="<b>大百足</b>を討ち果たし、<br>影法師一座は天下一の評判に。<br><br>到達: 千秋楽(全10宿場)";
+      meta.runs++; store.save("kageboshi_meta",meta);
+      scene="end"; return;
+    }
+    resHead.textContent="大入り"; resHead.className="result-head win";
+    resSub.innerHTML="<b>"+battle.enc.name+"</b>を退けた。<br>褒美 +"+r.reward+" 銭<br><span style='color:var(--muted)'>残気力 "+Math.round(battle.P.hp)+" / "+battle.P.maxhp+"</span>";
+    btnResNext.textContent="次の宿場へ";
+  }else{
+    life--;
+    if(life<=0){
+      ovEnd.classList.remove("hidden"); endHead.textContent="千秋楽"; endHead.className="result-head lose";
+      endSub.innerHTML="<b>"+battle.enc.name+"</b>に敗れ、一座は解散。<br><br>到達: 第 "+stage+" 宿場<br>最高到達: 第 "+meta.bestStage+" 宿場";
+      meta.runs++; store.save("kageboshi_meta",meta);
+      scene="end"; return;
+    }
+    resHead.textContent="不入り"; resHead.className="result-head lose";
+    resSub.innerHTML="<b>"+battle.enc.name+"</b>に敗れた。<br>命 −1 (残り "+life+")<br><span style='color:var(--muted)'>立て直して再び挑め</span>";
+    btnResNext.textContent="支度に戻る";
+  }
+  ovResult.classList.remove("hidden");
+  syncHud();
+}
+function nextAfterResult(){
+  ovResult.classList.add("hidden");
+  if(result.win){
+    stage++;
+    if(stage>ENC.length){ // safety
+      scene="end"; return;
+    }
+    rollShop();
+  }
+  scene="prep"; battle=null; result=null; syncHud();
+}
+
+/* ===================== rendering ===================== */
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+let DPR=Math.min(devicePixelRatio||1,2.5), W=0, H=0;
+function resize(){
+  const r=cv.getBoundingClientRect(); W=Math.max(1,r.width); H=Math.max(1,r.height);
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+}
+window.addEventListener('resize',resize);
+
+// layout regions (recomputed each frame from W,H)
+let LAY={};
+function computeLayout(){
+  const pad=10;
+  const enemyH=Math.min(120,H*0.20);
+  const stageTop=enemyH+6;
+  const stageH=Math.min(H*0.40, (W-pad*2)/COLS*ROWS+18);
+  const benchTop=stageTop+stageH+8;
+  const benchH=66;
+  const shopTop=benchTop+benchH+8;
+  const shopH=Math.max(70,H-shopTop-58);
+  LAY={pad,enemyH,stageTop,stageH,benchTop,benchH,shopTop,shopH,
+    btnY:H-50,btnH:42};
+  // grid cells
+  const gw=(W-pad*2), cell=Math.min((gw)/COLS,(stageH-16)/ROWS);
+  const gx0=(W-cell*COLS)/2, gy0=stageTop+( (stageH-16)-cell*ROWS )/2 + 8;
+  LAY.cell=cell; LAY.gx0=gx0; LAY.gy0=gy0;
+}
+function gridCellRect(r,c){ return {x:LAY.gx0+c*LAY.cell, y:LAY.gy0+r*LAY.cell, w:LAY.cell, h:LAY.cell}; }
+
+function paperTexture(x,y,w,h,seed){
+  // subtle fiber lines
+  ctx.save(); ctx.globalAlpha=0.05; ctx.strokeStyle="#7a5a32"; ctx.lineWidth=1;
+  for(let i=0;i<6;i++){ const yy=y+((i*53+seed*13)%h); ctx.beginPath(); ctx.moveTo(x,yy); ctx.lineTo(x+w,yy+ (i%2?3:-3)); ctx.stroke(); }
+  ctx.restore();
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+// ---- draw a paper-cut figure inside box (cx,cy center, s scale), facing dir(1 right / -1 left)
+function drawFigure(cx,cy,s,dir,color,fig,opt){
+  fig=fig||{}; opt=opt||{};
+  ctx.save(); ctx.translate(cx,cy); ctx.scale(dir,1);
+  const lunge=opt.lunge||0; ctx.translate(lunge*6*dir,0);
+  // drop shadow on screen
+  ctx.save(); ctx.globalAlpha=0.22; ctx.fillStyle="#000"; ctx.translate(3,4);
+  bodyPath(s,fig); ctx.fill(); ctx.restore();
+  // body
+  ctx.fillStyle=color; bodyPath(s,fig); ctx.fill();
+  // ink edge
+  ctx.lineJoin="round"; ctx.strokeStyle="rgba(20,12,6,.55)"; ctx.lineWidth=Math.max(1,s*0.05); bodyPath(s,fig); ctx.stroke();
+  // simple cut highlight
+  ctx.globalAlpha=0.18; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.ellipse(-s*0.18,-s*0.5,s*0.12,s*0.22,0,0,7); ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+function bodyPath(s,fig){
+  // torso
+  ctx.beginPath();
+  const bw=fig.bulky?s*0.62:s*0.48;
+  // legs
+  ctx.moveTo(-bw*0.5,s*0.95);
+  ctx.lineTo(-bw*0.2,s*0.15);
+  ctx.lineTo(bw*0.2,s*0.15);
+  ctx.lineTo(bw*0.5,s*0.95);
+  ctx.lineTo(bw*0.2,s*0.95);
+  ctx.lineTo(0,s*0.45);
+  ctx.lineTo(-bw*0.2,s*0.95);
+  ctx.closePath();
+  // robe variant -> skirt
+  if(fig.robe){
+    ctx.moveTo(-bw*0.6,s*0.95); ctx.lineTo(-bw*0.1,s*0.05); ctx.lineTo(bw*0.1,s*0.05); ctx.lineTo(bw*0.6,s*0.95); ctx.closePath();
+  }
+  // upper body
+  ctx.moveTo(-bw*0.55,s*0.2);
+  ctx.lineTo(-bw*0.45,-s*0.35);
+  ctx.lineTo(bw*0.45,-s*0.35);
+  ctx.lineTo(bw*0.55,s*0.2);
+  ctx.closePath();
+  // head
+  const hy=-s*0.55, hr=s*0.2;
+  ctx.moveTo(hr,hy); ctx.arc(0,hy,hr,0,Math.PI*2);
+  // horns
+  if(fig.horns){ ctx.moveTo(-hr*0.6,hy-hr*0.7); ctx.lineTo(-hr*1.1,hy-hr*1.9); ctx.lineTo(-hr*0.1,hy-hr*1.1); ctx.closePath();
+    ctx.moveTo(hr*0.6,hy-hr*0.7); ctx.lineTo(hr*1.1,hy-hr*1.9); ctx.lineTo(hr*0.1,hy-hr*1.1); ctx.closePath(); }
+  // beak
+  if(fig.beak){ ctx.moveTo(hr*0.6,hy); ctx.lineTo(hr*1.8,hy+hr*0.2); ctx.lineTo(hr*0.6,hy+hr*0.5); ctx.closePath(); }
+  // wings
+  if(fig.wings){ ctx.moveTo(-bw*0.5,-s*0.2); ctx.lineTo(-bw*1.6,-s*0.55); ctx.lineTo(-bw*1.3,s*0.05); ctx.closePath(); }
+  // beast (extra low body)
+  if(fig.beast){ ctx.moveTo(-bw*0.7,s*0.55); ctx.lineTo(bw*0.9,s*0.4); ctx.lineTo(bw*0.95,s*0.95); ctx.lineTo(-bw*0.7,s*0.95); ctx.closePath();
+    ctx.moveTo(bw*0.8,s*0.4); ctx.lineTo(bw*1.25,s*0.15); ctx.lineTo(bw*1.0,s*0.55); ctx.closePath(); }
+  // weapon
+  if(fig.weapon==="sword"){ ctx.moveTo(bw*0.5,-s*0.1); ctx.lineTo(s*0.95,-s*0.9); ctx.lineTo(s*1.02,-s*0.82); ctx.lineTo(bw*0.6,0); ctx.closePath(); }
+  if(fig.weapon==="club"){ ctx.moveTo(bw*0.5,-s*0.05); ctx.lineTo(s*0.9,-s*0.55); ctx.lineTo(s*1.05,-s*0.35); ctx.lineTo(bw*0.62,s*0.12); ctx.closePath(); }
+  if(fig.weapon==="bow"){ ctx.moveTo(s*0.7,-s*0.55); ctx.quadraticCurveTo(s*1.05,0,s*0.7,s*0.55); ctx.quadraticCurveTo(s*0.8,0,s*0.7,-s*0.55); ctx.closePath(); }
+  if(fig.weapon==="staff"){ ctx.moveTo(bw*0.45,-s*0.8); ctx.lineTo(bw*0.62,-s*0.8); ctx.lineTo(bw*0.62,s*0.7); ctx.lineTo(bw*0.45,s*0.7); ctx.closePath(); }
+  if(fig.flame){ ctx.moveTo(0,-s*0.9); ctx.quadraticCurveTo(s*0.4,-s*0.4,0,s*0.1); ctx.quadraticCurveTo(-s*0.4,-s*0.4,0,-s*0.9); ctx.closePath(); }
+}
+function drawProp(cx,cy,s,key){
+  ctx.save(); ctx.translate(cx,cy);
+  ctx.save(); ctx.globalAlpha=0.2; ctx.fillStyle="#000"; ctx.translate(3,4); propPath(s,key); ctx.fill(); ctx.restore();
+  ctx.fillStyle=TAGCOL["道具"]; propPath(s,key); ctx.fill();
+  ctx.strokeStyle="rgba(20,12,6,.5)"; ctx.lineWidth=Math.max(1,s*0.05); propPath(s,key); ctx.stroke();
+  // accent
+  ctx.fillStyle="rgba(211,166,74,.85)"; propAccent(s,key);
+  ctx.restore();
+}
+function propPath(s,key){
+  ctx.beginPath();
+  if(key==="taiko"){ ctx.ellipse(0,0,s*0.7,s*0.55,0,0,7); ctx.rect(-s*0.1,s*0.5,s*0.2,s*0.45); }
+  else if(key==="chochin"){ ctx.ellipse(0,0,s*0.5,s*0.72,0,0,7); }
+  else if(key==="gohei"){ ctx.rect(-s*0.08,-s*0.2,s*0.16,s*1.1); ctx.moveTo(-s*0.45,-s*0.7); ctx.lineTo(0,-s*0.2); ctx.lineTo(s*0.45,-s*0.7); ctx.lineTo(s*0.2,-s*0.15); ctx.lineTo(s*0.45,-s*0.0); ctx.lineTo(0,-s*0.1); ctx.lineTo(-s*0.45,0); ctx.lineTo(-s*0.2,-s*0.15); ctx.closePath(); }
+  else if(key==="suzu"){ ctx.arc(0,0,s*0.55,0,7); ctx.rect(-s*0.12,s*0.4,s*0.24,s*0.4); }
+  else if(key==="men"){ ctx.ellipse(0,0,s*0.55,s*0.7,0,0,7); }
+  else if(key==="byobu"){ ctx.rect(-s*0.8,-s*0.6,s*0.5,s*1.4); ctx.rect(-s*0.25,-s*0.75,s*0.5,s*1.55); ctx.rect(s*0.3,-s*0.6,s*0.5,s*1.4); }
+  else if(key==="mosen"){ ctx.rect(-s*0.85,-s*0.3,s*1.7,s*0.7); }
+  else ctx.arc(0,0,s*0.5,0,7);
+}
+function propAccent(s,key){
+  ctx.beginPath();
+  if(key==="taiko"){ ctx.arc(0,0,s*0.18,0,7); ctx.fill(); }
+  else if(key==="chochin"){ for(let i=-2;i<=2;i++){ ctx.rect(-s*0.5,i*s*0.22,s,s*0.04);} ctx.fill(); }
+  else if(key==="men"){ ctx.arc(-s*0.2,-s*0.1,s*0.07,0,7); ctx.arc(s*0.2,-s*0.1,s*0.07,0,7); ctx.fill(); }
+  else if(key==="mosen"){ for(let i=-3;i<=3;i++){ ctx.rect(i*s*0.24-0.5,-s*0.3,s*0.03,s*0.7);} ctx.fill(); }
+  else { ctx.arc(0,-s*0.1,s*0.1,0,7); ctx.fill(); }
+}
+function drawPieceArt(key,cx,cy,s,dir,opt){
+  if(isProp(key)) drawProp(cx,cy,s*0.9,key);
+  else { const d=UNITS[key]; drawFigure(cx,cy,s, dir||1, TAGCOL[d.tag], d.fig, opt); }
+}
+
+function pushRegion(x,y,w,h,act,data){ hitRegions.push({x,y,w,h,act,data}); }
+
+function drawBackdrop(){
+  // night
+  ctx.fillStyle="#16120e"; ctx.fillRect(0,0,W,H);
+  // lit screen behind stage
+  const sy=LAY.stageTop, sh=LAY.stageH;
+  const g=ctx.createRadialGradient(W/2,sy+sh*0.4,10,W/2,sy+sh*0.5,W*0.9);
+  g.addColorStop(0,"#f3e2bb"); g.addColorStop(0.5,"#d8b377"); g.addColorStop(1,"#7c5a32");
+  ctx.fillStyle=g; roundRect(LAY.pad-2,sy-2,W-(LAY.pad-2)*2,sh+4,12); ctx.fill();
+  paperTexture(LAY.pad,sy,W-LAY.pad*2,sh,3);
+  // wood frame
+  ctx.strokeStyle="#2c1f13"; ctx.lineWidth=8; roundRect(LAY.pad-2,sy-2,W-(LAY.pad-2)*2,sh+4,12); ctx.stroke();
+  ctx.strokeStyle="#4d3724"; ctx.lineWidth=2; roundRect(LAY.pad-2,sy-2,W-(LAY.pad-2)*2,sh+4,12); ctx.stroke();
+}
+
+function drawPrep(){
+  hitRegions=[];
+  computeLayout();
+  drawBackdrop();
+  // enemy band
+  drawEnemyPreview();
+  // grid
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const rc=gridCellRect(r,c);
+    ctx.strokeStyle="rgba(60,42,24,.5)"; ctx.lineWidth=1.5;
+    roundRect(rc.x+3,rc.y+3,rc.w-6,rc.h-6,7); ctx.stroke();
+    const id=grid[r][c];
+    if(id!=null && !(drag&&drag.id===id)){
+      const k=owned[id].key;
+      drawPieceArt(k, rc.x+rc.w/2, rc.y+rc.h*0.52, rc.h*0.34, 1);
+      labelPiece(k, rc.x+rc.w/2, rc.y+rc.h-7);
+      pushRegion(rc.x,rc.y,rc.w,rc.h,"gridpiece",{r,c,id});
+    }else{
+      pushRegion(rc.x,rc.y,rc.w,rc.h,"gridcell",{r,c});
+    }
+  }
+  // bench
+  drawBench();
+  // shop
+  drawShop();
+  // big button
+  drawCurtainButton();
+  // drag ghost
+  if(drag){ drawPieceArt(owned[drag.id].key, drag.gx, drag.gy, LAY.cell*0.36, 1, {}); }
+  // sell zone when dragging an owned piece
+  if(drag){ drawSellZone(); }
+  drawToast();
+}
+function labelPiece(key,cx,cy){
+  ctx.fillStyle="rgba(28,19,11,.85)"; ctx.font="700 "+Math.round(LAY.cell*0.16)+"px 'Zen Kaku Gothic New'";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(pieceDef(key).name,cx,cy);
+}
+function drawEnemyPreview(){
+  const enc=ENC[stage-1]; const y=6, h=LAY.enemyH-10;
+  ctx.fillStyle="rgba(20,15,10,.6)"; roundRect(LAY.pad,y,W-LAY.pad*2,h,10); ctx.fill();
+  ctx.fillStyle="var(--gold)"; ctx.fillStyle="#d3a64a";
+  ctx.font="700 13px 'Shippori Mincho'"; ctx.textAlign="left"; ctx.textBaseline="top";
+  ctx.fillText("本日の相手",LAY.pad+12,y+8);
+  ctx.fillStyle="#f0e6d2"; ctx.font="800 18px 'Shippori Mincho'";
+  ctx.fillText(enc.name+(enc.boss?" 〈大物〉":""),LAY.pad+12,y+24);
+  ctx.fillStyle="#b39c78"; ctx.font="600 11px 'Zen Kaku Gothic New'";
+  const dps=enc.units.reduce((s,u)=>s+u.atk/u.cad,0);
+  ctx.fillText("気力 "+enc.hp+"   攻勢 "+("★".repeat(Math.max(1,Math.min(5,Math.round(dps/4))))),LAY.pad+12,y+48);
+  // mini enemy silhouettes facing left
+  enc.units.forEach((u,i)=>{ drawFigure(W-LAY.pad-26-i*30, y+h*0.62, h*0.30, -1, "#cf3a2c", {horns:true,bulky:i===0}, {}); });
+}
+function drawBench(){
+  const y=LAY.benchTop, h=LAY.benchH;
+  ctx.fillStyle="rgba(20,15,10,.45)"; roundRect(LAY.pad,y,W-LAY.pad*2,h,10); ctx.fill();
+  ctx.fillStyle="#8a7757"; ctx.font="700 10px 'Shippori Mincho'"; ctx.textAlign="left"; ctx.textBaseline="top";
+  ctx.fillText("控え",LAY.pad+8,y+6);
+  const slot=h-14, x0=LAY.pad+34;
+  bench.forEach((id,i)=>{
+    if(drag&&drag.id===id) return;
+    const x=x0+i*(slot+6);
+    if(x+slot>W-LAY.pad) return;
+    ctx.strokeStyle="rgba(80,60,36,.5)"; roundRect(x,y+8,slot,slot,8); ctx.stroke();
+    drawPieceArt(owned[id].key, x+slot/2, y+8+slot*0.5, slot*0.34, 1);
+    pushRegion(x,y+8,slot,slot,"benchpiece",{id,idx:i});
+  });
+  if(bench.length===0){ ctx.fillStyle="#6a5836"; ctx.font="600 11px 'Zen Kaku Gothic New'"; ctx.fillText("店で雇うとここに控える",x0,y+h*0.5); }
+}
+function drawShop(){
+  const y=LAY.shopTop, h=LAY.shopH;
+  ctx.fillStyle="rgba(28,20,12,.55)"; roundRect(LAY.pad,y,W-LAY.pad*2,h,10); ctx.fill();
+  ctx.fillStyle="#d3a64a"; ctx.font="700 12px 'Shippori Mincho'"; ctx.textAlign="left"; ctx.textBaseline="top";
+  ctx.fillText("旅芸人の店",LAY.pad+10,y+7);
+  // reroll
+  const rw=64,rh=24, rx=W-LAY.pad-rw-8, ry=y+6;
+  ctx.fillStyle="#2a2014"; roundRect(rx,ry,rw,rh,7); ctx.fill();
+  ctx.strokeStyle="#4a3826"; ctx.stroke();
+  ctx.fillStyle="#e9c25f"; ctx.font="700 11px 'Zen Kaku Gothic New'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("入替 ¥"+rerollCost,rx+rw/2,ry+rh/2);
+  pushRegion(rx,ry,rw,rh,"reroll");
+  // cards
+  const n=shop.length, cardW=(W-LAY.pad*2-12-(n-1)*8)/n, cardY=y+34, cardH=h-42;
+  shop.forEach((s,i)=>{
+    const x=LAY.pad+6+i*(cardW+8);
+    const d=pieceDef(s.key);
+    ctx.fillStyle=s.sold?"rgba(20,15,10,.5)":"rgba(243,226,187,.10)";
+    roundRect(x,cardY,cardW,cardH,9); ctx.fill();
+    ctx.strokeStyle=s.sold?"#33271a":"#6a5230"; ctx.lineWidth=1.5; roundRect(x,cardY,cardW,cardH,9); ctx.stroke();
+    if(!s.sold){
+      drawPieceArt(s.key, x+cardW/2, cardY+cardH*0.40, cardH*0.26, 1);
+      ctx.fillStyle="#f0e6d2"; ctx.font="700 "+Math.max(10,Math.round(cardW*0.16))+"px 'Shippori Mincho'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(d.name, x+cardW/2, cardY+cardH*0.70);
+      ctx.fillStyle=coin>=s.cost?"#e9c25f":"#9a6a4a"; ctx.font="800 "+Math.max(11,Math.round(cardW*0.18))+"px 'Zen Kaku Gothic New'";
+      ctx.fillText("¥"+s.cost, x+cardW/2, cardY+cardH*0.88);
+      pushRegion(x,cardY,cardW,cardH,"buy",{idx:i});
+    }else{
+      ctx.fillStyle="#6a5836"; ctx.font="700 12px 'Shippori Mincho'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText("売切",x+cardW/2,cardY+cardH/2);
+    }
+  });
+}
+function drawCurtainButton(){
+  const w=W-LAY.pad*2, h=LAY.btnH, x=LAY.pad, y=LAY.btnY;
+  ctx.fillStyle="#cf3a2c"; roundRect(x,y,w,h,10); ctx.fill();
+  ctx.fillStyle="rgba(0,0,0,.18)"; roundRect(x,y+h-7,w,7,10); ctx.fill();
+  ctx.fillStyle="#fff5e6"; ctx.font="800 17px 'Shippori Mincho'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("幕 を 上 げ る",x+w/2,y+h/2);
+  pushRegion(x,y,w,h,"curtain");
+}
+function drawSellZone(){
+  if(drag.from==="shop") return;
+  const w=120,h=40,x=W/2-w/2,y=LAY.benchTop-50;
+  ctx.fillStyle="rgba(120,30,24,.85)"; roundRect(x,y,w,h,9); ctx.fill();
+  ctx.fillStyle="#ffd9c8"; ctx.font="700 13px 'Shippori Mincho'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("ここで売却",x+w/2,y+h/2);
+  LAY.sellZone={x,y,w,h};
+}
+
+function drawBattle(){
+  hitRegions=[];
+  computeLayout();
+  // battle uses a tall stage that fills the column
+  LAY.stageTop=92; LAY.stageH=Math.max(220,H-92-104);
+  const b=battle;
+  ctx.save();
+  if(b.shake>0){ ctx.translate((Math.random()-0.5)*b.shake,(Math.random()-0.5)*b.shake); }
+  drawBackdrop();
+  // backdrop decor: paper moon + hanging lanterns (fills the stage, reinforces theme)
+  ctx.save();
+  const mr=LAY.stageH*0.10, my=LAY.stageTop+LAY.stageH*0.30;
+  const mg=ctx.createRadialGradient(W*0.5,my,mr*0.2,W*0.5,my,mr*1.15);
+  mg.addColorStop(0,"rgba(255,251,233,.7)"); mg.addColorStop(1,"rgba(255,248,224,0)");
+  ctx.beginPath(); ctx.arc(W*0.5, my, mr*1.15, 0, 7); ctx.fillStyle=mg; ctx.fill();
+  ctx.beginPath(); ctx.arc(W*0.5, my, mr, 0, 7); ctx.fillStyle="rgba(255,250,230,.5)"; ctx.fill();
+  [-1,1].forEach(s=>{ const lx=W*0.5+s*W*0.34, ly=LAY.stageTop+10;
+    ctx.strokeStyle="rgba(44,31,19,.4)"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(lx,LAY.stageTop); ctx.lineTo(lx,ly+18); ctx.stroke();
+    drawProp(lx, ly+38, 22, "chochin"); });
+  ctx.restore();
+  // HP bars
+  drawSideBar(b.P, LAY.pad, LAY.stageTop-0, true);
+  drawSideBar(b.E, W-LAY.pad-(W*0.42), LAY.stageTop-0, false);
+  // stage floor line
+  const floorY=LAY.stageTop+LAY.stageH*0.74;
+  ctx.strokeStyle="rgba(44,31,19,.4)"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(LAY.pad+6,floorY); ctx.lineTo(W-LAY.pad-6,floorY); ctx.stroke();
+  // player actors (left), enemy actors (right)
+  const fs=Math.min(LAY.stageH*0.115,44);
+  const sp=fs*1.45;
+  b._pY=floorY;
+  b.P.actors.forEach((a,i)=>{
+    const col=i%2, row=Math.floor(i/2);
+    const x=LAY.pad+26+col*sp; const y=floorY - row*sp*0.62;
+    a._px=x; a._py=y-fs;
+    drawFigure(x,y-fs, fs, 1, TAGCOL[(UNITS[a.key]||{tag:"人"}).tag], (UNITS[a.key]||{}).fig||{horns:true}, {lunge:a.lunge});
+    drawActorCad(a,x,y+6);
+  });
+  b._eX=W-LAY.pad-40; b._eY=floorY-fs;
+  b.E.actors.forEach((a,i)=>{
+    const col=i%2, row=Math.floor(i/2);
+    const x=W-LAY.pad-26-col*sp; const y=floorY - row*sp*0.62;
+    a._px=x; a._py=y-fs;
+    drawFigure(x,y-fs, fs, -1, "#cf3a2c", {horns:true,bulky:i===0,beak:i===1}, {lunge:a.lunge});
+  });
+  // floats
+  b.floats.forEach(f=>{ ctx.globalAlpha=Math.max(0,f.life); ctx.fillStyle=f.col; ctx.font="800 16px 'Zen Kaku Gothic New'"; ctx.textAlign="center"; ctx.fillText(f.txt,f.x,f.y); ctx.globalAlpha=1; });
+  ctx.restore();
+  // white flash on hit-end
+  if(b.flash>0){ ctx.fillStyle="rgba(255,240,210,"+(b.flash*0.5)+")"; ctx.fillRect(0,0,W,H); }
+  // speed controls
+  drawSpeedControls();
+  // names
+  ctx.fillStyle="#d3a64a"; ctx.font="700 12px 'Shippori Mincho'"; ctx.textAlign="left"; ctx.textBaseline="top";
+  ctx.fillText("一座",LAY.pad+4,LAY.stageTop+LAY.stageH+10);
+  ctx.textAlign="right"; ctx.fillStyle="#cf6a5c"; ctx.fillText(b.enc.name,W-LAY.pad-4,LAY.stageTop+LAY.stageH+10);
+}
+function drawActorCad(a,x,y){
+  const w=30,h=4; const frac=1-Math.max(0,a.t)/a.baseCad;
+  ctx.fillStyle="rgba(0,0,0,.3)"; roundRect(x-w/2,y,w,h,2); ctx.fill();
+  ctx.fillStyle="#d3a64a"; roundRect(x-w/2,y,w*Math.max(0,Math.min(1,frac)),h,2); ctx.fill();
+}
+function drawSideBar(s,x,y,left){
+  const w=W*0.42,h=18;
+  ctx.fillStyle="rgba(10,8,5,.6)"; roundRect(x,y-26,w,h,6); ctx.fill();
+  const frac=Math.max(0,s.hp/s.maxhp);
+  ctx.fillStyle=left?"#5fa9d6":"#d6685f"; roundRect(x,y-26,w*frac,h,6); ctx.fill();
+  if(s.block>0){ ctx.fillStyle="rgba(159,208,255,.7)"; roundRect(x,y-26,Math.min(w,w*frac+ (s.block/s.maxhp)*w),4,2); ctx.fill(); }
+  ctx.fillStyle="#f0e6d2"; ctx.font="700 11px 'Zen Kaku Gothic New'"; ctx.textAlign=left?"left":"right"; ctx.textBaseline="middle";
+  ctx.fillText(Math.round(s.hp)+(s.block>0?" +"+Math.round(s.block):""), left?x+6:x+w-6, y-26+h/2);
+}
+function drawSpeedControls(){
+  const labels=[["×1",1],["×2",2],["×4",4]];
+  const bw=46,bh=30,gap=6; const tot=bw*3+gap*2; let x=W/2-tot/2; const y=H-44;
+  labels.forEach(([t,v])=>{
+    ctx.fillStyle=battleSpeed===v?"#cf3a2c":"#2a2014"; roundRect(x,y,bw,bh,7); ctx.fill();
+    ctx.strokeStyle="#4a3826"; ctx.lineWidth=1; roundRect(x,y,bw,bh,7); ctx.stroke();
+    ctx.fillStyle="#f0e6d2"; ctx.font="700 13px 'Zen Kaku Gothic New'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(t,x+bw/2,y+bh/2);
+    pushRegion(x,y,bw,bh,"speed",{v});
+    x+=bw+gap;
+  });
+}
+function drawToast(){
+  if(toastT<=0) return;
+  ctx.globalAlpha=Math.min(1,toastT*2);
+  const w=ctx.measureText?180:180;
+  ctx.fillStyle="rgba(20,14,8,.92)"; roundRect(W/2-100,LAY.stageTop+LAY.stageH*0.4,200,38,9); ctx.fill();
+  ctx.fillStyle="#f0e6d2"; ctx.font="700 14px 'Shippori Mincho'"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(toast,W/2,LAY.stageTop+LAY.stageH*0.4+19);
+  ctx.globalAlpha=1;
+}
+function flash(msg){ toast=msg; toastT=1.4; }
+
+/* ===================== input ===================== */
+function canvasXY(e){ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left), y:(e.clientY-r.top)}; }
+function hitTest(x,y){ for(let i=hitRegions.length-1;i>=0;i--){ const h=hitRegions[i]; if(x>=h.x&&x<=h.x+h.w&&y>=h.y&&y<=h.y+h.h) return h; } return null; }
+
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault(); audio();
+  const {x,y}=canvasXY(e);
+  if(scene==="battle"){ const h=hitTest(x,y); if(h&&h.act==="speed"){ battleSpeed=h.data.v; sPick(); } return; }
+  if(scene!=="prep") return;
+  const h=hitTest(x,y);
+  if(!h) return;
+  if(h.act==="curtain"){ startBattle(); return; }
+  if(h.act==="reroll"){ doReroll(); return; }
+  if(h.act==="buy"){ buyShop(h.data.idx); return; }
+  if(h.act==="benchpiece"){ drag={id:h.data.id,from:"bench",gx:x,gy:y}; sPick(); return; }
+  if(h.act==="gridpiece"){ drag={id:h.data.id,from:"grid",fromRC:{r:h.data.r,c:h.data.c},gx:x,gy:y}; sPick(); return; }
+},{passive:false});
+cv.addEventListener('pointermove',e=>{
+  if(!drag) return; e.preventDefault();
+  const {x,y}=canvasXY(e); drag.gx=x; drag.gy=y;
+},{passive:false});
+cv.addEventListener('pointerup',e=>{
+  if(scene!=="prep"||!drag){ drag=null; return; }
+  e.preventDefault();
+  const {x,y}=canvasXY(e);
+  // sell zone
+  if(LAY.sellZone){ const z=LAY.sellZone; if(x>=z.x&&x<=z.x+z.w&&y>=z.y&&y<=z.y+z.h && drag.from!=="shop"){ sellPiece(drag.id); drag=null; LAY.sellZone=null; return; } }
+  const h=hitTest(x,y);
+  if(h&&(h.act==="gridcell"||h.act==="gridpiece")){
+    const {r,c}=h.data;
+    const target=grid[r][c];
+    // remove drag piece from its source
+    if(drag.from==="grid"){ grid[drag.fromRC.r][drag.fromRC.c]=null; }
+    else { const bi=bench.indexOf(drag.id); if(bi>=0) bench.splice(bi,1); }
+    if(target!=null){ // swap
+      if(drag.from==="grid"){ grid[drag.fromRC.r][drag.fromRC.c]=target; }
+      else { bench.push(target); }
+    }
+    grid[r][c]=drag.id; sPlace(); vibe(6);
+  } else {
+    // drop to bench (or anywhere not a cell) => to bench if from grid
+    if(drag.from==="grid"){ grid[drag.fromRC.r][drag.fromRC.c]=null; if(bench.indexOf(drag.id)<0) bench.push(drag.id); sPlace(); }
+  }
+  drag=null; LAY.sellZone=null; syncHud();
+},{passive:false});
+cv.addEventListener('pointercancel',()=>{ drag=null; LAY.sellZone=null; });
+
+// keyboard
+window.addEventListener('keydown',e=>{
+  if(scene==="prep"&&(e.code==="Space"||e.code==="Enter")){ e.preventDefault(); startBattle(); }
+  if(scene==="battle"){ if(e.key==="1")battleSpeed=1; if(e.key==="2")battleSpeed=2; if(e.key==="4")battleSpeed=4; }
+});
+
+/* ===================== HUD / overlays ===================== */
+const hudStage=document.getElementById('hudStage'),hudCoin=document.getElementById('hudCoin'),hudLife=document.getElementById('hudLife');
+const ovStart=document.getElementById('ovStart'),ovRule=document.getElementById('ovRule'),ovResult=document.getElementById('ovResult'),ovEnd=document.getElementById('ovEnd');
+const resHead=document.getElementById('resHead'),resSub=document.getElementById('resSub'),btnResNext=document.getElementById('btnResNext');
+const endHead=document.getElementById('endHead'),endSub=document.getElementById('endSub');
+const metaLine=document.getElementById('metaLine');
+function syncHud(){
+  hudStage.textContent=stage+" / "+ENC.length;
+  hudCoin.textContent=coin;
+  hudLife.textContent="♥".repeat(Math.max(0,life))+"♡".repeat(Math.max(0,3-life));
+}
+document.getElementById('btnStart').addEventListener('click',()=>{ ovStart.classList.add('hidden'); resetRun(); });
+document.getElementById('btnRule').addEventListener('click',()=>{ ovRule.classList.remove('hidden'); });
+document.getElementById('btnRuleClose').addEventListener('click',()=>{ ovRule.classList.add('hidden'); });
+document.getElementById('btnMute').addEventListener('click',(e)=>{ muted=!muted; e.target.textContent=muted?"🔇":"♪"; if(!muted)sPick(); });
+btnResNext.addEventListener('click',()=>{ nextAfterResult(); });
+document.getElementById('btnEndAgain').addEventListener('click',()=>{ ovEnd.classList.add('hidden'); resetRun(); });
+function refreshMetaLine(){ metaLine.textContent = meta.bestStage>0 ? ("最高到達: 第 "+meta.bestStage+" 宿場 ／ 旗揚げ "+meta.runs+" 回") : ""; }
+
+/* ===================== main loop (runs from start) ===================== */
+function frame(ts){
+  if(!last) last=ts; let dt=(ts-last)/1000; last=ts; if(dt>0.1)dt=0.1; tNow+=dt;
+  if(toastT>0) toastT-=dt;
+  resize();
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+  computeLayout();
+  if(scene==="battle"&&battle){ stepBattle(dt*battleSpeed); drawBattle(); }
+  else if(scene==="prep"){ drawPrep(); }
+  else { // start/result/end: draw a calm stage backdrop behind overlays
+    drawBackdrop(); if(scene==="start"||scene==="end"){ drawIdleActors(); } else if(battle){ drawBattle(); }
+  }
+  requestAnimationFrame(frame);
+}
+function drawIdleActors(){
+  const floorY=LAY.stageTop+LAY.stageH*0.72;
+  const demo=["musha","miko","oni"];
+  demo.forEach((k,i)=>{ const x=W*0.3+i*W*0.18; drawFigure(x,floorY, LAY.stageH*0.2, i===2?-1:1, TAGCOL[UNITS[k].tag], UNITS[k].fig, {lunge:0.4*Math.sin(tNow*2+i)+0.4}); });
+}
+refreshMetaLine();
+resize();
+requestAnimationFrame(frame);
+
+/* test hook (harmless) */
+window.__kb={ regions:()=>hitRegions, scene:()=>scene, state:()=>({stage,coin,life,bench:bench.length,placed:placedUnits().length}),
+  battle:()=>battle&&{pHp:Math.round(battle.P.hp),eHp:Math.round(battle.E.hp),over:battle.over,win:battle.win} };
+</script>
+</body>
+</html>
