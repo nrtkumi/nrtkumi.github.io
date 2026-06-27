@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>クロヌリ — 黒塗り百科事典</title>
+<meta name="description" content="黒塗りにされた百科事典の項目から、正体を暴け。手がかりが少ないほど高得点。Wikipediaの実データで延々と遊べる黒塗り当てクイズ。">
+<meta property="og:title" content="クロヌリ — 黒塗り百科事典">
+<meta property="og:description" content="黒塗りにされた百科事典の項目から、正体を暴け。手がかりが少ないほど高得点。Wikipediaの実データで延々と遊べる黒塗り当てクイズ。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/kuronuri/assets/ogp.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nrtkumi.github.io/games/kuronuri/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Special+Elite&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --desk:#191510; --desk2:#241d14;
+    --paper:#d9c8a2; --paper2:#cdb98e; --ink:#2b2417; --inkfaint:#6a5c43;
+    --bar:#16130d; --stamp:#b3271d; --clip:#9c8330; --ok:#3f7d46;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  html,body{height:100%;}
+  body{ background:#0e0b07; color:var(--ink);
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    overflow:hidden; overscroll-behavior:none;
+    -webkit-touch-callout:none; user-select:none; -webkit-user-select:none;
+    display:flex; flex-direction:column; align-items:center;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+  .wrap{ position:relative;
+    width:min(100vw,480px,calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 0.62));
+    height:100%; margin:0 auto;
+    background:radial-gradient(130% 90% at 50% 0%, #2a2115, #141009);
+    box-shadow:0 0 40px rgba(0,0,0,.6);
+    display:flex; flex-direction:column; }
+  .hud{ display:flex; align-items:center; gap:8px; padding:8px 12px 6px; flex:0 0 auto; color:#e9dcc0; }
+  .hud .b{ font-family:"Special Elite",monospace; font-size:.62rem; color:#b6a079; line-height:1.15; letter-spacing:.04em; }
+  .hud .b b{ display:block; font-family:"Shippori Mincho",serif; color:#f1e6cb; font-size:1.02rem; }
+  .hud .sp{ flex:1; }
+  .lives{ font-size:1rem; letter-spacing:1px; color:var(--stamp); }
+  .ic{ width:30px;height:30px;border-radius:6px;border:1px solid #4a3c26; background:#241c12; color:#e9dcc0; font-size:.85rem; display:flex;align-items:center;justify-content:center; }
+  .ic:active{ background:#34291a; }
+
+  .stage{ flex:1 1 0; min-height:0; display:flex; flex-direction:column; padding:6px 12px 0; }
+  /* the dossier file */
+  .file{ position:relative; flex:1 1 0; min-height:0; display:flex; flex-direction:column;
+    background:
+      repeating-linear-gradient(0deg, rgba(120,95,50,.05) 0 24px, rgba(120,95,50,.09) 24px 25px),
+      linear-gradient(180deg,#dccbA4,#cdb98e);
+    background-color:var(--paper);
+    border-radius:3px; padding:14px 15px 12px;
+    box-shadow:0 8px 22px rgba(0,0,0,.5), inset 0 0 0 1px rgba(80,60,30,.25);
+    transform:rotate(-.5deg); }
+  .file::before{ content:""; position:absolute; top:-8px; left:24px; width:42px; height:34px;
+    border:4px solid var(--clip); border-bottom:none; border-radius:10px 10px 0 0; opacity:.85; }
+  .fhead{ display:flex; align-items:center; gap:8px; border-bottom:2px solid rgba(60,45,20,.4); padding-bottom:7px; margin-bottom:9px; }
+  .fno{ font-family:"Special Elite",monospace; font-size:.66rem; color:var(--inkfaint); letter-spacing:.05em; }
+  .ftitle{ flex:1; height:24px; display:flex; align-items:center; }
+  .ftitle .bar{ height:22px; }
+  .stamp{ font-family:"Shippori Mincho",serif; font-weight:800; color:var(--stamp);
+    border:3px double var(--stamp); border-radius:6px; padding:1px 8px; font-size:.8rem;
+    transform:rotate(7deg); opacity:.92; letter-spacing:.1em; }
+  .fbody{ flex:1 1 0; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    font-family:"Shippori Mincho",serif; font-size:1.02rem; line-height:1.95; color:var(--ink);
+    text-align:justify; }
+  .bar{ display:inline-block; background:var(--bar); border-radius:2px; vertical-align:middle;
+    height:1.05em; width:3em; margin:0 1px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);
+    transition:opacity .25s; }
+  .barline{ display:block; height:1.05em; margin:.45em 0; }
+  .photo{ float:right; width:104px; height:104px; margin:0 0 6px 10px; border:5px solid #f3ecdb;
+    box-shadow:0 3px 8px rgba(0,0,0,.4); transform:rotate(2deg); background:#bbb; object-fit:cover; }
+  .photo.blur{ filter:blur(13px) saturate(.7); }
+  .photo.hidden{ display:none; }
+  .desc{ font-family:"Zen Kaku Gothic New"; font-size:.74rem; color:var(--inkfaint); margin-top:6px; min-height:1em; }
+
+  .meter{ flex:0 0 auto; height:8px; margin:9px 13px 4px; background:rgba(0,0,0,.28); border-radius:5px; overflow:hidden; }
+  .meter > i{ display:block; height:100%; width:100%; background:linear-gradient(90deg,#b3271d,#e0a02f); }
+  .meterlbl{ flex:0 0 auto; text-align:center; font-family:"Special Elite",monospace; font-size:.6rem; color:#b6a079; margin-bottom:2px; letter-spacing:.08em; }
+
+  .choices{ flex:0 0 auto; display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:6px 12px; }
+  .ch{ font-family:"Shippori Mincho",serif; font-weight:700; font-size:.92rem; color:var(--ink);
+    background:linear-gradient(#ece0c2,#dccaa1); border:1px solid #9c8552;
+    border-radius:9px; padding:13px 8px; min-height:54px; display:flex; align-items:center; justify-content:center;
+    text-align:center; line-height:1.25; box-shadow:0 3px 0 #8a724099, 0 4px 8px rgba(0,0,0,.3); }
+  .ch:active{ transform:translateY(2px); box-shadow:0 1px 0 #8a724099; }
+  .ch.correct{ background:linear-gradient(#bfe0bf,#9fd0a0); border-color:#3f7d46; }
+  .ch.wrong{ background:linear-gradient(#e6b3ad,#d68e85); border-color:#b3271d; }
+  .ch.dim{ opacity:.5; }
+
+  .overlay{ position:absolute; inset:0; z-index:10; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; padding:28px 26px;
+    background:radial-gradient(120% 90% at 50% 25%, rgba(40,30,16,.55), rgba(8,6,3,.93)); }
+  .overlay.hidden{ display:none; }
+  .title{ font-family:"Shippori Mincho",serif; font-weight:800; font-size:3rem; letter-spacing:.16em; color:#f1e6cb;
+    text-shadow:0 2px 0 #000, 0 0 26px rgba(179,39,29,.4); }
+  .title .en{ display:block; font-family:"Special Elite",monospace; font-size:.74rem; letter-spacing:.42em; color:var(--stamp); margin-top:10px; }
+  .blurb{ color:#d8c9a6; font-size:.86rem; line-height:1.85; margin-top:18px; max-width:18em; }
+  .blurb b{ color:#f1e6cb; }
+  .btn{ margin-top:22px; font-family:"Shippori Mincho",serif; font-weight:800; font-size:1.1rem; letter-spacing:.12em;
+    color:#f1e6cb; background:linear-gradient(#c33125,#a01f17); border:none; border-radius:10px; padding:13px 40px;
+    box-shadow:0 4px 0 #5e120c, 0 6px 14px rgba(0,0,0,.4); }
+  .btn:active{ transform:translateY(2px); box-shadow:0 2px 0 #5e120c; }
+  .btn.sm{ font-size:.92rem; padding:10px 22px; margin-top:14px; background:linear-gradient(#5a4a2c,#3e3018); box-shadow:0 3px 0 #241a0c; }
+  .best{ color:var(--stamp); font-size:.82rem; margin-top:16px; font-family:"Special Elite",monospace; letter-spacing:.06em; }
+  .rule{ background:rgba(217,200,162,.97); border-radius:10px; padding:16px 18px; max-width:20em; color:var(--ink); }
+  .rule h3{ font-family:"Shippori Mincho",serif; color:var(--stamp); font-size:1rem; margin-bottom:8px; }
+  .rule p{ font-size:.8rem; line-height:1.8; text-align:left; }
+  .rule p span{ color:var(--inkfaint); }
+  .loading{ color:#d8c9a6; font-family:"Special Elite",monospace; font-size:.8rem; letter-spacing:.1em; }
+  .spin{ display:inline-block; animation:sp 1s linear infinite; } @keyframes sp{to{transform:rotate(360deg);}}
+  .feedback{ position:absolute; top:42%; left:50%; transform:translate(-50%,-50%) rotate(-8deg); z-index:9;
+    font-family:"Shippori Mincho",serif; font-weight:800; font-size:2.4rem; padding:4px 18px; border:5px double currentColor;
+    border-radius:10px; opacity:0; pointer-events:none; }
+  .feedback.show{ animation:stamp .9s ease-out; }
+  @keyframes stamp{ 0%{opacity:0;transform:translate(-50%,-50%) rotate(-8deg) scale(1.8);} 15%{opacity:1;transform:translate(-50%,-50%) rotate(-8deg) scale(1);} 80%{opacity:1;} 100%{opacity:0;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hud">
+    <div class="b">得点<b id="hScore">0</b></div>
+    <div class="b">連続<b id="hCombo">0</b></div>
+    <div class="sp"></div>
+    <div class="b" style="text-align:right">機密度<b id="hRank">D</b></div>
+    <div class="lives" id="hLives">㊙㊙㊙</div>
+    <button class="ic" id="btnRule">?</button>
+    <button class="ic" id="btnMute">♪</button>
+  </div>
+
+  <div class="stage">
+    <div class="file" id="file">
+      <div class="fhead">
+        <span class="fno" id="fno">FILE No.0001</span>
+        <span class="ftitle" id="ftitle"></span>
+        <span class="stamp" id="stamp">㊙</span>
+      </div>
+      <div class="fbody" id="fbody"></div>
+    </div>
+  </div>
+  <div class="meterlbl" id="meterlbl">解禁まで — 早いほど高得点</div>
+  <div class="meter"><i id="meterFill"></i></div>
+  <div class="choices" id="choices"></div>
+  <div class="feedback" id="feedback"></div>
+
+  <!-- START -->
+  <div class="overlay" id="ovStart">
+    <div class="title">クロヌリ<span class="en">KURONURI</span></div>
+    <div class="blurb">黒塗りにされた<b>百科事典の項目</b>。<br>残った手がかりから<b>正体を暴け</b>。<br>手がかりが少ないうちに当てるほど高得点。<br><b>4択・連続正解で倍率</b>、㊙が尽きるまで延々と。</div>
+    <button class="btn" id="btnStart">捜査を始める</button>
+    <div class="best" id="bestLine"></div>
+  </div>
+
+  <!-- RULES -->
+  <div class="overlay hidden" id="ovRule">
+    <div class="rule">
+      <h3>遊び方</h3>
+      <p>① 黒塗りの項目文を読み、<span>4つの候補</span>から正体を選ぶ。<br><br>
+      ② 文は段階的に<b>解禁(公開)</b>される。手がかりが少ない<b>早い段階</b>で当てるほど高得点。<br><br>
+      ③ 連続正解で<b>倍率アップ</b>。間違い・時間切れで㊙(ライフ)が1減る。<br><br>
+      ④ 進むほど機密度が上がり、マイナーな項目が出る。実在のWikipedia記事で出題。</p>
+    </div>
+    <button class="btn sm" id="btnRuleClose">閉じる</button>
+  </div>
+
+  <!-- GAMEOVER -->
+  <div class="overlay hidden" id="ovEnd">
+    <div class="title" style="font-size:2rem">捜査終了</div>
+    <div class="blurb" id="endSub"></div>
+    <button class="btn" id="btnAgain">もう一度</button>
+  </div>
+
+  <!-- ERROR -->
+  <div class="overlay hidden" id="ovErr">
+    <div class="blurb" id="errSub">資料庫に接続できませんでした。</div>
+    <button class="btn" id="btnRetry">再接続</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* anti double-tap zoom */
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{const n=Date.now();if(n-lastTouchEnd<=350)e.preventDefault();lastTouchEnd=n;},{passive:false});
+document.addEventListener('dblclick',e=>e.preventDefault());
+document.addEventListener('gesturestart',e=>e.preventDefault());
+/* iOS audio */
+let AC=null,muted=false;
+function audio(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+  AC.onstatechange=()=>{if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}} return AC; }
+let silentEl=null;
+function silentWavUrl(){ const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);
+  str(36,"data");v.setUint32(40,n,true); for(let i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"})); }
+function unlockAudio(){ if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  const p=silentEl.play();if(p&&p.catch)p.catch(()=>{}); audio();if(!AC)return;
+  const done=()=>{if(AC.state==="running"){["pointerdown","pointerup","touchend","click"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true));}};
+  try{AC.resume().then(done);}catch(e){done();} }
+["pointerdown","pointerup","touchend","click"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){ if(muted||!audio())return;
+  try{const o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){} }
+function noise(d,vol){ if(muted||!audio())return; try{const n=Math.floor(AC.sampleRate*d);
+    const buf=AC.createBuffer(1,n,AC.sampleRate);const data=buf.getChannelData(0);
+    for(let i=0;i<n;i++)data[i]=(Math.random()*2-1)*(1-i/n);
+    const src=AC.createBufferSource();src.buffer=buf;const g=AC.createGain();g.gain.value=vol||0.05;
+    src.connect(g);g.connect(AC.destination);src.start();}catch(e){} }
+const vibe=ms=>{try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}};
+const sReveal=()=>{noise(0.05,0.03);tone(300,0.06,"sine",0.04,200);};
+const sCorrect=()=>[660,880,1175].forEach((f,i)=>setTimeout(()=>tone(f,0.18,"triangle",0.06),i*70));
+const sWrong=()=>{tone(180,0.22,"sawtooth",0.06,90);noise(0.12,0.05);};
+const sCombo=(c)=>tone(700+Math.min(c,12)*40,0.1,"square",0.04);
+const sStamp=()=>{noise(0.07,0.06);tone(140,0.12,"sine",0.06,80);};
+const sOver=()=>[392,311,247,196].forEach((f,i)=>setTimeout(()=>tone(f,0.32,"sawtooth",0.05),i*150));
+
+/* persistence */
+const store={ load(k,fb){try{const r=localStorage.getItem(k);return r?JSON.parse(r):fb;}catch{return fb;}},
+  save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}} };
+let best=store.load("kuronuri_best",{score:0,streak:0,solved:0});
+
+/* ===== Wikipedia API ===== */
+const WIKI="https://ja.wikipedia.org";
+function tfetch(url,ms){ const ac=new AbortController(); const t=setTimeout(()=>ac.abort(),ms||8000);
+  return fetch(url,{signal:ac.signal}).then(r=>{ clearTimeout(t); if(!r.ok) throw new Error("HTTP "+r.status); return r; }); }
+const badPrefix=/^(特別|Wikipedia|Template|テンプレート|Category|Help|Portal|ファイル|プロジェクト|Module|MediaWiki|利用者)[:：]/;
+function isBadTitle(t){ if(!t) return true; if(t==="メインページ") return true;
+  if(/[:：]/.test(t)&&badPrefix.test(t)) return true; if(t.includes("一覧")) return true;
+  if(t.includes("曖昧")) return true; if(t.length>26) return true; if(/^\d+年/.test(t)&&t.length<7) return true; return false; }
+
+let POOL=[];
+async function loadPool(){
+  // pageviews lag ~1-2 days; try recent dates
+  const now=Date.now();
+  for(let back=2; back<=6; back++){
+    const d=new Date(now-back*86400000);
+    const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+    try{
+      const r=await tfetch(`https://wikimedia.org/api/rest_v1/metrics/pageviews/top/ja.wikipedia/all-access/${y}/${m}/${day}`,8000);
+      const j=await r.json();
+      const arts=(j.items&&j.items[0]&&j.items[0].articles)||[];
+      const pool=arts.map(a=>a.article.replace(/_/g," ")).filter(t=>!isBadTitle(t));
+      if(pool.length>120){ POOL=pool.slice(0,600); return true; }
+    }catch(e){ /* try older date */ }
+  }
+  return false;
+}
+
+async function fetchSummary(title){
+  const r=await tfetch(`${WIKI}/api/rest_v1/page/summary/${encodeURIComponent(title)}`,8000);
+  const j=await r.json();
+  return j;
+}
+async function fetchDecoys(title){
+  try{
+    const u=`${WIKI}/w/api.php?action=query&format=json&origin=*&list=search&srsearch=${encodeURIComponent("morelike:"+title)}&srnamespace=0&srlimit=12&srprop=`;
+    const r=await tfetch(u,7000); const j=await r.json();
+    let list=((j.query&&j.query.search)||[]).map(s=>s.title);
+    list=list.filter(t=>t&&t!==title&&!isBadTitle(t)&&!shareToo(t,title));
+    return list;
+  }catch(e){ return []; }
+}
+function shareToo(a,b){ // avoid giveaway decoys (containment or long shared run)
+  if(a.includes(b)||b.includes(a)) return true;
+  for(let n=3;n<=Math.min(a.length,b.length);n++){ /* check any 3-char run of a in b */ }
+  for(let i=0;i+3<=a.length;i++){ if(b.includes(a.substr(i,3))) return true; }
+  return false;
+}
+function poolDecoys(answer,need,avoid){
+  const out=[]; let guard=0;
+  while(out.length<need && guard++<200){
+    const t=POOL[Math.floor(Math.random()*POOL.length)];
+    if(t&&t!==answer&&!avoid.includes(t)&&!out.includes(t)&&!shareToo(t,answer)) out.push(t);
+  }
+  return out;
+}
+
+/* build a playable round from an answer title; returns null if unusable */
+async function buildRound(answer){
+  let s; try{ s=await fetchSummary(answer); }catch(e){ return null; }
+  if(!s||s.type!=="standard") return null;
+  const extract=(s.extract||"").trim();
+  if(extract.length<45) return null;
+  const title=s.title||answer;
+  const reading=firstReading(extract);
+  let decoys=await fetchDecoys(title);
+  decoys=decoys.slice(0,3);
+  if(decoys.length<3) decoys=decoys.concat(poolDecoys(title,3-decoys.length,decoys));
+  if(decoys.length<3) return null;
+  const choices=shuffle([title,...decoys.slice(0,3)]);
+  const thumb=s.thumbnail?s.thumbnail.source:null;
+  return { title, reading, extract, sentences:splitSentences(extract), choices, thumb,
+    desc:s.description||"" };
+}
+function firstReading(extract){ const m=extract.match(/[（(]([^（）()]{1,40})[）)]/); return m?m[1]:""; }
+function splitSentences(t){ const parts=t.split(/(?<=。)/).map(s=>s.trim()).filter(Boolean); return parts.length?parts:[t]; }
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+/* redact answer name/reading/foreign within text -> HTML with bars */
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function barSpan(n){ const w=Math.max(1.2,Math.min(n*1.0,14)); return `<span class="bar" style="width:${w.toFixed(1)}em"></span>`; }
+function matchNormAt(text,i,norm){ // match `norm` at text[i] ignoring spaces/middots in the source text
+  let k=0, ti=0;
+  while(ti<norm.length){
+    while(i+k<text.length && /[\s・]/.test(text[i+k])) k++;
+    if(i+k>=text.length || text[i+k]!==norm[ti]) return 0;
+    k++; ti++;
+  }
+  return k;
+}
+function redactText(text, round){
+  const rawset=new Set();
+  [round.title, round.reading].filter(Boolean).forEach(t=>{
+    rawset.add(t);
+    t.split(/[・・\s]+/).forEach(tok=>{ if(tok.replace(/[\s・]/g,'').length>=2) rawset.add(tok); });
+  });
+  const targets=[...rawset]
+    .map(t=>({norm:t.replace(/[\s・]/g,'')}))
+    .filter(t=>t.norm.length>=2).sort((a,b)=>b.norm.length-a.norm.length);
+  let out=""; let i=0;
+  while(i<text.length){
+    let adv=0, mlen=0;
+    for(const t of targets){ const k=matchNormAt(text,i,t.norm); if(k>0){ adv=k; mlen=t.norm.length; break; } }
+    if(adv){ out+=barSpan(mlen); i+=adv; }
+    else { out+=esc(text[i]); i++; }
+  }
+  // redact the first parenthetical (reading / foreign name) entirely
+  out=out.replace(/[（(][^（）()]{1,40}[）)]/, m=>'（'+barSpan(Math.min(m.length-2,12))+'）');
+  return out;
+}
+function hiddenSentence(s){ // a sentence rendered fully as a bar block (not yet declassified)
+  const n=Math.min(Math.max(Math.round(s.length/3),2),9);
+  let html='<span class="barline">'; for(let k=0;k<1;k++){} html+=barSpan(s.length>14?14:s.length); html+='</span>';
+  return html;
+}
+
+/* ===== game state ===== */
+let scene="start";
+let score=0, combo=0, lives=3, roundNo=0;
+let cur=null;           // current round data
+let stageIdx=0;         // reveal stage 0,1,2
+let answered=false;
+let buffer=[];          // prefetched rounds
+let seen=new Set();
+let roundStart=0, timeoutAt=0;
+let raf=0;
+const REVEAL_AT=[0, 3800, 7600];   // ms thresholds for stage 1,2
+const STAGE_MULT=[1.0, 0.58, 0.32];
+const TIMEOUT_MS=14000;
+const RANKS=["D","C","B","A","S","SS","SSS"];
+
+/* prefetch */
+let fetching=false;
+async function fillBuffer(){
+  if(fetching) return; fetching=true;
+  try{
+    while(buffer.length<2){
+      const depth=Math.min(POOL.length, 55+roundNo*7);
+      let pick=null;
+      for(let tries=0;tries<14;tries++){
+        const t=POOL[Math.floor(Math.random()*depth)];
+        if(t&&!seen.has(t)){ pick=t; break; }
+      }
+      if(!pick){ // pool exhausted-ish: widen / reset seen
+        if(seen.size>POOL.length*0.7) seen.clear();
+        pick=POOL[Math.floor(Math.random()*POOL.length)];
+      }
+      seen.add(pick);
+      const r=await buildRound(pick);
+      if(r) buffer.push(r); // else skip silently
+    }
+  }catch(e){ /* ignore; will retry */ }
+  fetching=false;
+}
+
+/* ===== flow ===== */
+async function startRun(){
+  ovStart.classList.add('hidden'); ovEnd.classList.add('hidden'); ovErr.classList.add('hidden');
+  showLoading(true);
+  if(POOL.length===0){ const ok=await loadPool(); if(!ok){ showLoading(false); ovErr.classList.remove('hidden'); return; } }
+  score=0; combo=0; lives=3; roundNo=0; seen=new Set(); buffer=[]; scene="play";
+  syncHud();
+  await fillBuffer();
+  if(buffer.length===0){ showLoading(false); ovErr.classList.remove('hidden'); return; }
+  showLoading(false);
+  nextRound();
+}
+function showLoading(on){
+  if(on){ fbody.innerHTML='<div class="loading"><span class="spin">㊙</span> 資料を取り寄せ中…</div>';
+    ftitle.innerHTML=''; choices.innerHTML=''; }
+}
+async function nextRound(){
+  answered=false; stageIdx=0;
+  if(buffer.length===0){ showLoading(true); await fillBuffer(); showLoading(false);
+    if(buffer.length===0){ ovErr.classList.remove('hidden'); return; } }
+  cur=buffer.shift();
+  roundNo++;
+  fno.textContent="FILE No."+String(1000+roundNo).slice(1).padStart(4,'0');
+  stamp.textContent="㊙"; stamp.style.color="var(--stamp)";
+  ftitle.innerHTML=barSpan(Math.min(cur.title.length,12));
+  renderBody();
+  renderChoices();
+  roundStart=performance.now(); timeoutAt=roundStart+TIMEOUT_MS;
+  syncHud();
+  fillBuffer(); // prefetch ahead
+}
+function renderBody(){
+  let html="";
+  if(cur.thumb){ html+=`<img class="photo blur" id="photo" src="${cur.thumb}" alt="">`; }
+  const sents=cur.sentences;
+  sents.forEach((s,idx)=>{
+    if(answered){ html+=esc(s); }            // reveal full text once answered
+    else if(idx===0 || stageIdx>=1){ html+=redactText(s,cur); }
+    else { html+=hiddenSentence(s); }
+  });
+  if((answered||stageIdx>=2) && cur.desc){ html+=`<div class="desc">分類: ${esc(answered?cur.desc:redactDesc(cur.desc))}</div>`; }
+  fbody.innerHTML=html;
+  // de-blur photo at stage 2
+  const ph=document.getElementById('photo');
+  if(ph && stageIdx>=2) ph.classList.remove('blur');
+}
+function redactDesc(d){ let out=d; if(cur.title) out=out.split(cur.title).join("███"); if(cur.reading) out=out.split(cur.reading).join("██"); return out; }
+function renderChoices(){
+  choices.innerHTML="";
+  cur.choices.forEach((c,i)=>{
+    const el=document.createElement("button"); el.className="ch"; el.textContent=c;
+    el.addEventListener("pointerdown",ev=>{ ev.preventDefault(); pick(i,el); });
+    choices.appendChild(el);
+  });
+}
+function pick(i,el){
+  if(answered||scene!=="play") return;
+  answered=true;
+  const chosen=cur.choices[i]; const correct = chosen===cur.title;
+  // reveal title
+  ftitle.innerHTML=`<span style="font-family:'Shippori Mincho';font-weight:800;font-size:1.05rem;color:var(--ink)">${esc(cur.title)}</span>`;
+  stamp.textContent="解禁"; stamp.style.color="var(--ok)";
+  // reveal full body + photo
+  stageIdx=2; renderBody(); const ph=document.getElementById('photo'); if(ph) ph.classList.remove('blur');
+  const btns=[...choices.children];
+  btns.forEach((b,bi)=>{ b.style.pointerEvents="none";
+    if(cur.choices[bi]===cur.title) b.classList.add("correct");
+    else if(bi===i) b.classList.add("wrong"); else b.classList.add("dim"); });
+  if(correct){
+    const pts=Math.round((220+roundNo*6)*STAGE_MULT[stageAtAnswer]* (1+Math.min(combo,15)*0.12));
+    score+=pts; combo++; best.solved=(best.solved||0)+1;
+    best.score=Math.max(best.score,score); best.streak=Math.max(best.streak||0,combo);
+    store.save("kuronuri_best",best);
+    sCorrect(); if(combo>1) sCombo(combo); vibe(10);
+    showFeedback("+"+pts, "var(--ok)");
+  } else {
+    lives--; combo=0; sWrong(); vibe([20,40,20]);
+    showFeedback("✗", "var(--stamp)");
+  }
+  syncHud();
+  setTimeout(()=>{ if(scene!=="play") return; if(lives<=0){ gameOver(); } else { nextRound(); } }, correct?1100:1700);
+}
+let stageAtAnswer=0;
+function showFeedback(txt,col){ feedback.textContent=txt; feedback.style.color=col; feedback.classList.remove("show"); void feedback.offsetWidth; feedback.classList.add("show"); }
+function gameOver(){
+  scene="over"; sOver(); vibe(60);
+  endSub.innerHTML="正体を暴いた件数: <b>"+(curRunSolved())+"</b><br>得点 <b>"+score+"</b> ／ 最高連続 "+maxComboRun+"<br><span style='color:var(--stamp)'>自己最高 "+best.score+" 点 ・ 通算解決 "+(best.solved||0)+" 件</span>";
+  ovEnd.classList.remove('hidden');
+}
+let maxComboRun=0; let runSolved=0;
+function curRunSolved(){ return runSolved; }
+
+/* timer / staged reveal loop */
+function loop(ts){
+  if(scene==="play" && cur && !answered){
+    const el=performance.now()-roundStart;
+    // stage transitions
+    let ns=0; if(el>=REVEAL_AT[2]) ns=2; else if(el>=REVEAL_AT[1]) ns=1;
+    if(ns!==stageIdx){ stageIdx=ns; renderBody(); sReveal(); }
+    stageAtAnswer=stageIdx;
+    // meter: time left in round
+    const frac=Math.max(0,1-(performance.now()-roundStart)/TIMEOUT_MS);
+    meterFill.style.width=(frac*100)+"%";
+    meterFill.style.background = stageIdx===0?"linear-gradient(90deg,#3f7d46,#7bb36a)": stageIdx===1?"linear-gradient(90deg,#e0a02f,#f0c050)":"linear-gradient(90deg,#b3271d,#e06a5a)";
+    meterlbl.textContent = stageIdx===0?"手がかり僅か — いま当てれば高得点":(stageIdx===1?"一部 解禁 — 得点やや減":"全文 解禁 — 得点わずか");
+    if(performance.now()>=timeoutAt){ timeoutAnswer(); }
+  }
+  raf=requestAnimationFrame(loop);
+}
+function timeoutAnswer(){
+  if(answered) return; answered=true; lives--; combo=0;
+  ftitle.innerHTML=`<span style="font-family:'Shippori Mincho';font-weight:800;font-size:1.05rem;color:var(--ink)">${esc(cur.title)}</span>`;
+  stamp.textContent="未解決"; stamp.style.color="var(--stamp)";
+  stageIdx=2; renderBody();
+  [...choices.children].forEach((b,bi)=>{ b.style.pointerEvents="none"; if(cur.choices[bi]===cur.title)b.classList.add("correct"); else b.classList.add("dim"); });
+  sWrong(); showFeedback("時間切れ","var(--stamp)"); syncHud();
+  setTimeout(()=>{ if(scene!=="play")return; if(lives<=0)gameOver(); else nextRound(); },1600);
+}
+
+/* track run stats via pick */
+const _pick=pick;
+pick=function(i,el){ const before=combo; _pick(i,el); if(combo>before){ runSolved++; maxComboRun=Math.max(maxComboRun,combo); } };
+
+/* HUD */
+const hScore=document.getElementById('hScore'),hCombo=document.getElementById('hCombo'),hLives=document.getElementById('hLives'),hRank=document.getElementById('hRank');
+const ovStart=document.getElementById('ovStart'),ovRule=document.getElementById('ovRule'),ovEnd=document.getElementById('ovEnd'),ovErr=document.getElementById('ovErr');
+const endSub=document.getElementById('endSub'),bestLine=document.getElementById('bestLine');
+const fno=document.getElementById('fno'),ftitle=document.getElementById('ftitle'),stamp=document.getElementById('stamp'),fbody=document.getElementById('fbody'),choices=document.getElementById('choices');
+const meterFill=document.getElementById('meterFill'),meterlbl=document.getElementById('meterlbl'),feedback=document.getElementById('feedback');
+function syncHud(){ hScore.textContent=score; hCombo.textContent=combo; hLives.textContent="㊙".repeat(Math.max(0,lives))||"—";
+  hRank.textContent=RANKS[Math.min(RANKS.length-1,Math.floor(roundNo/6))]; }
+document.getElementById('btnStart').addEventListener('click',startRun);
+document.getElementById('btnRetry').addEventListener('click',startRun);
+document.getElementById('btnAgain').addEventListener('click',()=>{ runSolved=0; maxComboRun=0; startRun(); });
+document.getElementById('btnRule').addEventListener('click',()=>ovRule.classList.remove('hidden'));
+document.getElementById('btnRuleClose').addEventListener('click',()=>ovRule.classList.add('hidden'));
+document.getElementById('btnMute').addEventListener('click',e=>{ muted=!muted; e.target.textContent=muted?"🔇":"♪"; if(!muted)sReveal(); });
+bestLine.textContent=best.score>0?("自己最高 "+best.score+" 点 ・ 通算 "+(best.solved||0)+" 件解決"):"";
+
+raf=requestAnimationFrame(loop);
+
+/* test hook (harmless) */
+window.__kn={ scene:()=>scene, state:()=>({score,combo,lives,roundNo,stage:stageIdx,answered,poolLen:POOL.length,buffer:buffer.length}),
+  cur:()=>cur&&{title:cur.title,choices:cur.choices.slice()},
+  pickCorrect:()=>{ if(!cur)return false; const i=cur.choices.indexOf(cur.title); const el=choices.children[i]; if(el){pick(i,el);return true;} return false; },
+  pickWrong:()=>{ if(!cur)return false; const i=cur.choices.findIndex(c=>c!==cur.title); const el=choices.children[i]; if(el){pick(i,el);return true;} return false; } };
+</script>
+</body>
+</html>
