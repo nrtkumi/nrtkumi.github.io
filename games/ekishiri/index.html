@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>駅名しりとり — 日本全国の駅でつなぐ</title>
+<meta name="description" content="日本全国の本物の駅名でしりとり。前の駅の最後の音から始まる駅をつないで、最長の路線図を伸ばそう。リアルタイム駅名検索で遊ぶ単一HTMLゲーム。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="駅名しりとり — 日本全国の駅でつなぐ">
+<meta property="og:description" content="本物の駅名だけでしりとり。最長の路線図を伸ばせ。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/ekishiri/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/ekishiri/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-user-select:none;user-select:none;}
+html,body{margin:0;height:100%;overscroll-behavior:none;background:#2a2620;}
+body{font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif;display:flex;justify-content:center;color:#34302a;}
+#app{
+  position:relative;width:100%;max-width:min(500px,62vh);height:100%;display:flex;flex-direction:column;
+  background:#f5f0e4;background-image:radial-gradient(#e4dcc8 1px,transparent 1px);background-size:18px 18px;
+  box-shadow:0 0 50px rgba(0,0,0,.5);overflow:hidden;
+}
+header{flex:0 0 auto;padding:calc(env(safe-area-inset-top) + 10px) 16px 8px;background:#fffdf7;border-bottom:3px solid #34302a;z-index:5;}
+.htop{display:flex;align-items:baseline;justify-content:space-between;}
+.htitle{font-weight:900;font-size:21px;letter-spacing:.04em;}
+.htitle small{font-weight:700;font-size:11px;color:#a8967a;letter-spacing:.2em;display:block;}
+.hstat{text-align:right;font-size:12px;color:#7a6f5e;line-height:1.5;}
+.hstat b{font-size:22px;color:#d6452e;font-weight:900;}
+.tbar{height:8px;border-radius:5px;background:#e4dcc8;margin-top:8px;overflow:hidden;}
+.tbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#3bb273,#e8b800,#d6452e);transition:width .15s linear;}
+
+/* route map */
+.mapwrap{flex:1 1 0;min-height:0;overflow-y:auto;padding:14px 18px 8px;-webkit-overflow-scrolling:touch;}
+.stop{display:flex;align-items:flex-start;gap:14px;position:relative;}
+.rail{position:relative;width:26px;flex:0 0 auto;display:flex;justify-content:center;}
+.rail .line{position:absolute;top:0;bottom:0;width:7px;border-radius:4px;left:50%;transform:translateX(-50%);}
+.stop:first-child .rail .line{top:50%;}
+.stop:last-child .rail .line{bottom:50%;}
+.node{width:18px;height:18px;border-radius:50%;background:#fffdf7;border:4px solid #34302a;margin-top:6px;z-index:2;}
+.scard{flex:1 1 auto;padding:4px 2px 16px;}
+.sname{font-size:24px;font-weight:900;line-height:1.1;}
+.skana{font-size:12px;color:#9b8d76;letter-spacing:.08em;margin-top:1px;}
+.sidx{font-size:11px;color:#bcae95;font-weight:700;}
+.cur .node{border-color:#d6452e;background:#d6452e;box-shadow:0 0 0 5px rgba(214,69,46,.18);}
+.cur .sname{color:#d6452e;}
+
+/* next prompt */
+.prompt{flex:0 0 auto;background:#fffdf7;border-top:3px solid #34302a;padding:10px 16px calc(env(safe-area-inset-bottom) + 12px);}
+.preq{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.kball{width:54px;height:54px;border-radius:50%;background:#34302a;color:#fffdf7;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex:0 0 auto;box-shadow:3px 3px 0 #d6452e;}
+.preq .txt{font-size:14px;color:#7a6f5e;line-height:1.4;}
+.preq .txt b{color:#34302a;font-size:16px;}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;min-height:30px;-webkit-overflow-scrolling:touch;}
+.chip{flex:0 0 auto;padding:8px 13px;border-radius:20px;background:#ede4d2;border:2px solid #34302a;font-weight:700;font-size:15px;line-height:1.1;text-align:center;}
+.chip small{display:block;font-size:10px;color:#9b8d76;font-weight:500;}
+.chip:active{background:#34302a;color:#fffdf7;}
+.chip.danger{border-color:#d6452e;color:#d6452e;}
+.chip.danger small{color:#d6452e;}
+.chip.danger:active{background:#d6452e;color:#fff;}
+.chiphint{color:#bcae95;font-size:13px;padding:6px 2px;}
+.inrow{display:flex;gap:8px;align-items:center;}
+.inrow input{flex:1 1 auto;width:10px;font-family:inherit;font-size:18px;font-weight:700;padding:11px 14px;border:2px solid #34302a;border-radius:12px;background:#fff;color:#34302a;}
+.inrow input:focus{outline:none;border-color:#d6452e;}
+.gv{flex:0 0 auto;padding:11px 14px;border:2px solid #34302a;border-radius:12px;background:#f5f0e4;font-family:inherit;font-weight:700;font-size:13px;color:#7a6f5e;}
+.gv:active{background:#34302a;color:#fffdf7;}
+
+/* overlays */
+.overlay{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;
+  padding:calc(env(safe-area-inset-top) + 24px) 26px calc(env(safe-area-inset-bottom) + 24px);background:#f5f0e4;overflow-y:auto;}
+.overlay.hidden{display:none;}
+.logo{font-size:40px;font-weight:900;letter-spacing:.03em;}
+.logo .badge{display:inline-block;background:#34302a;color:#fffdf7;border-radius:10px;padding:2px 12px;transform:rotate(-3deg);box-shadow:4px 4px 0 #d6452e;margin-bottom:8px;font-size:30px;}
+.sub{color:#6b6253;font-size:14.5px;line-height:2;max-width:30ch;margin:14px auto 0;}
+.sub b{color:#d6452e;}
+.btn{display:inline-block;width:100%;max-width:300px;padding:16px;border:3px solid #34302a;border-radius:14px;font-family:inherit;font-weight:900;font-size:20px;
+  background:#d6452e;color:#fffdf7;box-shadow:5px 5px 0 #34302a;margin-top:22px;}
+.btn:active{transform:translate(3px,3px);box-shadow:2px 2px 0 #34302a;}
+.btn.ghost{background:#fffdf7;color:#34302a;}
+.over-big{font-size:64px;font-weight:900;color:#d6452e;line-height:1;margin:6px 0;}
+.over-tag{font-size:17px;color:#34302a;font-weight:700;}
+.deathline{font-size:15px;color:#7a6f5e;margin-top:8px;}
+.foot{margin-top:20px;font-size:11px;color:#a8967a;}
+.foot a{color:#8a7a5e;}
+.muteBtn{position:absolute;top:calc(env(safe-area-inset-top) + 8px);right:12px;background:none;border:none;color:#a8967a;font-size:20px;z-index:40;}
+</style>
+</head>
+<body>
+<div id="app">
+  <button class="muteBtn" id="mute" aria-label="音">♪</button>
+
+  <!-- title -->
+  <div class="overlay" id="ovTitle">
+    <div class="logo"><span class="badge">駅名</span><br>しりとり</div>
+    <div class="sub">前の駅の<b>最後の音</b>から始まる<br>本物の駅名をつなげ。<br>のばすほど高得点、<br><b>「ん」</b>で打ち止め。</div>
+    <div class="sub" style="font-size:12.5px;color:#9b8d76;">入力すると全国の駅から候補が出ます<br>濁点・小さい文字はゆるめに判定</div>
+    <button class="btn" id="startBtn">出発進行</button>
+    <div class="foot">駅データ: <a href="https://api.transit.ls8h.com" target="_blank" rel="noopener">Transit API</a></div>
+  </div>
+
+  <!-- gameover -->
+  <div class="overlay hidden" id="ovOver">
+    <div class="over-tag" id="overReason">通過駅</div>
+    <div class="over-big"><span id="finalLen">0</span><span style="font-size:26px;"> 駅</span></div>
+    <div class="over-tag">スコア <span id="finalScore" style="color:#d6452e;">0</span></div>
+    <div class="deathline" id="bestLine">自己ベスト 0 駅</div>
+    <div class="sub" id="rank" style="margin-top:6px;">—</div>
+    <button class="btn" id="againBtn">もう一度</button>
+    <button class="btn ghost" id="shareBtn">記録をシェア</button>
+  </div>
+
+  <!-- game -->
+  <header>
+    <div class="htop">
+      <div class="htitle">駅名しりとり<small>EKIMEI SHIRITORI</small></div>
+      <div class="hstat">つないだ駅<br><b id="chainN">0</b></div>
+    </div>
+    <div class="tbar"><i id="tfill"></i></div>
+  </header>
+
+  <div class="mapwrap" id="map"></div>
+
+  <div class="prompt">
+    <div class="preq">
+      <div class="kball" id="kball">？</div>
+      <div class="txt">「<b id="reqK">？</b>」から始まる駅は？<br><span id="reqSub">入力して候補から選ぶ</span></div>
+    </div>
+    <div class="chips" id="chips"><span class="chiphint">駅名を入力してください…</span></div>
+    <div class="inrow">
+      <input id="inp" type="text" inputmode="kana" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="えきめい / 漢字 で検索">
+      <button class="gv" id="giveup">ギブ<br>アップ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+var $=function(id){return document.getElementById(id);};
+var API="https://api.transit.ls8h.com";
+
+/* ===== kana helpers ===== */
+function toHira(s){return String(s).replace(/[ァ-ヶ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0x60);});}
+var SMALL={"ぁ":"あ","ぃ":"い","ぅ":"う","ぇ":"え","ぉ":"お","ゃ":"や","ゅ":"ゆ","ょ":"よ","っ":"つ","ゎ":"わ","ヵ":"か","ヶ":"け"};
+var DAKU={"が":"か","ぎ":"き","ぐ":"く","げ":"け","ご":"こ","ざ":"さ","じ":"し","ず":"す","ぜ":"せ","ぞ":"そ","だ":"た","ぢ":"ち","づ":"つ","で":"て","ど":"と","ば":"は","び":"ひ","ぶ":"ふ","べ":"へ","ぼ":"ほ","ぱ":"は","ぴ":"ひ","ぷ":"ふ","ぺ":"へ","ぽ":"ほ"};
+function matchKey(c){c=SMALL[c]||c;c=DAKU[c]||c;return c;}
+// reading: hiragana only, parentheses/suffix stripped
+function readingOf(name,kana){
+  var r=(kana&&kana.trim())?kana:name;
+  r=toHira(r);
+  r=r.replace(/[（(].*$/,"").replace(/[・/／\s].*$/,"");
+  r=r.replace(/えき$/,"");
+  r=r.replace(/[^ぁ-んー]/g,""); // hiragana + long mark
+  r=r.replace(/ー+$/,"");
+  return r;
+}
+function firstKana(r){return r?r.charAt(0):"";}
+function lastKana(r){return r?r.charAt(r.length-1):"";}
+function endsN(r){return lastKana(r)==="ん";}
+
+/* ===== seeds (guaranteed valid readings) ===== */
+var SEEDS=[
+ {name:"東京",kana:"とうきょう"},{name:"新宿",kana:"しんじゅく"},{name:"横浜",kana:"よこはま"},
+ {name:"名古屋",kana:"なごや"},{name:"大阪",kana:"おおさか"},{name:"京都",kana:"きょうと"},
+ {name:"博多",kana:"はかた"},{name:"仙台",kana:"せんだい"},{name:"千葉",kana:"ちば"},
+ {name:"神戸",kana:"こうべ"},{name:"金沢",kana:"かなざわ"},{name:"広島",kana:"ひろしま"},
+ {name:"上野",kana:"うえの"},{name:"渋谷",kana:"しぶや"},{name:"池袋",kana:"いけぶくろ"}
+];
+
+/* ===== audio ===== */
+var AC=null,muted=false;
+function audio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+    AC.onstatechange=function(){if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}}return AC;
+}
+var silentEl=null;
+function silentWavUrl(){
+  var n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  function str(o,s){for(var i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,8000,true);
+  v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(var i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  var p=silentEl.play();if(p&&p.catch)p.catch(function(){});
+  audio();if(!AC)return;
+  function done(){if(AC.state==="running"){["pointerdown","pointerup","touchend"].forEach(function(ev){document.removeEventListener(ev,unlockAudio,true);});}}
+  try{AC.resume().then(done);}catch(e){done();}
+}
+["pointerdown","pointerup","touchend"].forEach(function(ev){document.addEventListener(ev,unlockAudio,true);});
+document.addEventListener("visibilitychange",function(){if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){
+  if(muted||!audio())return;
+  try{var o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}
+}
+function sfxConnect(n){tone(440+Math.min(n,20)*22,0.07,"triangle",0.05,660+Math.min(n,20)*30);}
+function sfxBtn(){tone(620,0.04,"square",0.03);}
+function sfxBad(){tone(200,0.22,"sawtooth",0.06,110);}
+function sfxOver(){tone(330,0.2,"sawtooth",0.06,150);setTimeout(function(){tone(150,0.5,"sawtooth",0.06,60);},200);}
+
+/* ===== state (init at declaration) ===== */
+var TURN_MS=20000;
+var state="title"; // title|play|over
+var chain=[];        // [{name,kana,reading}]
+var usedKeys={};     // dedup by name
+var reqKey="";       // matching key required for next
+var reqDisp="";      // display kana
+var score=0;
+var turnEnd=0;       // timestamp deadline
+var best=0;try{best=parseInt(localStorage.getItem("ekishiri_best")||"0",10)||0;}catch(e){}
+var lineColors=["#d6452e","#2e7dd6","#3bb273","#e8a300","#9b59b6","#1abc9c","#e8538a"];
+var searchSeq=0,searchTimer=0;
+
+function jget(path){return fetch(API+path,{mode:"cors"}).then(function(r){if(!r.ok)throw 0;return r.json();});}
+
+/* ===== game flow ===== */
+function startGame(){
+  chain=[];usedKeys={};score=0;
+  var s=SEEDS[(Math.random()*SEEDS.length)|0];
+  pushStation(s.name,s.kana,true);
+  state="play";
+  $("ovTitle").classList.add("hidden");
+  $("ovOver").classList.add("hidden");
+  $("inp").value="";
+  renderChips([]);
+  resetTurn();
+  setTimeout(function(){try{$("inp").focus();}catch(e){}},100);
+}
+function pushStation(name,kana,silent){
+  var reading=readingOf(name,kana);
+  chain.push({name:name,kana:kana||reading,reading:reading});
+  usedKeys[name]=1;
+  reqDisp=lastKana(reading);
+  reqKey=matchKey(reqDisp);
+  $("reqK").textContent=reqDisp||"？";
+  $("kball").textContent=reqDisp||"？";
+  $("chainN").textContent=chain.length;
+  score=Math.max(score,scoreFor());
+  renderMap();
+  if(!silent)sfxConnect(chain.length);
+}
+function scoreFor(){
+  // length-driven; +小ボーナス for longer total reading
+  var pts=0;for(var i=0;i<chain.length;i++)pts+=100+chain[i].reading.length*8;
+  return pts;
+}
+function resetTurn(){turnEnd=performance.now()+TURN_MS;}
+
+function commit(cand){
+  if(state!=="play")return;
+  if(usedKeys[cand.name]){flashReq("その駅はもう通過済み");sfxBad();return;}
+  if(matchKey(firstKana(cand.reading))!==reqKey){flashReq("「"+reqDisp+"」から始まりません");sfxBad();return;}
+  $("inp").value="";
+  renderChips([]);
+  if(endsN(cand.reading)){
+    pushStation(cand.name,cand.kana,true);
+    sfxConnect(chain.length);
+    setTimeout(function(){gameOver("「ん」で終点！");},420);
+    return;
+  }
+  pushStation(cand.name,cand.kana,false);
+  score=scoreFor();
+  resetTurn();
+  setTimeout(function(){try{$("inp").focus();}catch(e){}},30);
+}
+
+function gameOver(reason){
+  if(state==="over")return;
+  state="over";
+  var len=chain.length;
+  if(len>best){best=len;try{localStorage.setItem("ekishiri_best",String(best));}catch(e){}}
+  $("overReason").textContent=reason;
+  $("finalLen").textContent=len;
+  $("finalScore").textContent=score;
+  $("bestLine").textContent="自己ベスト "+best+" 駅";
+  var r;
+  if(len>=25)r="🏆 鉄道神 — 全国を乗りつぶした";
+  else if(len>=15)r="🚄 特急なみの連結力";
+  else if(len>=9)r="🚃 各駅停車で着実に";
+  else if(len>=5)r="🚉 まずは発車";
+  else r="🚧 信号待ち。もう一本！";
+  $("rank").textContent=r;
+  sfxOver();
+  $("ovOver").classList.remove("hidden");
+}
+
+/* ===== rendering ===== */
+function renderMap(){
+  var html="";
+  for(var i=0;i<chain.length;i++){
+    var c=chain[i],col=lineColors[i%lineColors.length];
+    var cur=(i===chain.length-1);
+    html+='<div class="stop'+(cur?' cur':'')+'">'
+      +'<div class="rail"><span class="line" style="background:'+col+'"></span><span class="node"></span></div>'
+      +'<div class="scard"><div class="sidx">'+(i+1)+'</div><div class="sname">'+esc(c.name)+'</div>'
+      +'<div class="skana">'+esc(c.reading)+'</div></div></div>';
+  }
+  var m=$("map");m.innerHTML=html;
+  m.scrollTop=m.scrollHeight;
+}
+function renderChips(list){
+  var box=$("chips");
+  if(!list||!list.length){
+    box.innerHTML='<span class="chiphint">'+($("inp").value?"候補なし…別の読みで":"駅名を入力してください…")+'</span>';
+    return;
+  }
+  var html="";
+  for(var i=0;i<list.length;i++){
+    var c=list[i],dn=endsN(c.reading);
+    html+='<button class="chip'+(dn?' danger':'')+'" data-i="'+i+'">'+esc(c.name)
+      +'<small>'+esc(c.reading)+(dn?" ⚠ん":"")+'</small></button>';
+  }
+  box.innerHTML=html;
+  curList=list;
+}
+var curList=[];
+$("chips").addEventListener("pointerup",function(e){
+  var b=e.target.closest(".chip");if(!b)return;
+  var i=parseInt(b.getAttribute("data-i"),10);
+  if(curList[i]){sfxBtn();commit(curList[i]);}
+});
+function flashReq(msg){var el=$("reqSub");el.textContent=msg;el.style.color="#d6452e";
+  setTimeout(function(){el.style.color="";el.textContent="入力して候補から選ぶ";},1400);}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+/* ===== search ===== */
+function doSearch(q){
+  var seq=++searchSeq;
+  jget("/api/v1/locations/suggest?q="+encodeURIComponent(q)+"&limit=14").then(function(d){
+    if(seq!==searchSeq||state!=="play")return;
+    var arr=(d&&d.stations)||[],seen={},out=[];
+    for(var i=0;i<arr.length;i++){
+      var s=arr[i],reading=readingOf(s.name,s.nameKana);
+      if(!reading)continue;
+      if(matchKey(firstKana(reading))!==reqKey)continue;
+      if(usedKeys[s.name])continue;
+      if(seen[s.name])continue;seen[s.name]=1;
+      out.push({name:s.name,kana:s.nameKana||reading,reading:reading});
+      if(out.length>=8)break;
+    }
+    // valid (non-ん) first
+    out.sort(function(a,b){return (endsN(a.reading)?1:0)-(endsN(b.reading)?1:0);});
+    renderChips(out);
+  }).catch(function(){if(seq===searchSeq)renderChips([]);});
+}
+$("inp").addEventListener("input",function(){
+  var q=this.value.trim();
+  clearTimeout(searchTimer);
+  if(!q){renderChips([]);return;}
+  searchTimer=setTimeout(function(){doSearch(q);},230);
+});
+
+/* ===== input wiring ===== */
+$("startBtn").addEventListener("pointerup",function(){sfxBtn();startGame();});
+$("againBtn").addEventListener("pointerup",function(){sfxBtn();startGame();});
+$("giveup").addEventListener("pointerup",function(){if(state==="play"){sfxBtn();gameOver("ギブアップ");}});
+$("shareBtn").addEventListener("pointerup",function(){sfxBtn();shareResult();});
+$("mute").addEventListener("pointerup",function(e){e.stopPropagation();muted=!muted;$("mute").textContent=muted?"🔇":"♪";if(!muted)sfxBtn();});
+function shareResult(){
+  var txt="駅名しりとりで "+chain.length+"駅つないだ！（自己ベスト"+best+"駅） 全国の本物の駅でしりとり";
+  var url="https://nrtkumi.github.io/games/ekishiri/";
+  if(navigator.share){navigator.share({title:"駅名しりとり",text:txt,url:url}).catch(function(){});}
+  else{window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent(txt)+"&url="+encodeURIComponent(url),"_blank","noopener");}
+}
+document.addEventListener("gesturestart",function(e){e.preventDefault();});
+document.addEventListener("dblclick",function(e){e.preventDefault();});
+var lastTouch=0;
+document.addEventListener("touchend",function(e){var n=Date.now();if(n-lastTouch<350&&e.target.tagName!=="INPUT")e.preventDefault();lastTouch=n;},{passive:false});
+
+/* ===== rAF loop (timer) — runs from title, state-guarded ===== */
+function loop(){
+  if(state==="play"){
+    var left=turnEnd-performance.now();
+    var ratio=Math.max(0,Math.min(1,left/TURN_MS));
+    $("tfill").style.width=(ratio*100)+"%";
+    if(left<=0){gameOver("時間切れ");}
+  }else{
+    $("tfill").style.width="100%";
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

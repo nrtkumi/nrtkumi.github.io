@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>終電トラベラー — 終電が尽きるまでどこまで行ける？</title>
+<meta name="description" content="夜18時の東京から、本物の発車時刻表だけを頼りに列車を乗り継ぐ。終電が尽きる前に日本のどこまで行けるか挑む、push-your-luck 乗り継ぎローグライト。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="終電トラベラー — どこまで行ける？">
+<meta property="og:description" content="本物の終電時刻表で日本を乗り継ぐ push-your-luck トリップ。終電が尽きるまでにどこまで遠く行けるか。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/shuden-traveler/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/shuden-traveler/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-user-select:none;user-select:none;}
+html,body{margin:0;height:100%;overscroll-behavior:none;background:#070b1c;}
+body{font-family:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN",sans-serif;display:flex;justify-content:center;color:#dfe7ff;}
+#app{position:relative;width:100%;max-width:min(500px,60vh);height:100%;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#0a1130 0%,#070b1c 60%,#04060f 100%);box-shadow:0 0 60px rgba(0,0,0,.7);overflow:hidden;}
+header{flex:0 0 auto;padding:calc(env(safe-area-inset-top) + 10px) 16px 8px;border-bottom:1px solid #1b2550;}
+.htop{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.clock{font-size:34px;font-weight:900;letter-spacing:.02em;color:#7df9ff;text-shadow:0 0 14px rgba(125,249,255,.45);line-height:1;}
+.clock .nite{font-size:12px;color:#ff7de1;margin-left:6px;letter-spacing:.1em;text-shadow:0 0 8px rgba(255,125,225,.4);}
+.hstats{text-align:right;font-size:11px;color:#8fa0d8;line-height:1.5;}
+.hstats b{font-size:20px;color:#fff;font-weight:900;}
+.hstats .far{color:#ffd166;}
+
+/* map */
+.mapwrap{flex:1 1 0;min-height:0;position:relative;}
+#map{display:block;width:100%;height:100%;touch-action:none;}
+.maptag{position:absolute;left:10px;top:8px;font-size:10px;letter-spacing:.2em;color:#52639e;pointer-events:none;}
+.curtag{position:absolute;right:10px;top:8px;font-size:12px;color:#7df9ff;text-shadow:0 0 8px rgba(125,249,255,.5);pointer-events:none;text-align:right;}
+
+/* board */
+.boardpanel{flex:1 1 0;min-height:0;display:flex;flex-direction:column;border-top:1px solid #1b2550;background:rgba(8,12,32,.6);}
+.bhead{flex:0 0 auto;padding:9px 16px 6px;display:flex;align-items:baseline;justify-content:space-between;}
+.bhead .now{font-size:18px;font-weight:900;color:#fff;}
+.bhead .now small{font-size:11px;color:#8fa0d8;font-weight:500;margin-left:6px;}
+.bhead .lab{font-size:11px;color:#ffd166;letter-spacing:.18em;}
+.rows{flex:1 1 0;min-height:0;overflow-y:auto;padding:2px 12px calc(env(safe-area-inset-bottom) + 10px);-webkit-overflow-scrolling:touch;}
+.row{display:flex;align-items:center;gap:11px;padding:11px 12px;margin:6px 0;border-radius:12px;background:linear-gradient(180deg,#101a44,#0c1336);border:1px solid #24306a;}
+.row:active{background:#16235a;border-color:#3a4da0;}
+.row .dep{font-size:18px;font-weight:900;color:#7df9ff;min-width:58px;text-shadow:0 0 8px rgba(125,249,255,.3);}
+.row .bar{width:5px;align-self:stretch;border-radius:3px;flex:0 0 auto;}
+.row .mid{flex:1 1 auto;min-width:0;}
+.row .ln{font-size:11px;color:#9fb0e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.row .dest{font-size:18px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.row .dest .arr{color:#ffd166;margin-right:5px;}
+.row .km{font-size:11px;color:#ff9edd;flex:0 0 auto;text-align:right;line-height:1.3;}
+.row .km b{display:block;font-size:15px;color:#fff;}
+.row.shink{border-color:#7a5cff;box-shadow:0 0 14px rgba(122,92,255,.25) inset;}
+.row.shink .dep{color:#c6b4ff;}
+.bmsg{padding:20px;text-align:center;color:#7df9ff;font-size:14px;letter-spacing:.18em;animation:bl 1s steps(2) infinite;}
+@keyframes bl{50%{opacity:.35;}}
+.berr{padding:18px;text-align:center;color:#8fa0d8;font-size:13px;}
+.berr b{color:#ff7de1;}
+
+/* overlays */
+.overlay{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;
+  padding:calc(env(safe-area-inset-top) + 24px) 26px calc(env(safe-area-inset-bottom) + 24px);
+  background:radial-gradient(120% 80% at 50% 0%,#101a44 0%,#070b1c 70%);overflow-y:auto;}
+.overlay.hidden{display:none;}
+.logo{font-size:34px;font-weight:900;letter-spacing:.02em;color:#fff;text-shadow:0 0 18px rgba(125,249,255,.3);}
+.logo .em{color:#7df9ff;}
+.logo small{display:block;font-size:12px;letter-spacing:.34em;color:#ff7de1;margin-bottom:10px;font-weight:700;}
+.sub{color:#aebbe8;font-size:14px;line-height:1.95;max-width:30ch;margin:14px auto 0;}
+.sub b{color:#7df9ff;}
+.sub .y{color:#ffd166;}
+.btn{display:inline-block;width:100%;max-width:300px;padding:16px;border:none;border-radius:14px;font-family:inherit;font-weight:900;font-size:19px;letter-spacing:.06em;
+  background:linear-gradient(180deg,#7df9ff,#27c5e0);color:#04243a;box-shadow:0 5px 0 #1a7c93,0 0 22px rgba(125,249,255,.4);margin-top:22px;}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #1a7c93;}
+.btn.ghost{background:#101a44;color:#9fb0e8;box-shadow:0 5px 0 #0a112e;border:1px solid #24306a;}
+.bignum{font-size:60px;font-weight:900;color:#ffd166;line-height:1;margin:6px 0;text-shadow:0 0 20px rgba(255,209,102,.35);}
+.bignum small{font-size:20px;color:#fff;}
+.statline{font-size:14px;color:#aebbe8;margin:3px 0;}
+.statline b{color:#7df9ff;}
+.muteBtn{position:absolute;top:calc(env(safe-area-inset-top) + 8px);right:10px;background:none;border:none;color:#52639e;font-size:18px;z-index:40;}
+.foot{margin-top:18px;font-size:11px;color:#52639e;}
+.foot a{color:#7587c0;}
+.toast{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);z-index:25;pointer-events:none;
+  background:rgba(7,11,28,.9);border:1px solid #3a4da0;border-radius:14px;padding:14px 20px;text-align:center;opacity:0;transition:opacity .2s;max-width:84%;}
+.toast.show{opacity:1;}
+.toast .big{font-size:20px;font-weight:900;color:#fff;}
+.toast .sm{font-size:12px;color:#7df9ff;margin-top:3px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <button class="muteBtn" id="mute" aria-label="音">♪</button>
+
+  <!-- title -->
+  <div class="overlay" id="ovTitle">
+    <div class="logo"><small>LAST&nbsp;TRAIN&nbsp;ROGUE</small>終電<span class="em">トラベラー</span></div>
+    <div class="sub">夜<b>18:00</b>の東京。<br>本物の<b>発車時刻表</b>だけを頼りに<br>列車を乗り継いで、<br><span class="y">終電が尽きる前に</span><br>どこまで遠くへ行けるか。</div>
+    <div class="sub" style="font-size:12.5px;color:#7587c0;">列車を選ぶと出発時刻まで時計が進む。<br>新幹線は一気に距離を稼げるが…<br>乗り継げる終電がなくなったら旅は終わり。</div>
+    <button class="btn" id="startBtn">東京駅から出発</button>
+    <div class="foot">時刻表データ: <a href="https://api.transit.ls8h.com" target="_blank" rel="noopener">Transit API</a></div>
+  </div>
+
+  <!-- gameover -->
+  <div class="overlay hidden" id="ovOver">
+    <div class="logo" style="font-size:26px;"><span id="overTitle">終電、終了</span></div>
+    <div class="statline" id="overWhere" style="margin-top:8px;">—</div>
+    <div class="bignum"><span id="finalKm">0</span><small> km 走破</small></div>
+    <div class="statline">最遠到達 <b id="finalFar">0</b> km ／ <b id="finalRides">0</b> 本乗車</div>
+    <div class="statline" id="rank" style="margin-top:6px;color:#fff;">—</div>
+    <div class="statline" style="font-size:12px;color:#7587c0;">自己ベスト走破距離 <b id="bestKm">0</b> km</div>
+    <button class="btn" id="againBtn">もう一度</button>
+    <button class="btn ghost" id="shareBtn">旅をシェア</button>
+  </div>
+
+  <!-- game -->
+  <header>
+    <div class="htop">
+      <div class="clock"><span id="clk">18:00</span><span class="nite" id="nite"></span></div>
+      <div class="hstats">走破 <b id="kmN">0</b> km<br><span class="far">最遠 <b id="farN" class="far">0</b></span> km・<b id="rideN">0</b>本</div>
+    </div>
+  </header>
+
+  <div class="mapwrap">
+    <canvas id="map"></canvas>
+    <div class="maptag">日本列島・走行ログ</div>
+    <div class="curtag" id="curtag">東京</div>
+  </div>
+
+  <div class="boardpanel">
+    <div class="bhead">
+      <div class="now"><span id="nowName">東京</span><small id="nowSub">発車案内</small></div>
+      <div class="lab">のりば</div>
+    </div>
+    <div class="rows" id="rows"><div class="bmsg">時刻表を読み込み中…</div></div>
+  </div>
+
+  <div class="toast" id="toast"><div class="big" id="toastBig"></div><div class="sm" id="toastSm"></div></div>
+</div>
+
+<script>
+"use strict";
+var $=function(id){return document.getElementById(id);};
+var API="https://api.transit.ls8h.com";
+function jget(path){return fetch(API+path,{mode:"cors"}).then(function(r){if(!r.ok)throw 0;return r.json();});}
+
+/* ===== geo ===== */
+function hav(la1,lo1,la2,lo2){
+  var R=6371,p=Math.PI/180;
+  var a=0.5-Math.cos((la2-la1)*p)/2+Math.cos(la1*p)*Math.cos(la2*p)*(1-Math.cos((lo2-lo1)*p))/2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+var LANDMARKS=[
+ {la:43.068,lo:141.351,n:"札幌"},{la:38.260,lo:140.882,n:"仙台"},{la:35.681,lo:139.767,n:"東京"},
+ {la:37.902,lo:139.061,n:"新潟"},{la:36.578,lo:136.648,n:"金沢"},{la:35.170,lo:136.882,n:"名古屋"},
+ {la:34.702,lo:135.495,n:"大阪"},{la:34.397,lo:132.476,n:"広島"},{la:33.590,lo:130.421,n:"博多"},
+ {la:31.596,lo:130.557,n:"鹿児島"},{la:34.066,lo:134.560,n:"徳島"},{la:33.842,lo:132.766,n:"松山"}
+];
+var LAT0=30.6,LAT1=46.3,LON0=128.8,LON1=146.6;
+function proj(la,lo,W,H,pad){
+  pad=pad||16;
+  var x=pad+(lo-LON0)/(LON1-LON0)*(W-2*pad);
+  var y=pad+(1-(la-LAT0)/(LAT1-LAT0))*(H-2*pad);
+  return [x,y];
+}
+
+/* ===== station resolve ===== */
+var sCache={};
+function resolveStation(name){
+  if(sCache[name]!==undefined)return Promise.resolve(sCache[name]);
+  return jget("/api/v1/locations/suggest?q="+encodeURIComponent(name)+"&limit=10").then(function(d){
+    var arr=(d&&d.stations)||[],best=null;
+    for(var i=0;i<arr.length;i++){var s=arr[i];if(typeof s.lat!=="number")continue;
+      var sc=(s.name===name?1e6:0)+(s.weight||0);
+      if(!best||sc>best._sc){best=s;best._sc=sc;}}
+    var v=best?{id:best.id,name:best.name,lat:best.lat,lon:best.lon}:null;
+    sCache[name]=v;return v;
+  }).catch(function(){sCache[name]=null;return null;});
+}
+function colocated(name,lat,lon){
+  return jget("/api/v1/locations/suggest?q="+encodeURIComponent(name)+"&limit=20").then(function(d){
+    var arr=(d&&d.stations)||[],out=[];
+    for(var i=0;i<arr.length;i++){var s=arr[i];
+      if(typeof s.lat!=="number")continue;
+      if(s.name!==name&&hav(lat,lon,s.lat,s.lon)>2.5)continue;
+      if(hav(lat,lon,s.lat,s.lon)>3)continue;
+      out.push(s);}
+    out.sort(function(a,b){return (b.weight||0)-(a.weight||0);});
+    return out.slice(0,7);
+  }).catch(function(){return [];});
+}
+
+/* ===== audio ===== */
+var AC=null,muted=false;
+function audio(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+  AC.onstatechange=function(){if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}}return AC;}
+var silentEl=null;
+function silentWavUrl(){var n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  function str(o,s){for(var i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,8000,true);
+  v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(var i=0;i<n;i++)v.setUint8(44+i,0x80);return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));}
+function unlockAudio(){if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+  silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  var p=silentEl.play();if(p&&p.catch)p.catch(function(){});audio();if(!AC)return;
+  function done(){if(AC.state==="running"){["pointerdown","pointerup","touchend"].forEach(function(ev){document.removeEventListener(ev,unlockAudio,true);});}}
+  try{AC.resume().then(done);}catch(e){done();}}
+["pointerdown","pointerup","touchend"].forEach(function(ev){document.addEventListener(ev,unlockAudio,true);});
+document.addEventListener("visibilitychange",function(){if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){if(muted||!audio())return;
+  try{var o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}}
+function sfxDepart(){tone(523,0.09,"triangle",0.05,784);setTimeout(function(){tone(784,0.16,"triangle",0.05,1046);},90);}
+function sfxShink(){tone(660,0.07,"sawtooth",0.04,180);setTimeout(function(){tone(990,0.22,"triangle",0.05,1320);},70);}
+function sfxBtn(){tone(620,0.04,"square",0.03);}
+function sfxOver(){tone(330,0.25,"sawtooth",0.06,150);setTimeout(function(){tone(140,0.6,"sawtooth",0.06,55);},230);}
+
+/* ===== state (init at declaration; loop-safe) ===== */
+var state="title"; // title|loading|board|riding|over
+var START_SECS=18*3600;
+var MAX_WAIT=5400; // 乗り継ぎで待てる最大（90分）。これを超える＝終電なし
+var clock=START_SECS;
+var cur={name:"東京",lat:35.681236,lon:139.767125};
+var origin={lat:35.681236,lon:139.767125};
+var path=[{name:"東京",lat:35.681236,lon:139.767125}];
+var totalKm=0,farKm=0,rides=0;
+var curRows=[];
+var best=0;try{best=parseInt(localStorage.getItem("shuden_best")||"0",10)||0;}catch(e){}
+var loadToken=0;
+
+/* ===== time fmt ===== */
+function pad2(n){return (n<10?"0":"")+n;}
+function fmtClock(secs){var h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60);return pad2(h)+":"+pad2(m);}
+function queryTime(secs){var h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60);if(h>23){h=23;m=59;}return pad2(h)+":"+pad2(m);}
+function updateClock(){
+  $("clk").textContent=fmtClock(clock);
+  var h=Math.floor(clock/3600);
+  $("nite").textContent=(h>=24?"翌"+(h-24)+"時台":(h>=23?"終電間際":""));
+}
+
+/* ===== shinkansen detection (route name or train-service name) ===== */
+var SHINK_RE=/新幹線|のぞみ|ひかり|こだま|みずほ|さくら|つばめ|はやぶさ|はやて|こまち|やまびこ|なすの|とき|たにがわ|かがやき|はくたか|あさま|つるぎ|かもめ/;
+function isShink(route,headsign){return SHINK_RE.test((route||"")+(headsign||""));}
+
+/* ===== headsign -> dest name ===== */
+function destName(hs){
+  if(!hs)return "";
+  var parts=String(hs).split(/[\s　]+/);
+  var t=parts[parts.length-1];
+  t=t.replace(/(行き|ゆき|方面|行)$/,"");
+  t=t.replace(/[（(].*$/,"");
+  return t.trim();
+}
+
+/* ===== game flow ===== */
+function startGame(){
+  clock=START_SECS;cur={name:"東京",lat:35.681236,lon:139.767125};
+  origin={lat:cur.lat,lon:cur.lon};path=[{name:cur.name,lat:cur.lat,lon:cur.lon}];
+  totalKm=0;farKm=0;rides=0;
+  $("kmN").textContent="0";$("farN").textContent="0";$("rideN").textContent="0";
+  $("ovTitle").classList.add("hidden");$("ovOver").classList.add("hidden");
+  updateClock();$("curtag").textContent=cur.name;$("nowName").textContent=cur.name;
+  loadBoard();
+}
+
+function loadBoard(){
+  if(clock>=26*3600){state="board";gameOver();return;} // 翌2:00で打ち切り
+  state="loading";
+  var tok=++loadToken;
+  $("nowName").textContent=cur.name;$("nowSub").textContent=fmtClock(clock)+" 発車案内";
+  $("rows").innerHTML='<div class="bmsg">'+cur.name+'駅 時刻表を読み込み中…</div>';
+  colocated(cur.name,cur.lat,cur.lon).then(function(stations){
+    if(tok!==loadToken)return;
+    if(!stations.length){return finishBoard(tok,[]);}
+    var qt=queryTime(clock);
+    return Promise.all(stations.map(function(s){
+      return jget("/api/v1/stations/"+encodeURIComponent(s.id)+"/departures?time="+qt+"&limit=10")
+        .then(function(d){return (d&&d.departures)||[];}).catch(function(){return [];});
+    })).then(function(lists){
+      if(tok!==loadToken)return;
+      var merged=[];
+      for(var i=0;i<lists.length;i++)for(var j=0;j<lists[i].length;j++){
+        var dp=lists[i][j];
+        if(dp.mode!=="rail")continue;
+        if(dp.departureSecs<clock)continue;
+        if(dp.departureSecs-clock>MAX_WAIT)continue; // 終電が来ない＝次の朝の電車は乗れない
+        merged.push(dp);
+      }
+      merged.sort(function(a,b){return a.departureSecs-b.departureSecs;});
+      // unique by destination name, keep soonest
+      var seen={},picks=[];
+      for(var k=0;k<merged.length;k++){
+        var dn=destName(merged[k].headsign);
+        if(!dn||dn===cur.name)continue;
+        if(seen[dn])continue;seen[dn]=1;
+        picks.push(merged[k]);
+        if(picks.length>=9)break;
+      }
+      // resolve destinations
+      return Promise.all(picks.map(function(dp){
+        return resolveStation(destName(dp.headsign)).then(function(st){return {dp:dp,st:st};});
+      })).then(function(res){
+        if(tok!==loadToken)return;
+        var rows=[];
+        for(var i=0;i<res.length;i++){
+          var st=res[i].st,dp=res[i].dp;if(!st)continue;
+          var dist=hav(cur.lat,cur.lon,st.lat,st.lon);
+          if(dist<1)continue;
+          rows.push({dep:dp.departureSecs,route:dp.routeName||"",color:dp.color||"888",
+            headsign:dp.headsign,destName:st.name,lat:st.lat,lon:st.lon,id:st.id,dist:dist,
+            shink:isShink(dp.routeName,dp.headsign)});
+        }
+        finishBoard(tok,rows);
+      });
+    });
+  }).catch(function(){if(tok===loadToken)finishBoard(tok,[]);});
+}
+
+function finishBoard(tok,rows){
+  if(tok!==loadToken)return;
+  if(!rows||!rows.length){gameOver();return;}
+  curRows=rows;state="board";
+  renderRows();
+}
+
+function renderRows(){
+  var html="";
+  for(var i=0;i<curRows.length;i++){
+    var r=curRows[i];
+    html+='<div class="row'+(r.shink?' shink':'')+'" data-i="'+i+'">'
+      +'<div class="dep">'+fmtClock(r.dep)+'</div>'
+      +'<div class="bar" style="background:#'+r.color+'"></div>'
+      +'<div class="mid"><div class="ln">'+esc(r.route)+'</div>'
+      +'<div class="dest"><span class="arr">▶</span>'+esc(r.destName)+'</div></div>'
+      +'<div class="km"><b>'+Math.round(r.dist)+'</b>km'+(r.shink?'<br>🚄':'')+'</div></div>';
+  }
+  $("rows").innerHTML=html;
+  $("rows").scrollTop=0;
+}
+$("rows").addEventListener("pointerup",function(e){
+  var el=e.target.closest(".row");if(!el||state!=="board")return;
+  var i=parseInt(el.getAttribute("data-i"),10);
+  if(curRows[i])ride(curRows[i]);
+});
+
+function ride(r){
+  state="riding";
+  // travel time estimate
+  var speed=r.shink?185:46; // km/h effective
+  var rideSecs=Math.max(240,Math.round(r.dist/speed*3600))+60;
+  clock=r.dep+rideSecs;
+  totalKm+=r.dist;
+  rides++;
+  cur={name:r.destName,lat:r.lat,lon:r.lon};
+  var far=hav(origin.lat,origin.lon,cur.lat,cur.lon);
+  if(far>farKm)farKm=far;
+  path.push({name:cur.name,lat:cur.lat,lon:cur.lon});
+  $("kmN").textContent=Math.round(totalKm);
+  $("farN").textContent=Math.round(farKm);
+  $("rideN").textContent=rides;
+  $("curtag").textContent=cur.name;
+  updateClock();
+  if(r.shink)sfxShink();else sfxDepart();
+  showToast(r.shink?"🚄 "+r.destName+" へ":"🚃 "+r.destName+" へ",("+"+Math.round(r.dist)+"km ／ "+fmtClock(clock)+"着"));
+  setTimeout(function(){hideToast();loadBoard();},900);
+}
+
+var toastT=0;
+function showToast(big,sm){$("toastBig").textContent=big;$("toastSm").textContent=sm;$("toast").classList.add("show");}
+function hideToast(){$("toast").classList.remove("show");}
+
+function gameOver(){
+  state="over";
+  var km=Math.round(totalKm);
+  if(km>best){best=km;try{localStorage.setItem("shuden_best",String(best));}catch(e){}}
+  $("overTitle").textContent=rides===0?"発車できず…":"終電、終了";
+  $("overWhere").textContent="終着駅：「"+cur.name+"」（"+fmtClock(clock)+"）";
+  $("finalKm").textContent=km;
+  $("finalFar").textContent=Math.round(farKm);
+  $("finalRides").textContent=rides;
+  $("bestKm").textContent=best;
+  var r;
+  if(km>=1500)r="🏆 日本縦断の鉄人";
+  else if(km>=900)r="🚄 終電マスター";
+  else if(km>=450)r="🌃 夜行の達人";
+  else if(km>=180)r="🚃 そこそこ遠征";
+  else r="🚧 終電は早かった…";
+  $("rank").textContent=r;
+  sfxOver();
+  $("ovOver").classList.remove("hidden");
+}
+
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+/* ===== input ===== */
+$("startBtn").addEventListener("pointerup",function(){sfxBtn();startGame();});
+$("againBtn").addEventListener("pointerup",function(){sfxBtn();startGame();});
+$("shareBtn").addEventListener("pointerup",function(){sfxBtn();shareResult();});
+$("mute").addEventListener("pointerup",function(e){e.stopPropagation();muted=!muted;$("mute").textContent=muted?"🔇":"♪";if(!muted)sfxBtn();});
+function shareResult(){
+  var txt="終電トラベラーで東京から "+Math.round(totalKm)+"km 走破！終着は「"+cur.name+"」。終電が尽きるまで日本を乗り継ぐゲーム";
+  var url="https://nrtkumi.github.io/games/shuden-traveler/";
+  if(navigator.share){navigator.share({title:"終電トラベラー",text:txt,url:url}).catch(function(){});}
+  else{window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent(txt)+"&url="+encodeURIComponent(url),"_blank","noopener");}
+}
+document.addEventListener("gesturestart",function(e){e.preventDefault();});
+document.addEventListener("dblclick",function(e){e.preventDefault();});
+var lastTouch=0;
+document.addEventListener("touchend",function(e){var n=Date.now();if(n-lastTouch<350)e.preventDefault();lastTouch=n;},{passive:false});
+
+/* ===== map rendering (rAF, runs from title; state-guarded) ===== */
+var cv=$("map"),ctx=cv.getContext("2d"),dpr=Math.min(2,window.devicePixelRatio||1);
+function sizeCanvas(){
+  var w=cv.clientWidth||300,h=cv.clientHeight||200;
+  cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+}
+function drawMap(ts){
+  var W=cv.clientWidth||300,H=cv.clientHeight||200;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr))sizeCanvas();
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  // bg
+  var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,"#0a1130");g.addColorStop(1,"#05070f");
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // stars
+  ctx.fillStyle="rgba(125,160,255,.18)";
+  for(var i=0;i<28;i++){var sx=(i*97%W),sy=((i*53)%H);ctx.fillRect(sx,sy,1,1);}
+  // landmarks
+  ctx.font="9px 'Zen Kaku Gothic New',sans-serif";ctx.textAlign="center";
+  for(var l=0;l<LANDMARKS.length;l++){
+    var p=proj(LANDMARKS[l].la,LANDMARKS[l].lo,W,H);
+    ctx.fillStyle="rgba(90,110,180,.5)";ctx.beginPath();ctx.arc(p[0],p[1],2,0,7);ctx.fill();
+    ctx.fillStyle="rgba(120,140,200,.45)";ctx.fillText(LANDMARKS[l].n,p[0],p[1]-5);
+  }
+  // path
+  if(path.length){
+    ctx.lineWidth=2.2;ctx.strokeStyle="#7df9ff";ctx.shadowColor="rgba(125,249,255,.7)";ctx.shadowBlur=8;
+    ctx.beginPath();
+    for(var k=0;k<path.length;k++){var pp=proj(path[k].la||path[k].lat,path[k].lo||path[k].lon,W,H);
+      if(k===0)ctx.moveTo(pp[0],pp[1]);else ctx.lineTo(pp[0],pp[1]);}
+    ctx.stroke();ctx.shadowBlur=0;
+    // visited dots
+    for(var k2=0;k2<path.length;k2++){var q=proj(path[k2].la||path[k2].lat,path[k2].lo||path[k2].lon,W,H);
+      ctx.fillStyle="#bfe9ff";ctx.beginPath();ctx.arc(q[0],q[1],2.4,0,7);ctx.fill();}
+    // origin
+    var o=proj(origin.lat,origin.lon,W,H);
+    ctx.strokeStyle="#ffd166";ctx.lineWidth=2;ctx.beginPath();ctx.arc(o[0],o[1],4,0,7);ctx.stroke();
+    // current pulse
+    var c=path[path.length-1],cp=proj(c.la||c.lat,c.lo||c.lon,W,H);
+    var pulse=2+(Math.sin((ts||0)/280)+1)*2.6;
+    ctx.fillStyle="rgba(255,125,225,.25)";ctx.beginPath();ctx.arc(cp[0],cp[1],pulse+4,0,7);ctx.fill();
+    ctx.fillStyle="#ff7de1";ctx.beginPath();ctx.arc(cp[0],cp[1],3.4,0,7);ctx.fill();
+  }
+}
+function loop(ts){drawMap(ts);requestAnimationFrame(loop);}
+window.addEventListener("resize",sizeCanvas);
+sizeCanvas();requestAnimationFrame(loop);
+</script>
+</body>
+</html>

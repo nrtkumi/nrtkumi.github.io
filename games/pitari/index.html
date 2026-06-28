@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>ピタリ乗車 — 所要時間あてゲーム</title>
+<meta name="description" content="2つの駅。最速の乗車時間は何分？ 本物の乗り換え検索でジャストを狙う、発車標スタイルの所要時間あてゲーム。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ピタリ乗車 — 所要時間あてゲーム">
+<meta property="og:description" content="2つの駅、最速は何分？ 本物の乗り換え検索でジャストを狙う発車標ゲーム。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/pitari/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/pitari/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-user-select:none;user-select:none;}
+html,body{margin:0;height:100%;overscroll-behavior:none;background:#05060a;}
+body{
+  font-family:"DotGothic16","Hiragino Kaku Gothic ProN",sans-serif;
+  color:#ffd34d;display:flex;justify-content:center;
+}
+#app{
+  position:relative;width:100%;max-width:min(520px,64vh);min-height:100%;
+  background:linear-gradient(180deg,#0a0c14 0%,#070810 100%);
+  padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+  box-shadow:0 0 60px rgba(0,0,0,.6);overflow:hidden;display:flex;flex-direction:column;
+}
+.board{
+  background:#0b0d05;border:2px solid #1c2410;border-radius:10px;
+  box-shadow:inset 0 0 30px rgba(0,0,0,.9),0 2px 0 #000;
+  position:relative;overflow:hidden;
+}
+.board::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0,rgba(0,0,0,.18) 1px,transparent 1px,transparent 3px);}
+.led{color:#ffb000;text-shadow:0 0 6px rgba(255,176,0,.55);}
+.led-green{color:#37e07a;text-shadow:0 0 7px rgba(55,224,122,.5);}
+.led-dim{color:#6b5a1a;}
+
+/* header */
+header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;flex:0 0 auto;}
+header .title{font-size:20px;letter-spacing:.06em;color:#ffd34d;text-shadow:0 0 8px rgba(255,176,0,.35);}
+header .stat{font-size:13px;color:#8aa0c0;text-align:right;line-height:1.45;}
+header .stat b{color:#ffb000;}
+
+/* route board */
+.routewrap{flex:0 0 auto;}
+.board.route{padding:16px 16px 14px;margin-bottom:14px;}
+.rrow{display:flex;align-items:center;gap:10px;}
+.rdot{width:14px;height:14px;border-radius:50%;border:2px solid #ffb000;flex:0 0 auto;box-shadow:0 0 6px rgba(255,176,0,.6);}
+.rdot.to{border-color:#37e07a;box-shadow:0 0 6px rgba(55,224,122,.6);}
+.rname{font-size:25px;letter-spacing:.04em;line-height:1.15;}
+.rkana{font-size:11px;color:#7d6a25;letter-spacing:.12em;margin-left:2px;}
+.rline{margin:7px 0 7px 6px;border-left:2px dashed #2a3316;height:24px;display:flex;align-items:center;}
+.rline span{margin-left:16px;font-size:11px;color:#5e7da0;letter-spacing:.1em;}
+.rmid{color:#8aa0c0;font-size:11px;letter-spacing:.1em;}
+
+/* guess panel */
+.guesswrap{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;min-height:0;}
+.qlabel{text-align:center;font-size:13px;color:#8aa0c0;letter-spacing:.14em;margin-bottom:2px;}
+.bignum{text-align:center;line-height:1;margin:2px 0 4px;}
+.bignum .n{font-size:74px;color:#ffb000;text-shadow:0 0 16px rgba(255,176,0,.5);letter-spacing:.02em;}
+.bignum .u{font-size:22px;color:#ffd34d;margin-left:6px;}
+.slider{width:100%;margin:14px 0 4px;-webkit-appearance:none;appearance:none;height:30px;background:transparent;touch-action:pan-y;}
+.slider::-webkit-slider-runnable-track{height:8px;border-radius:6px;background:linear-gradient(90deg,#37e07a,#ffb000,#ff5a3c);}
+.slider::-moz-range-track{height:8px;border-radius:6px;background:linear-gradient(90deg,#37e07a,#ffb000,#ff5a3c);}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:#fff;border:4px solid #ffb000;margin-top:-11px;box-shadow:0 0 10px rgba(255,176,0,.7);}
+.slider::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:4px solid #ffb000;box-shadow:0 0 10px rgba(255,176,0,.7);}
+.steprow{display:flex;gap:8px;justify-content:center;margin-top:6px;}
+.step{flex:1;max-width:88px;padding:11px 0;border-radius:9px;background:#141a28;border:1px solid #28324a;color:#ffd34d;font-family:inherit;font-size:16px;}
+.step:active{background:#1d2740;}
+
+/* big button */
+.btn{display:block;width:100%;padding:16px;border:none;border-radius:12px;font-family:inherit;font-size:20px;letter-spacing:.1em;
+  background:linear-gradient(180deg,#ffb000,#e08a00);color:#241500;box-shadow:0 4px 0 #8a5400,0 0 18px rgba(255,176,0,.4);margin-top:12px;}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8a5400;}
+.btn.ghost{background:#141a28;color:#ffd34d;box-shadow:0 4px 0 #0a0e18;border:1px solid #28324a;}
+.btn.ghost:active{box-shadow:0 1px 0 #0a0e18;}
+
+/* overlays */
+.overlay{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+  padding:calc(env(safe-area-inset-top) + 24px) 22px calc(env(safe-area-inset-bottom) + 24px);
+  background:#070810;overflow-y:auto;}
+.overlay.hidden{display:none;}
+.center{justify-content:center;align-items:center;text-align:center;}
+.logo{font-size:40px;letter-spacing:.05em;color:#ffb000;text-shadow:0 0 20px rgba(255,176,0,.5);margin-bottom:2px;}
+.logo .small{display:block;font-size:14px;color:#37e07a;letter-spacing:.3em;margin-bottom:8px;text-shadow:0 0 8px rgba(55,224,122,.4);}
+.sub{color:#9fb2cc;font-size:14px;line-height:1.9;max-width:30ch;margin:10px auto 0;}
+.sub b{color:#ffd34d;}
+
+/* reveal */
+.revl{flex:0 0 auto;text-align:center;margin-top:8px;}
+.verdict{font-size:34px;letter-spacing:.05em;margin:2px 0;}
+.cmp{display:flex;justify-content:center;gap:26px;margin:12px 0 6px;}
+.cmp div{font-size:12px;color:#8aa0c0;letter-spacing:.1em;}
+.cmp div .v{display:block;font-size:30px;margin-top:2px;}
+.gain{font-size:20px;color:#37e07a;margin-top:4px;letter-spacing:.05em;min-height:24px;}
+.legs{margin:12px 0 0;text-align:left;font-size:13px;color:#bcd;line-height:1.7;max-height:26vh;overflow-y:auto;}
+.legs .lg{display:flex;align-items:center;gap:8px;padding:3px 0;}
+.legchip{display:inline-block;width:10px;height:10px;border-radius:3px;flex:0 0 auto;}
+.legs .wk{color:#7d8aa0;}
+.combo{position:absolute;top:54px;right:18px;font-size:13px;color:#37e07a;letter-spacing:.08em;opacity:0;transition:opacity .2s;}
+.combo.show{opacity:1;}
+.loading{text-align:center;color:#6b5a1a;font-size:14px;letter-spacing:.2em;padding:18px;animation:bl 1s steps(2) infinite;}
+@keyframes bl{50%{opacity:.3;}}
+.err{color:#ff7a5a;font-size:13px;text-align:center;margin-top:8px;min-height:18px;}
+.muteBtn{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:14px;background:none;border:none;color:#6b5a1a;font-size:20px;z-index:30;}
+.foot{margin-top:14px;font-size:11px;color:#4a5568;text-align:center;letter-spacing:.05em;}
+.foot a{color:#5e7da0;}
+</style>
+</head>
+<body>
+<div id="app">
+  <button class="muteBtn" id="mute" aria-label="音">♪</button>
+  <div class="combo" id="combo"></div>
+
+  <!-- title -->
+  <div class="overlay center" id="ovTitle">
+    <div class="logo"><span class="small">JUST&nbsp;ON&nbsp;TIME</span>ピタリ乗車</div>
+    <div class="sub">2つの駅が表示されます。<br><b>最速で何分</b>で着くか、<br>本物の乗り換え検索とくらべて<br>ピタリを狙うゲーム。</div>
+    <div class="sub" style="font-size:12px;color:#7d8aa0;">全10区間・誤差が小さいほど高得点<br>連続ヒットでコンボ倍率アップ</div>
+    <button class="btn" id="startBtn" style="max-width:280px;margin-top:24px;">はじめる</button>
+    <div class="foot">データ: <a href="https://api.transit.ls8h.com" target="_blank" rel="noopener">Transit API</a>（日本全国の乗換検索）</div>
+  </div>
+
+  <!-- game -->
+  <header>
+    <div class="title led">ピタリ乗車</div>
+    <div class="stat">区間 <b id="roundN">1</b>/10<br>得点 <b id="scoreN">0</b></div>
+  </header>
+
+  <div class="routewrap">
+    <div class="board route">
+      <div class="rrow"><span class="rdot"></span><span><span class="rname led" id="fromName">—</span><span class="rkana" id="fromKana"></span></span></div>
+      <div class="rline"><span class="rmid" id="midInfo">最速の乗車時間は？</span></div>
+      <div class="rrow"><span class="rdot to"></span><span><span class="rname led-green" id="toName">—</span><span class="rkana" id="toKana"></span></span></div>
+    </div>
+  </div>
+
+  <div class="guesswrap" id="guessPanel">
+    <div class="qlabel">あなたの予想</div>
+    <div class="bignum"><span class="n" id="guessVal">30</span><span class="u">分</span></div>
+    <input class="slider" id="slider" type="range" min="1" max="300" value="30" step="1">
+    <div class="steprow">
+      <button class="step" data-d="-10">−10</button>
+      <button class="step" data-d="-1">−1</button>
+      <button class="step" data-d="1">+1</button>
+      <button class="step" data-d="10">+10</button>
+    </div>
+    <button class="btn" id="decideBtn">決定</button>
+  </div>
+
+  <!-- reveal overlay -->
+  <div class="overlay hidden" id="ovReveal">
+    <div class="revl">
+      <div class="verdict" id="verdict">—</div>
+      <div class="cmp">
+        <div>予想<span class="v led" id="rGuess">—</span></div>
+        <div>実際<span class="v led-green" id="rActual">—</span></div>
+      </div>
+      <div class="gain" id="gain"></div>
+    </div>
+    <div class="legs" id="legs"></div>
+    <button class="btn" id="nextBtn" style="margin-top:auto;">つぎへ ▶</button>
+  </div>
+
+  <!-- gameover -->
+  <div class="overlay center hidden" id="ovOver">
+    <div class="logo" style="font-size:30px;">運行終了</div>
+    <div class="bignum" style="margin-top:10px;"><span class="n led-green" id="finalScore" style="font-size:62px;">0</span></div>
+    <div class="sub" id="rank">—</div>
+    <div class="sub" style="font-size:13px;">自己ベスト <b id="bestScore">0</b></div>
+    <button class="btn" id="againBtn" style="max-width:280px;margin-top:22px;">もう一度</button>
+    <button class="btn ghost" id="shareBtn" style="max-width:280px;">結果をシェア</button>
+    <div class="foot">区間データは本物の時刻表に基づきます</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+var $=function(id){return document.getElementById(id);};
+var API="https://api.transit.ls8h.com";
+
+/* ===== station pool (resolved lazily via suggest) ===== */
+var POOL=[
+ "東京","新宿","渋谷","池袋","上野","品川","秋葉原","新橋","赤羽","北千住",
+ "横浜","川崎","大宮","千葉","船橋","立川","八王子","高尾","鎌倉","小田原",
+ "名古屋","金山","岐阜","豊橋","静岡","浜松","熱海","三島",
+ "京都","大阪","新大阪","天王寺","三ノ宮","神戸","奈良","和歌山","姫路","彦根",
+ "岡山","広島","福山","下関","小倉","博多","熊本","鹿児島中央","長崎","大分",
+ "仙台","福島","郡山","盛岡","秋田","山形","新潟","長野","松本","金沢","富山",
+ "高崎","宇都宮","水戸","甲府","成田","所沢","柏","大船"
+];
+var idCache={}; // name -> {id,name,kana,lat,lon} or null(failed)
+
+function jget(path){
+  return fetch(API+path,{mode:"cors"}).then(function(r){
+    if(!r.ok)throw new Error("http "+r.status); return r.json();
+  });
+}
+function resolveStation(name){
+  if(idCache[name]!==undefined)return Promise.resolve(idCache[name]);
+  return jget("/api/v1/locations/suggest?q="+encodeURIComponent(name)+"&limit=8").then(function(d){
+    var arr=(d&&d.stations)||[];
+    // exact-name first, highest weight
+    var best=null;
+    for(var i=0;i<arr.length;i++){
+      var s=arr[i]; if(typeof s.lat!=="number")continue;
+      var exact=(s.name===name);
+      var score=(exact?100000:0)+(s.weight||0);
+      if(!best||score>best._sc){best=s;best._sc=score;}
+    }
+    var v=best?{id:best.id,name:best.name,kana:best.nameKana||"",lat:best.lat,lon:best.lon}:null;
+    idCache[name]=v; return v;
+  }).catch(function(){idCache[name]=null;return null;});
+}
+
+/* ===== audio ===== */
+var AC=null,muted=false;
+function audio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+    AC.onstatechange=function(){if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}}
+  return AC;
+}
+var silentEl=null;
+function silentWavUrl(){
+  var n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  function str(o,s){for(var i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,8000,true);
+  v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(var i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  var p=silentEl.play();if(p&&p.catch)p.catch(function(){});
+  audio();if(!AC)return;
+  function done(){if(AC.state==="running"){["pointerdown","pointerup","touchend"].forEach(function(ev){document.removeEventListener(ev,unlockAudio,true);});}}
+  try{AC.resume().then(done);}catch(e){done();}
+}
+["pointerdown","pointerup","touchend"].forEach(function(ev){document.addEventListener(ev,unlockAudio,true);});
+document.addEventListener("visibilitychange",function(){if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){
+  if(muted||!audio())return;
+  try{var o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}
+}
+function sfxTick(){tone(880,0.02,"square",0.015);}
+function sfxBtn(){tone(680,0.04,"square",0.03);}
+function sfxPerfect(){tone(700,0.08,"triangle",0.05,1320);setTimeout(function(){tone(1320,0.18,"triangle",0.05,1760);},80);}
+function sfxGood(){tone(560,0.06,"square",0.045,840);}
+function sfxMiss(){tone(220,0.25,"sawtooth",0.06,120);}
+function sfxOver(){tone(440,0.18,"triangle",0.05,660);setTimeout(function(){tone(660,0.4,"triangle",0.05,330);},180);}
+
+/* ===== game state (init at declaration; loop-safe) ===== */
+var ROUNDS=10;
+var state="title"; // title|loading|guess|reveal|over
+var round=0,score=0,streak=0,guess=30,answer=0,curFrom=null,curTo=null,curJourney=null;
+var best=0;try{best=parseInt(localStorage.getItem("pitari_best")||"0",10)||0;}catch(e){}
+var anim=0;
+
+/* ===== util ===== */
+function fmtMin(s){return Math.max(1,Math.round(s/60));}
+function setGuess(m){
+  guess=Math.min(300,Math.max(1,Math.round(m)));
+  $("guessVal").textContent=guess; $("slider").value=guess;
+}
+function pickPair(){
+  // distinct random names
+  var a=POOL[(Math.random()*POOL.length)|0], b=a;
+  var guard=0;
+  while(b===a&&guard++<20)b=POOL[(Math.random()*POOL.length)|0];
+  return [a,b];
+}
+
+function startGame(){
+  round=0;score=0;streak=0;
+  $("scoreN").textContent="0";
+  nextRound();
+}
+
+function nextRound(){
+  if(round>=ROUNDS){gameOver();return;}
+  round++;
+  $("roundN").textContent=round;
+  $("ovReveal").classList.add("hidden");
+  hideCombo();
+  state="loading";
+  $("fromName").textContent="…";$("toName").textContent="…";
+  $("fromKana").textContent="";$("toKana").textContent="";
+  $("midInfo").textContent="検索中…";
+  $("guessPanel").style.visibility="hidden";
+  loadRound(0);
+}
+
+function loadRound(attempt){
+  if(attempt>6){ // give up gracefully
+    $("midInfo").textContent="通信エラー。タップで再試行";
+    state="retry"; return;
+  }
+  var pr=pickPair();
+  Promise.all([resolveStation(pr[0]),resolveStation(pr[1])]).then(function(res){
+    var f=res[0],t=res[1];
+    if(!f||!t){loadRound(attempt+1);return;}
+    var url="/api/v1/plan?from="+encodeURIComponent(f.id)+"&to="+encodeURIComponent(t.id)+"&time=08:00&type=departure&numItineraries=3";
+    return jget(url).then(function(d){
+      var js=(d&&d.journeys)||[];
+      // pick fastest journey that contains a transit leg
+      var bestJ=null;
+      for(var i=0;i<js.length;i++){
+        var j=js[i],hasT=false;
+        for(var k=0;k<j.legs.length;k++)if(j.legs[k].kind==="transit"){hasT=true;break;}
+        if(!hasT)continue;
+        if(!bestJ||j.durationSecs<bestJ.durationSecs)bestJ=j;
+      }
+      if(!bestJ){loadRound(attempt+1);return;}
+      var mins=fmtMin(bestJ.durationSecs);
+      if(mins<3||mins>300){loadRound(attempt+1);return;} // keep in playable range
+      curFrom=f;curTo=t;curJourney=bestJ;answer=mins;
+      showRound();
+    });
+  }).catch(function(){loadRound(attempt+1);});
+}
+
+function showRound(){
+  $("fromName").textContent=curFrom.name;
+  $("toName").textContent=curTo.name;
+  $("fromKana").textContent=curFrom.kana?("／"+curFrom.kana):"";
+  $("toKana").textContent=curTo.kana?("／"+curTo.kana):"";
+  $("midInfo").textContent="最速の乗車時間は？";
+  setGuess(30);
+  $("guessPanel").style.visibility="visible";
+  state="guess";
+  sfxBtn();
+}
+
+function decide(){
+  if(state!=="guess")return;
+  state="reveal";
+  var a=answer,g=guess,err=Math.abs(g-a)/a;
+  var pts=0,label="",cls="led",sfx=sfxMiss;
+  if(err<=0.05){pts=1000;label="ピタリ！";cls="led-green";sfx=sfxPerfect;}
+  else if(err<=0.10){pts=700;label="ニアピン";cls="led-green";sfx=sfxGood;}
+  else if(err<=0.20){pts=450;label="おしい";cls="led";sfx=sfxGood;}
+  else if(err<=0.35){pts=250;label="まあまあ";cls="led";sfx=sfxGood;}
+  else if(err<=0.55){pts=100;label="ニアミス";cls="led";sfx=sfxMiss;}
+  else{pts=0;label="乗り過ごし";cls="led-dim";sfx=sfxMiss;}
+
+  if(pts>=450){streak++;}else{streak=0;}
+  var mult=1+Math.max(0,streak-1)*0.5; // 1,1,1.5,2,2.5...
+  var gained=Math.round(pts*mult);
+  score+=gained;
+  $("scoreN").textContent=score;
+
+  // reveal UI
+  var vd=$("verdict");vd.textContent=label;vd.className="verdict "+cls;
+  $("rGuess").textContent=g+"分";
+  $("rActual").textContent=a+"分";
+  var gEl=$("gain");
+  if(pts>0){gEl.textContent="+"+gained+(mult>1?("  ×"+mult.toFixed(1)+" コンボ"):"");gEl.style.color="#37e07a";}
+  else{gEl.textContent="+0";gEl.style.color="#ff7a5a";}
+  if(streak>=2){showCombo("🔥 "+streak+"連続ヒット");}
+  renderLegs();
+  sfx();
+  $("ovReveal").classList.remove("hidden");
+}
+
+function renderLegs(){
+  var html="";
+  var j=curJourney;
+  html+='<div style="color:#8aa0c0;letter-spacing:.1em;margin-bottom:6px;">最速ルート（乗換 '+j.transferCount+' 回・'+answer+'分）</div>';
+  for(var i=0;i<j.legs.length;i++){
+    var l=j.legs[i];
+    if(l.kind==="walk"){
+      var wm=Math.round(((l.arrivalSecs||0)-(l.departureSecs||0))/60);
+      html+='<div class="lg wk">🚶 徒歩'+(wm>0?(" 約"+wm+"分"):"")+'</div>';
+    }else{
+      var col="#"+(l.color||"888");
+      var nm=l.routeName||"";var hs=l.headsign?(" → "+l.headsign):"";
+      html+='<div class="lg"><span class="legchip" style="background:'+col+'"></span><span>'+esc(nm)+esc(hs)+'</span></div>';
+    }
+  }
+  $("legs").innerHTML=html;
+}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+var comboTimer=0;
+function showCombo(t){$("combo").textContent=t;$("combo").classList.add("show");}
+function hideCombo(){$("combo").classList.remove("show");}
+
+function gameOver(){
+  state="over";
+  if(score>best){best=score;try{localStorage.setItem("pitari_best",String(best));}catch(e){}}
+  $("finalScore").textContent=score;
+  $("bestScore").textContent=best;
+  var r,avg=score/ROUNDS;
+  if(avg>=820)r="🏆 達人車掌 — ダイヤを完全に読んでいる";
+  else if(avg>=600)r="✨ ベテラン乗務員";
+  else if(avg>=380)r="🚃 一人前の乗客";
+  else if(avg>=180)r="🧭 方向音痴ぎみ";
+  else r="🌀 迷子。地図を見よう";
+  $("rank").textContent=r;
+  sfxOver();
+  $("ovOver").classList.remove("hidden");
+}
+
+function shareResult(){
+  var txt="ピタリ乗車で "+score+"点（自己ベスト"+best+"）！ 最速の乗車時間あてゲーム";
+  var url="https://nrtkumi.github.io/games/pitari/";
+  if(navigator.share){navigator.share({title:"ピタリ乗車",text:txt,url:url}).catch(function(){});}
+  else{var t="https://twitter.com/intent/tweet?text="+encodeURIComponent(txt)+"&url="+encodeURIComponent(url);
+    window.open(t,"_blank","noopener");}
+}
+
+/* ===== input ===== */
+$("startBtn").addEventListener("pointerup",function(){sfxBtn();$("ovTitle").classList.add("hidden");startGame();});
+$("decideBtn").addEventListener("pointerup",function(){sfxBtn();decide();});
+$("nextBtn").addEventListener("pointerup",function(){sfxBtn();nextRound();});
+$("againBtn").addEventListener("pointerup",function(){sfxBtn();$("ovOver").classList.add("hidden");startGame();});
+$("shareBtn").addEventListener("pointerup",function(){sfxBtn();shareResult();});
+$("slider").addEventListener("input",function(){setGuess(parseInt(this.value,10));sfxTick();});
+Array.prototype.forEach.call(document.querySelectorAll(".step"),function(b){
+  b.addEventListener("pointerup",function(){setGuess(guess+parseInt(b.getAttribute("data-d"),10));sfxTick();});
+});
+// retry tap when load failed
+$("app").addEventListener("pointerup",function(){if(state==="retry"){state="loading";loadRound(0);}});
+$("mute").addEventListener("pointerup",function(e){e.stopPropagation();muted=!muted;$("mute").textContent=muted?"🔇":"♪";$("mute").style.color=muted?"#8a3a2a":"#6b5a1a";if(!muted)sfxBtn();});
+
+document.addEventListener("gesturestart",function(e){e.preventDefault();});
+document.addEventListener("dblclick",function(e){e.preventDefault();});
+var lastTouch=0;
+document.addEventListener("touchend",function(e){var n=Date.now();if(n-lastTouch<350)e.preventDefault();lastTouch=n;},{passive:false});
+
+/* ===== rAF loop (runs from title; LED colon blink) ===== */
+var colonOn=true,lastBlink=0;
+function loop(ts){
+  anim=ts||0;
+  if(ts-lastBlink>520){colonOn=!colonOn;lastBlink=ts;
+    var c=$("combo");
+    // subtle pulse on title led handled via css; keep loop alive & guarded
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
