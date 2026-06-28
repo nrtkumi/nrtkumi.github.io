@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>シキワケ — サムネ色分けスワイプ</title>
+<meta name="description" content="次々流れてくる動画サムネを、暖色・モノクロ・寒色の3方向へ素早くスワイプで仕分ける反射神経コンボゲーム。正解は画像から計算した支配色。速くなるほど忙しい色分けスコアアタック。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="シキワケ — サムネ色分けスワイプ">
+<meta property="og:description" content="流れてくるサムネを暖色・モノクロ・寒色へスワイプで即仕分け。速くなるほど忙しい反射神経コンボ。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/shikiwake/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/shikiwake/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&family=Noto+Sans+JP:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#10131a; --ink:#f3f4f7; --dim:#8b93a3; --line:#262b36;
+  --warm:#ff7a3c; --cool:#3aa0ff; --mono:#9aa3b2;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+html,body{margin:0;padding:0;background:#05070b;color:var(--ink);
+  font-family:"Noto Sans JP",system-ui,sans-serif;overscroll-behavior:none;user-select:none;-webkit-user-select:none;}
+#app{position:relative;left:50%;transform:translateX(-50%);width:100%;max-width:min(520px,64vh);
+  min-height:100svh;background:radial-gradient(120% 80% at 50% 0%,#1a1f2b 0%,var(--bg) 55%,#05070b 100%);
+  box-shadow:0 0 70px rgba(0,0,0,.6);
+  padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 14px);
+  display:flex;flex-direction:column;gap:10px;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;}
+.brand .logo{font-family:"RocknRoll One",sans-serif;font-size:24px;letter-spacing:1px;}
+.brand .logo b{color:var(--warm);}
+.brand .sub{font-size:9px;color:var(--dim);letter-spacing:2px;}
+.stats{display:flex;gap:8px;align-items:center;}
+.stat{background:#171c26;border:1px solid var(--line);border-radius:9px;padding:4px 10px;text-align:right;min-width:58px;}
+.stat .k{font-size:8px;color:var(--dim);letter-spacing:1px;}
+.stat .v{font-family:"RocknRoll One";font-size:16px;color:var(--warm);}
+.mid{display:flex;align-items:center;justify-content:space-between;}
+.lives{font-size:16px;letter-spacing:2px;}
+.combo{font-family:"RocknRoll One";font-size:15px;color:var(--cool);min-height:20px;}
+.timebar{height:8px;background:#0c0f15;border:1px solid var(--line);border-radius:99px;overflow:hidden;}
+.timebar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--cool),var(--warm));}
+.timebar.warn i{background:#ff4d4d;}
+#stage{flex:1;position:relative;min-height:0;display:flex;align-items:center;justify-content:center;}
+/* zone hints */
+.zone{position:absolute;top:50%;transform:translateY(-50%);text-align:center;opacity:.5;pointer-events:none;}
+.zone .ar{font-size:26px;line-height:1;}
+.zone .nm{font-family:"RocknRoll One";font-size:13px;margin-top:3px;}
+#zCool{left:2px;color:var(--cool);} #zWarm{right:2px;color:var(--warm);}
+#zMono{top:4px;left:50%;transform:translateX(-50%);color:var(--mono);}
+/* card */
+.card{position:relative;width:min(74%,300px);aspect-ratio:16/9;border-radius:14px;overflow:hidden;
+  background:#000;border:3px solid #fff;box-shadow:0 14px 40px rgba(0,0,0,.55);
+  will-change:transform,opacity;touch-action:none;cursor:grab;}
+.card img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
+.card .ttl{position:absolute;left:0;right:0;bottom:0;font-size:10px;padding:4px 6px;color:#fff;
+  background:linear-gradient(transparent,rgba(0,0,0,.8));text-align:left;}
+.card.gone{transition:transform .28s ease, opacity .28s ease;}
+.pulse{position:absolute;inset:0;pointer-events:none;}
+/* bottom buttons */
+.btns{display:flex;gap:8px;}
+.zbtn{flex:1;border:2px solid var(--line);border-radius:13px;padding:13px 4px;cursor:pointer;
+  font-family:"RocknRoll One";font-size:15px;text-align:center;background:#141925;color:#fff;}
+.zbtn:active{transform:translateY(1px);}
+.zbtn small{display:block;font-family:"Noto Sans JP";font-weight:700;font-size:9px;opacity:.7;margin-top:2px;}
+#bCool{border-color:#234a6e;color:var(--cool);} #bMono{border-color:#3a4150;color:var(--mono);} #bWarm{border-color:#6e4023;color:var(--warm);}
+.hint{text-align:center;font-size:11px;color:var(--dim);min-height:14px;}
+.mutebtn{background:none;border:1px solid var(--line);color:var(--dim);border-radius:8px;width:34px;height:30px;font-size:14px;cursor:pointer;}
+/* overlay */
+.ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;z-index:30;
+  background:rgba(6,8,12,.86);backdrop-filter:blur(3px);}
+.ov.hide{display:none;}
+.cardm{width:100%;max-width:400px;background:linear-gradient(180deg,#1a2030,#10141d);
+  border:1px solid var(--line);border-radius:16px;padding:22px 20px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.cardm .tag{display:inline-block;color:var(--warm);font-size:11px;letter-spacing:3px;margin-bottom:8px;font-family:"RocknRoll One";}
+.cardm h1{font-family:"RocknRoll One";font-size:30px;margin:0 0 8px;}
+.cardm h1 b{color:var(--warm);}
+.cardm p{font-size:13px;color:#c6cdda;line-height:1.7;margin:8px 0;}
+.cardm p b{color:#fff;}
+.legend{display:flex;gap:8px;justify-content:center;margin:12px 0;}
+.legend span{font-size:11px;border-radius:8px;padding:5px 9px;font-weight:700;}
+.btn{margin-top:12px;background:var(--warm);color:#311500;border:none;border-radius:999px;padding:13px 34px;
+  font-family:"RocknRoll One";font-size:20px;cursor:pointer;box-shadow:0 6px 0 #b8501f;}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 #b8501f;}
+.btn.ghost{background:#222a38;color:#fff;box-shadow:0 6px 0 #000;}
+#yt{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.92);display:none;flex-direction:column;align-items:center;justify-content:center;padding:14px;}
+#yt.show{display:flex;}
+#ytbox{width:100%;max-width:560px;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;}
+#ytplayer{width:100%;height:100%;}
+#yt .yttitle{color:var(--warm);font-size:13px;margin:10px 0;text-align:center;}
+#yt .ytclose{background:var(--warm);color:#311500;border:none;border-radius:999px;padding:11px 30px;font-family:"RocknRoll One";font-size:17px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="brand"><div class="logo">シキ<b>ワケ</b></div><div class="sub">COLOR SWIPE</div></div>
+    <div class="stats">
+      <div class="stat"><div class="k">SCORE</div><div class="v" id="score">0</div></div>
+      <div class="stat"><div class="k">BEST</div><div class="v" id="best">0</div></div>
+      <button class="mutebtn" id="tMute">🔊</button>
+    </div>
+  </div>
+  <div class="mid">
+    <div class="lives" id="lives">❤️❤️❤️</div>
+    <div class="combo" id="combo"></div>
+  </div>
+  <div class="timebar" id="timebarWrap"><i id="timebar"></i></div>
+
+  <div id="stage">
+    <div class="zone" id="zCool"><div class="ar">←</div><div class="nm">寒色</div></div>
+    <div class="zone" id="zMono"><div class="ar">↑</div><div class="nm">モノクロ</div></div>
+    <div class="zone" id="zWarm"><div class="ar">→</div><div class="nm">暖色</div></div>
+    <!-- card injected here -->
+  </div>
+
+  <div class="btns">
+    <button class="zbtn" id="bCool">寒色<small>青・緑・紫</small></button>
+    <button class="zbtn" id="bMono">モノクロ<small>白黒・くすみ</small></button>
+    <button class="zbtn" id="bWarm">暖色<small>赤・橙・黄</small></button>
+  </div>
+  <div class="hint" id="hint">サムネを支配する色の方へスワイプ／タップで仕分け。</div>
+
+  <div class="ov" id="ov">
+    <div class="cardm">
+      <div class="tag">▶ COLOR SWIPE</div>
+      <h1>シキ<b>ワケ</b></h1>
+      <p>流れてくる動画サムネを、<b>支配的な色</b>の方へ素早く仕分ける反射神経ゲーム。<br>
+        スワイプ（←寒色／↑モノクロ／→暖色）かボタンで判定。</p>
+      <div class="legend"><span style="background:#6e4023;color:#ffb38a">暖色</span><span style="background:#3a4150;color:#cfd5e0">モノクロ</span><span style="background:#234a6e;color:#9ccbff">寒色</span></div>
+      <p>正解は<b>画像から計算した支配色</b>。連続正解でコンボ倍率アップ。<br>速くなるほど忙しく、3ミスで終了。</p>
+      <button class="btn" id="ovBtn">スタート</button>
+    </div>
+  </div>
+</div>
+
+<div id="yt">
+  <div id="ytbox"><div id="ytplayer"></div></div>
+  <div class="yttitle" id="yttitle"></div>
+  <button class="ytclose" id="ytclose">とじる ✕</button>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+"use strict";
+function $(id){return document.getElementById(id);}
+function rnd(n){return Math.floor(Math.random()*n);}
+function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=rnd(i+1),t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+var VIDS=[
+  {id:"dQw4w9WgXcQ",t:"Never Gonna Give You Up"},{id:"9bZkp7q19f0",t:"GANGNAM STYLE"},
+  {id:"kJQP7kiw5Fk",t:"Despacito"},{id:"XqZsoesa55w",t:"Baby Shark Dance"},
+  {id:"hT_nvWreIhg",t:"Counting Stars"},{id:"JGwWNGJdvx8",t:"Shape of You"},
+  {id:"RgKAFK5djSk",t:"See You Again"},{id:"OPf0YbXqDm0",t:"Uptown Funk"},
+  {id:"fJ9rUzIMcZQ",t:"Bohemian Rhapsody"},{id:"60ItHLz5WEA",t:"Faded"},
+  {id:"09R8_2nJtjg",t:"Sugar"},{id:"CevxZvSJLk8",t:"Roar"},
+  {id:"YQHsXMglC9A",t:"Hello"},{id:"pRpeEdMmmQ0",t:"Waka Waka"},
+  {id:"lp-EO5I60KA",t:"Thinking Out Loud"},{id:"2Vv-BfVoq4g",t:"Perfect"},
+  {id:"e-ORhEE9VVg",t:"Blank Space"},{id:"450p7goxZqg",t:"All of Me"},
+  {id:"1G4isv_Fylg",t:"Paradise"},{id:"JZjAg6fK-BQ",t:"Reminder"},
+  {id:"KQ6zr6kCPj8",t:"Party Rock Anthem"},{id:"fLexgOxsZu0",t:"The Lazy Song"},
+  {id:"papuvlVeZg8",t:"Rockabye"},{id:"uelHwf8o7_U",t:"Love The Way You Lie"},
+  {id:"7PCkvCPvDXk",t:"All About That Bass"},{id:"SlPhMPnQ58k",t:"Memories"},
+  {id:"DyDfgMOUjCI",t:"bad guy"},{id:"ru0K8uYEZWw",t:"Can't Stop the Feeling"}
+];
+var BUCKET={}; // id -> 0 warm,1 mono,2 cool
+var imgMap={}, readyCount=0;
+
+/* ===== audio ===== */
+var AC=null, muted=false;
+function audio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+    AC.onstatechange=function(){if(AC.state!=="running"&&!document.hidden){try{AC.resume();}catch(e){}}};}catch(e){}}
+  if(AC&&AC.state!=="running"){try{AC.resume();}catch(e){}}
+  return AC;
+}
+var silentEl=null;
+function silentWavUrl(){
+  var sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  function str(o,s){for(var i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);
+  v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(var i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl();}
+  var p=silentEl.play(); if(p&&p.catch)p.catch(function(){});
+  audio(); if(!AC)return;
+  function done(){if(AC.state==="running"){["pointerdown","pointerup","touchend"].forEach(function(ev){document.removeEventListener(ev,unlockAudio,true);});}}
+  try{AC.resume().then(done);}catch(e){done();}
+}
+["pointerdown","pointerup","touchend"].forEach(function(ev){document.addEventListener(ev,unlockAudio,true);});
+document.addEventListener("visibilitychange",function(){if(!document.hidden)audio();});
+function tone(f,d,type,vol,slideTo){
+  if(muted||!audio())return;
+  try{var o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.value=f;
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,AC.currentTime+d);
+    g.gain.value=vol||0.06;g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}
+}
+function sfxGood(){tone(660,0.05,"square",0.04,990);}
+function sfxBad(){tone(200,0.2,"sawtooth",0.06,110);}
+function sfxCombo(n){tone(520+n*30,0.06,"triangle",0.05,780+n*40);}
+function sfxOver(){tone(330,0.25,"sawtooth",0.06,150);setTimeout(function(){tone(150,0.5,"sawtooth",0.06,60);},220);}
+function sfxBtn(){tone(680,0.04,"square",0.03);}
+
+/* ===== YouTube ===== */
+var ytPlayer=null, ytReady=false;
+window.onYouTubeIframeAPIReady=function(){
+  try{ytPlayer=new YT.Player("ytplayer",{
+    playerVars:{controls:1,modestbranding:1,rel:0,iv_load_policy:3,playsinline:1,origin:location.origin},
+    events:{"onReady":function(){ytReady=true;}}});}catch(e){}
+};
+function playVideo(v){
+  if(!v)return; $("yttitle").textContent=v.t; $("yt").classList.add("show");
+  if(ytReady&&ytPlayer&&ytPlayer.loadVideoById){try{ytPlayer.loadVideoById(v.id);}catch(e){}}
+  else{$("ytplayer").innerHTML='<iframe width="100%" height="100%" src="https://www.youtube.com/embed/'+v.id+'?autoplay=1&playsinline=1&rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>';}
+}
+$("ytclose").addEventListener("pointerup",function(){
+  $("yt").classList.remove("show");
+  try{if(ytReady&&ytPlayer&&ytPlayer.stopVideo)ytPlayer.stopVideo();}catch(e){}
+});
+
+/* ===== color classification ===== */
+var clsCanvas=document.createElement("canvas"); clsCanvas.width=24; clsCanvas.height=14;
+var clsCtx=clsCanvas.getContext("2d");
+function classifyImg(img){
+  try{
+    clsCtx.drawImage(img,0,45,480,270,0,0,24,14); // center 16:9 region
+    var d=clsCtx.getImageData(0,0,24,14).data;
+    var R=0,G=0,B=0,n=0;
+    for(var i=0;i<d.length;i+=4){ R+=d[i];G+=d[i+1];B+=d[i+2];n++; }
+    R/=n;G/=n;B/=n;
+    var max=Math.max(R,G,B),min=Math.min(R,G,B),dlt=max-min;
+    var sat= max<=0?0:dlt/max;
+    if(sat<0.15) return 1; // mono
+    var h;
+    if(max===R) h=((G-B)/dlt)%6; else if(max===G) h=(B-R)/dlt+2; else h=(R-G)/dlt+4;
+    h*=60; if(h<0)h+=360;
+    if(h<70||h>=330) return 0; // warm
+    return 2; // cool
+  }catch(e){ return 1; }
+}
+function preload(cb){
+  var total=VIDS.length, done=0, fired=false;
+  function step(){ done++; if(done>=total && !fired){ fired=true; cb(); } }
+  // safety timeout
+  setTimeout(function(){ if(!fired){ fired=true; cb(); } }, 6000);
+  for(var i=0;i<VIDS.length;i++){(function(v){
+    var im=new Image(); im.crossOrigin="anonymous";
+    im.onload=function(){ imgMap[v.id]=im; BUCKET[v.id]=classifyImg(im); readyCount++; step(); };
+    im.onerror=function(){ BUCKET[v.id]=1; step(); };
+    im.src="https://i.ytimg.com/vi/"+v.id+"/hqdefault.jpg";
+  })(VIDS[i]);}
+}
+
+/* ===== state ===== */
+var GS="start", score=0, best=0, lives=3, combo=0, sorted=0;
+var cur=null, timeLeft=0, timeMax=0, lastTs=0, locked=false;
+var deck=[], di=0, recent=[];
+try{best=parseInt(localStorage.getItem("shikiwake.best")||"0",10)||0; $("best").textContent=best;}catch(e){}
+
+function nextVid(){
+  if(di>=deck.length){ deck=shuffle(VIDS); di=0; }
+  var v=deck[di++];
+  if(recent.indexOf(v.id)>=0 && deck.length>4){ return nextVid(); }
+  recent.push(v.id); if(recent.length>5)recent.shift();
+  return v;
+}
+function timeForSorted(s){ return clamp(2.5 - s*0.022, 0.8, 2.5); }
+function comboMult(){ return 1 + Math.floor(combo/4)*0.5; }
+
+/* ===== card ===== */
+var cardEl=null;
+function spawnCard(){
+  cur=nextVid(); locked=false;
+  timeMax=timeForSorted(sorted); timeLeft=timeMax;
+  if(cardEl&&cardEl.parentNode) cardEl.parentNode.removeChild(cardEl);
+  cardEl=document.createElement("div"); cardEl.className="card";
+  cardEl.innerHTML='<img crossorigin="anonymous" src="https://i.ytimg.com/vi/'+cur.id+'/hqdefault.jpg" alt="">'+
+    '<div class="ttl">'+esc(cur.t)+'</div>';
+  $("stage").appendChild(cardEl);
+  attachDrag(cardEl);
+  updateTimebar();
+}
+function esc(s){return s.replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+/* drag */
+function attachDrag(el){
+  var sx=0,sy=0,drag=false,moved=false;
+  el.addEventListener("pointerdown",function(e){ if(locked)return;
+    drag=true;moved=false;sx=e.clientX;sy=e.clientY;
+    if(el.setPointerCapture){try{el.setPointerCapture(e.pointerId);}catch(_){}} e.preventDefault();
+  },{passive:false});
+  el.addEventListener("pointermove",function(e){ if(!drag||locked)return;
+    var dx=e.clientX-sx,dy=e.clientY-sy; if(Math.abs(dx)>6||Math.abs(dy)>6)moved=true;
+    var rot=dx*0.06;
+    el.style.transform="translate("+dx+"px,"+dy+"px) rotate("+rot+"deg)";
+    e.preventDefault();
+  },{passive:false});
+  el.addEventListener("pointerup",function(e){ if(!drag||locked)return; drag=false;
+    var dx=e.clientX-sx,dy=e.clientY-sy, adx=Math.abs(dx),ady=Math.abs(dy);
+    var TH=34;
+    if(adx<TH&&ady<TH){ el.style.transform=""; return; } // treat as nothing / tap
+    var ans;
+    if(ady>adx && dy<0) ans=1;            // up -> mono
+    else if(dx<0) ans=2;                  // left -> cool
+    else ans=0;                           // right -> warm
+    answer(ans,true);
+  },{passive:false});
+  el.addEventListener("pointercancel",function(){drag=false;el.style.transform="";},{passive:true});
+}
+
+/* ===== answer ===== */
+function answer(ans, bySwipe){
+  if(GS!=="play"||locked||!cur)return;
+  locked=true;
+  var correct=BUCKET[cur.id];
+  var ok = ans===correct;
+  // fly card away
+  var dir = ans===2?-1:(ans===0?1:0);
+  cardEl.classList.add("gone");
+  if(ans===1) cardEl.style.transform="translateY(-130%) rotate(-4deg)";
+  else cardEl.style.transform="translateX("+(dir*140)+"%) rotate("+(dir*16)+"deg)";
+  cardEl.style.opacity="0";
+  flashZone(ans, ok);
+  if(ok){
+    combo++; sorted++;
+    var gain=Math.round(10*comboMult()*(1+ (timeMax>0?timeLeft/timeMax:0)*0.5));
+    score+=gain;
+    if(score>best){best=score;try{localStorage.setItem("shikiwake.best",String(best));}catch(e){}}
+    $("score").textContent=score; $("best").textContent=best;
+    if(combo>1){ $("combo").textContent=combo+" コンボ ×"+comboMult().toFixed(1); sfxCombo(Math.min(combo,12)); }
+    else { $("combo").textContent=""; sfxGood(); }
+    setTimeout(spawnCard, 150);
+  } else {
+    combo=0; $("combo").textContent="";
+    lives--; renderLives(); sfxBad();
+    $("hint").textContent="正解は「"+["暖色","モノクロ","寒色"][correct]+"」だった";
+    if(lives<=0){ setTimeout(gameOver,350); }
+    else setTimeout(function(){ $("hint").textContent="サムネを支配する色の方へスワイプ／タップ。"; spawnCard(); }, 500);
+  }
+}
+function flashZone(ans,ok){
+  var p=document.createElement("div"); p.className="pulse";
+  var col= ans===0?"rgba(255,122,60,":(ans===2?"rgba(58,160,255,":"rgba(154,163,178,");
+  p.style.boxShadow="inset 0 0 0 6px "+col+(ok?"0.8)":"0.0)");
+  p.style.background= ok? "transparent" : "rgba(255,60,60,0.18)";
+  $("stage").appendChild(p);
+  setTimeout(function(){ if(p.parentNode)p.parentNode.removeChild(p); },260);
+}
+function renderLives(){ $("lives").textContent="❤️".repeat(Math.max(0,lives))+"🖤".repeat(Math.max(0,3-lives)); }
+function updateTimebar(){ var f=timeMax>0?clamp(timeLeft/timeMax,0,1):0;
+  $("timebar").style.width=(f*100)+"%"; $("timebarWrap").classList.toggle("warn",f<0.3); }
+
+/* ===== loop ===== */
+function loop(ts){
+  var dt=lastTs?(ts-lastTs)/1000:0; lastTs=ts;
+  if(GS==="play"&&!locked&&cur){
+    timeLeft-=dt; updateTimebar();
+    if(timeLeft<=0){ timeLeft=0; // timeout = miss
+      locked=true; combo=0; $("combo").textContent=""; lives--; renderLives(); sfxBad();
+      if(cardEl){cardEl.classList.add("gone");cardEl.style.opacity="0";cardEl.style.transform="translateY(40%) scale(.9)";}
+      $("hint").textContent="時間切れ！（正解は「"+["暖色","モノクロ","寒色"][BUCKET[cur.id]]+"」）";
+      if(lives<=0) setTimeout(gameOver,350); else setTimeout(spawnCard,500);
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ===== over ===== */
+function gameOver(){
+  GS="over"; sfxOver();
+  $("ov").querySelector(".tag").textContent="▶ GAME OVER";
+  $("ov").querySelector("h1").innerHTML='おわり';
+  var ps=$("ov").querySelectorAll(".cardm p");
+  ps[0].innerHTML="スコア <b>"+score+"</b><br>仕分けた数 <b>"+sorted+"</b>枚<br>ベスト <b>"+best+"</b>";
+  $("ov").querySelector(".legend").style.display="none";
+  if(ps[1]){ ps[1].innerHTML='<button class="btn ghost" id="bPlay" style="font-size:15px">▶ さっきの動画を見る</button>'; }
+  $("ovBtn").textContent="もう一回";
+  $("ov").classList.remove("hide");
+  var bp=$("bPlay"); if(bp) bp.addEventListener("pointerup",function(){ sfxBtn(); playVideo(cur); });
+}
+
+/* ===== buttons ===== */
+$("bWarm").addEventListener("pointerup",function(){answer(0,false);});
+$("bMono").addEventListener("pointerup",function(){answer(1,false);});
+$("bCool").addEventListener("pointerup",function(){answer(2,false);});
+$("tMute").addEventListener("pointerup",function(){muted=!muted;$("tMute").textContent=muted?"🔇":"🔊";});
+document.addEventListener("keydown",function(e){
+  if(GS!=="play")return;
+  if(e.key==="ArrowLeft")answer(2,false); else if(e.key==="ArrowRight")answer(0,false);
+  else if(e.key==="ArrowUp")answer(1,false);
+});
+
+/* ===== start ===== */
+function startGame(){
+  sfxBtn();
+  $("ovBtn").disabled=true; $("ovBtn").textContent="読み込み中…";
+  preload(function(){
+    score=0;lives=3;combo=0;sorted=0;deck=[];di=0;recent=[];
+    $("score").textContent="0"; $("combo").textContent=""; renderLives();
+    $("hint").textContent="サムネを支配する色の方へスワイプ／タップ。";
+    $("ov").querySelector(".legend").style.display="";
+    $("ov").classList.add("hide"); $("ovBtn").disabled=false;
+    GS="play"; lastTs=0; spawnCard();
+  });
+}
+$("ovBtn").addEventListener("pointerup",startGame);
+
+/* prevent double-tap zoom */
+var lastTap=0;
+document.addEventListener("touchend",function(e){var n=Date.now();if(n-lastTap<350)e.preventDefault();lastTap=n;},{passive:false});
+document.addEventListener("gesturestart",function(e){e.preventDefault();});
+document.addEventListener("dblclick",function(e){e.preventDefault();});
+
+requestAnimationFrame(loop);
+
+/* test hook */
+window.__shiki={ state:function(){return {GS:GS,score:score,lives:lives,sorted:sorted,combo:combo,curId:cur&&cur.id,curBucket:cur&&BUCKET[cur.id]};},
+  buckets:function(){return BUCKET;}, answer:function(a){answer(a,false);} };
+</script>
+</body>
+</html>
