@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>ヤチタワー — 家賃の高い安いを当てて建てるタワマン</title>
+<meta name="description" content="物件カードの間取り・面積・駅徒歩・築年数・設備から、家賃が基準より「高い」か「安い」かをタップで当てる不動産チラシ風ハイ&ロー。正解するほどタワマンが伸び、ミスで崩壊。階数が上がるほど家賃差が縮まって難しくなるエンドレス・スコアアタック。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ヤチタワー — 家賃の高い安いを当てて建てるタワマン">
+<meta property="og:description" content="間取り・面積・駅徒歩・築年数・設備から家賃の高い安いをタップで当てて、タワマンを上へ上へ。階数が上がるほど僅差で難化。">
+<meta property="og:image" content="https://nrtkumi.github.io/games/yachitower/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/yachitower/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f3ecdd; --paper2:#ece3d0; --ink:#231d16; --dim:#867a66; --line:#d6c9b0;
+  --red:#c5362b; --navy:#1f3a5f; --gold:#cf9b39; --green:#3f7d4e;
+  --shadow:0 10px 30px rgba(60,45,25,.18);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+html,body{margin:0;padding:0;background:#cdbfa3;color:var(--ink);
+  font-family:"Noto Sans JP",system-ui,sans-serif;overscroll-behavior:none;
+  user-select:none;-webkit-user-select:none;}
+#app{position:relative;left:50%;transform:translateX(-50%);width:100%;max-width:min(460px,62vh);
+  height:100svh;max-height:100svh;background:
+    linear-gradient(180deg,#f6f0e3,#efe6d3);
+  box-shadow:0 0 60px rgba(0,0,0,.45);
+  padding:calc(env(safe-area-inset-top) + 8px) 10px calc(env(safe-area-inset-bottom) + 8px);
+  display:flex;flex-direction:column;gap:7px;overflow:hidden;}
+/* paper grain */
+#app::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;mix-blend-mode:multiply;
+  background:
+    radial-gradient(circle at 20% 10%,rgba(180,150,100,.10),transparent 40%),
+    radial-gradient(circle at 85% 80%,rgba(150,120,80,.10),transparent 45%);}
+
+/* ---- top bar ---- */
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;z-index:2;}
+.brand{line-height:1;}
+.brand .logo{font-family:"Shippori Mincho B1",serif;font-weight:800;font-size:23px;letter-spacing:1px;color:var(--ink);}
+.brand .logo b{color:var(--red);}
+.brand .sub{font-size:8.5px;color:var(--dim);letter-spacing:3px;margin-top:3px;font-weight:700;}
+.stats{display:flex;gap:6px;}
+.stat{background:var(--paper);border:1.5px solid var(--ink);border-radius:3px;padding:2px 8px;text-align:center;min-width:50px;
+  box-shadow:2px 2px 0 rgba(35,29,22,.18);}
+.stat .k{font-size:8px;color:var(--dim);letter-spacing:1px;font-weight:700;}
+.stat .v{font-family:"Oswald",sans-serif;font-weight:700;font-size:18px;color:var(--navy);line-height:1.05;}
+.stat .v small{font-size:10px;}
+.stat.cur .v{color:var(--red);}
+
+/* ---- reference strip ---- */
+.refbar{display:flex;align-items:center;gap:8px;background:var(--navy);color:#f3ecdd;
+  border-radius:5px;padding:6px 9px;z-index:2;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.refbar .tag{font-family:"Shippori Mincho B1",serif;font-weight:800;font-size:10px;writing-mode:vertical-rl;
+  letter-spacing:2px;background:var(--gold);color:#231d16;border-radius:3px;padding:5px 1px;align-self:stretch;
+  display:flex;align-items:center;justify-content:center;}
+.refbar .rmid{flex:1;min-width:0;}
+.refbar .rspec{font-size:10.5px;font-weight:500;color:#e7ddc6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.refbar .rspec b{color:#fff;font-weight:700;}
+.refbar .rrent{font-family:"Oswald",sans-serif;font-weight:700;font-size:21px;color:#ffd98a;line-height:1;white-space:nowrap;}
+.refbar .rrent .yen{font-size:13px;margin-right:1px;}
+.refbar .rrent .man{font-size:11px;color:#e7ddc6;margin-left:3px;}
+
+/* ---- stage ---- */
+#stage{flex:1;min-height:0;display:flex;gap:8px;z-index:2;}
+#tower{flex:0 0 48px;width:48px;align-self:stretch;display:block;min-height:0;}
+.col{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;gap:7px;}
+
+/* ---- challenger card ---- */
+.card{flex:1;min-height:0;min-width:0;background:var(--paper);border:2px solid var(--ink);border-radius:6px;
+  box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;position:relative;}
+.card .chead{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-bottom:2px solid var(--ink);
+  background:repeating-linear-gradient(45deg,#efe6d3,#efe6d3 6px,#e8ddc6 6px,#e8ddc6 12px);}
+.card .carea{font-family:"Shippori Mincho B1",serif;font-weight:800;font-size:15px;color:var(--ink);}
+.card .clay{font-family:"Oswald",sans-serif;font-weight:700;font-size:20px;color:var(--red);letter-spacing:.5px;}
+.card .marketTag{font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;border:1.3px solid;}
+.mt-low{color:var(--green);border-color:var(--green);background:#eef6ee;}
+.mt-mid{color:var(--dim);border-color:var(--dim);background:#f0ead9;}
+.mt-high{color:var(--red);border-color:var(--red);background:#f8ece9;}
+
+.cbody{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;gap:6px;padding:7px;overflow:hidden;}
+.madori{flex:1 1 auto;min-height:80px;width:100%;border:1.5px solid var(--ink);border-radius:4px;background:#fbf7ee;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+.madori svg{width:100%;height:100%;display:block;}
+.madori .mlabel{position:absolute;top:3px;left:5px;font-size:8px;color:var(--dim);font-weight:700;letter-spacing:2px;
+  background:rgba(251,247,238,.8);padding:0 3px;}
+.specs{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;border-top:1.6px solid var(--ink);border-left:1.6px solid var(--ink);}
+.srow{display:flex;flex-direction:column;justify-content:center;gap:1px;padding:4px 8px;
+  border-bottom:1.4px solid var(--ink);border-right:1.4px solid var(--ink);min-width:0;}
+.srow .sk{font-size:8.5px;color:var(--dim);font-weight:700;letter-spacing:.5px;white-space:nowrap;}
+.srow .sv{font-size:12px;color:var(--ink);font-weight:700;font-family:"Oswald","Noto Sans JP",sans-serif;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.srow .sv u{font-family:"Oswald";font-size:15px;text-decoration:none;color:var(--navy);}
+
+.chips{display:flex;flex-wrap:wrap;gap:3px;padding:0 7px 6px;}
+.chip{font-size:8.5px;font-weight:700;color:var(--ink);background:#efe6d3;border:1px solid var(--line);
+  border-radius:3px;padding:1.5px 5px;white-space:nowrap;}
+.chip.plus{color:var(--red);border-color:#e3b6b0;background:#f8ece9;}
+
+/* rent reveal zone */
+.rentzone{border-top:2px solid var(--ink);padding:6px 8px;display:flex;align-items:center;justify-content:center;
+  min-height:48px;position:relative;background:#fbf7ee;}
+.rentq{font-family:"Shippori Mincho B1",serif;font-weight:800;font-size:14px;color:var(--ink);letter-spacing:1px;}
+.rentq b{color:var(--red);}
+.rentreveal{display:none;flex-direction:column;align-items:center;line-height:1;}
+.rentreveal .rv{font-family:"Oswald",sans-serif;font-weight:700;font-size:30px;color:var(--navy);}
+.rentreveal .rv .yen{font-size:17px;}
+.rentreveal .verdict{font-size:11px;font-weight:700;margin-top:2px;}
+.v-ok{color:var(--green);} .v-ng{color:var(--red);}
+.flash{position:absolute;inset:0;opacity:0;pointer-events:none;}
+
+/* ---- buttons ---- */
+.btns{display:flex;gap:8px;z-index:2;}
+.bigbtn{flex:1;border:2.5px solid var(--ink);border-radius:7px;padding:11px 6px;font-family:"Shippori Mincho B1",serif;
+  font-weight:800;font-size:19px;letter-spacing:1px;color:#fff;cursor:pointer;
+  box-shadow:3px 3px 0 rgba(35,29,22,.85);transition:transform .05s, box-shadow .05s;
+  display:flex;align-items:center;justify-content:center;gap:5px;}
+.bigbtn .ar{font-family:"Oswald";font-size:22px;}
+.bigbtn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(35,29,22,.85);}
+.bigbtn.high{background:var(--red);}
+.bigbtn.low{background:var(--navy);}
+.bigbtn:disabled{opacity:.4;}
+
+/* ---- overlay screens ---- */
+.screen{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px 22px;text-align:center;gap:14px;
+  background:linear-gradient(180deg,#f6f0e3,#e7dcc6);}
+.screen.hidden{display:none;}
+.screen .big{font-family:"Shippori Mincho B1",serif;font-weight:800;font-size:40px;letter-spacing:2px;color:var(--ink);line-height:1.05;}
+.screen .big b{color:var(--red);}
+.screen .lead{font-size:13px;color:var(--ink);line-height:1.7;font-weight:500;}
+.screen .lead em{color:var(--red);font-style:normal;font-weight:700;}
+.howto{background:var(--paper);border:2px solid var(--ink);border-radius:6px;padding:13px 15px;font-size:12px;
+  line-height:1.85;text-align:left;box-shadow:var(--shadow);max-width:330px;}
+.howto b{color:var(--navy);}
+.start{margin-top:4px;border:none;background:var(--red);color:#fff;font-family:"Shippori Mincho B1",serif;font-weight:800;
+  font-size:21px;letter-spacing:3px;padding:13px 40px;border-radius:8px;cursor:pointer;
+  box-shadow:4px 4px 0 rgba(35,29,22,.85);}
+.start:active{transform:translate(2px,2px);box-shadow:2px 2px 0 rgba(35,29,22,.85);}
+.score-grand{font-family:"Oswald",sans-serif;font-weight:700;font-size:72px;color:var(--red);line-height:.9;}
+.score-grand small{font-size:24px;color:var(--ink);}
+.subline{font-size:13px;color:var(--dim);font-weight:700;}
+.subline b{color:var(--navy);}
+.rank{font-family:"Shippori Mincho B1",serif;font-weight:800;font-size:18px;color:var(--navy);}
+.actions{display:flex;gap:10px;}
+.ghost{border:2px solid var(--ink);background:transparent;color:var(--ink);font-weight:700;font-size:13px;
+  padding:9px 16px;border-radius:7px;cursor:pointer;}
+.foot{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 6px);left:0;right:0;text-align:center;
+  font-size:9px;color:var(--dim);z-index:1;}
+.foot a{color:var(--dim);}
+
+/* perk popup */
+.perk{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;padding:20px;background:rgba(31,58,95,.86);backdrop-filter:blur(2px);}
+.perk.hidden{display:none;}
+.perk h3{font-family:"Shippori Mincho B1",serif;color:#ffd98a;font-size:20px;margin:0;letter-spacing:2px;}
+.perk .psub{color:#e7ddc6;font-size:11px;margin-top:-6px;}
+.pcard{width:100%;max-width:320px;background:var(--paper);border:2px solid var(--ink);border-radius:7px;
+  padding:11px 13px;display:flex;gap:11px;align-items:center;cursor:pointer;box-shadow:var(--shadow);
+  transition:transform .05s;}
+.pcard:active{transform:scale(.97);}
+.pcard .pi{font-size:26px;flex:0 0 34px;text-align:center;}
+.pcard .pt{font-weight:800;font-size:14px;color:var(--ink);}
+.pcard .pd{font-size:10.5px;color:var(--dim);font-weight:500;margin-top:2px;line-height:1.4;}
+
+/* perk hud */
+.hud{position:absolute;top:calc(env(safe-area-inset-top) + 40px);right:10px;z-index:3;display:flex;flex-direction:column;gap:3px;align-items:flex-end;}
+.hbadge{font-size:9px;font-weight:700;background:var(--gold);color:#231d16;border:1.3px solid var(--ink);
+  border-radius:99px;padding:1px 7px;box-shadow:1px 1px 0 rgba(35,29,22,.4);}
+
+.shake{animation:shk .4s;}
+@keyframes shk{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.toast{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) scale(.6);z-index:25;
+  font-family:"Shippori Mincho B1",serif;font-weight:800;font-size:34px;color:var(--gold);
+  text-shadow:0 2px 0 var(--ink),0 0 18px rgba(207,155,57,.6);opacity:0;pointer-events:none;}
+.toast.show{animation:pop .8s ease;}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}70%{opacity:1;transform:translate(-50%,-60%) scale(1)}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">ヤチ<b>タワー</b></div>
+      <div class="sub">RENT HIGH &amp; LOW</div>
+    </div>
+    <div class="stats">
+      <div class="stat cur"><div class="k">現在</div><div class="v" id="floorV">0<small>F</small></div></div>
+      <div class="stat"><div class="k">最高</div><div class="v" id="bestV">0<small>F</small></div></div>
+    </div>
+  </div>
+
+  <div class="refbar">
+    <div class="tag">基準</div>
+    <div class="rmid">
+      <div class="rspec" id="refSpec">—</div>
+      <div class="rrent" id="refRent">—</div>
+    </div>
+  </div>
+
+  <div id="stage">
+    <canvas id="tower"></canvas>
+    <div class="col">
+      <div class="card" id="card">
+        <div class="chead">
+          <span class="carea" id="cArea">—</span>
+          <span class="clay" id="cLay">—</span>
+          <span class="marketTag" id="cTag" style="display:none"></span>
+        </div>
+        <div class="cbody">
+          <div class="madori"><span class="mlabel">間取図</span><div id="madori" style="width:100%;height:100%"></div></div>
+          <div class="specs" id="specs"></div>
+        </div>
+        <div class="chips" id="chips"></div>
+        <div class="rentzone">
+          <div class="rentq" id="rentQ">この物件は基準より <b>高い？安い？</b></div>
+          <div class="rentreveal" id="rentR">
+            <div class="rv"><span class="yen">¥</span><span id="rvNum">0</span></div>
+            <div class="verdict" id="rvVerdict"></div>
+          </div>
+          <div class="flash" id="flash"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btns">
+    <button class="bigbtn high" id="btnHigh"><span class="ar">▲</span>高い</button>
+    <button class="bigbtn low" id="btnLow"><span class="ar">▼</span>安い</button>
+  </div>
+
+  <div class="hud" id="hud"></div>
+  <div class="toast" id="toast"></div>
+
+  <!-- title -->
+  <div class="screen" id="titleScreen">
+    <div class="big">ヤチ<b>タワー</b></div>
+    <div class="lead">物件情報を読んで<br><em>家賃の高い・安い</em>を当てろ。<br>当てるほどタワマンが伸びる。</div>
+    <div class="howto">
+      上の<b>基準物件</b>の家賃に対して、<br>
+      下のカードの物件が <b>高い</b> か <b>安い</b> かを<br>
+      間取り・面積・駅徒歩・築年数・設備から推理。<br>
+      正解＝<b>+1階</b>。ミスで<b>崩壊</b>。<br>
+      上がるほど家賃差は僅差に。5階ごとに<b>強化</b>。
+    </div>
+    <button class="start" id="startBtn">建てる</button>
+  </div>
+
+  <!-- perk -->
+  <div class="perk hidden" id="perkScreen">
+    <h3 id="perkTitle">5F 到達ボーナス</h3>
+    <div class="psub">ひとつ選んで強化</div>
+    <div id="perkList" style="width:100%;display:flex;flex-direction:column;gap:9px;align-items:center;"></div>
+  </div>
+
+  <!-- gameover -->
+  <div class="screen hidden" id="overScreen">
+    <div class="big" style="font-size:30px;">物件 <b>崩壊</b></div>
+    <div class="score-grand"><span id="finalFloor">0</span><small>F</small></div>
+    <div class="rank" id="rankText">—</div>
+    <div class="subline">最高記録 <b id="bestText">0F</b></div>
+    <div class="lead" id="overDetail" style="font-size:12px;color:var(--dim);"></div>
+    <div class="actions">
+      <button class="start" id="retryBtn" style="font-size:18px;padding:11px 30px;">もう一度</button>
+      <button class="ghost" id="shareBtn">結果をコピー</button>
+    </div>
+  </div>
+
+  <div class="foot">物件情報を活用したミニゲーム・データは市場相場を元にした生成値です</div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================= ヤチタワー ===
+   家賃ハイ&ロー。物件情報(間取り/面積/駅徒歩/築年数/構造/設備)から
+   家賃が基準より高いか安いかを当てる。正解で塔が伸び、ミスで崩壊。
+   単一HTML / Web Audio合成SFX / localStorage。
+   ========================================================================= */
+
+/* ---------- RNG (再現不要だがDate.now禁止対策で内部seed) ---------- */
+let _seed = 123456789;
+function srand(){ _seed = (_seed*1664525 + 1013904223) >>> 0; return _seed/4294967296; }
+function reseed(){ _seed = (_seed ^ (performance.now()*1000|0) ^ (_seed<<7)) >>> 0; if(_seed===0)_seed=88172645; }
+const rnd = ()=>srand();
+const ri = (a,b)=> a + Math.floor(rnd()*(b-a+1));
+const rf = (a,b)=> a + rnd()*(b-a);
+const pick = a => a[Math.floor(rnd()*a.length)];
+
+/* ---------- エリア (¥/㎡/月 ベースレート, 実勢相場ベース) ---------- */
+const AREAS = [
+  {n:"港区",     r:5600}, {n:"渋谷区",   r:5100}, {n:"目黒区",   r:4500},
+  {n:"千代田区", r:5200}, {n:"中央区",   r:5000}, {n:"新宿区",   r:4300},
+  {n:"文京区",   r:4000}, {n:"品川区",   r:4100}, {n:"世田谷区", r:3700},
+  {n:"中野区",   r:3600}, {n:"杉並区",   r:3400}, {n:"豊島区",   r:3700},
+  {n:"江東区",   r:3600}, {n:"大田区",   r:3300}, {n:"北区",     r:3100},
+  {n:"板橋区",   r:2950}, {n:"練馬区",   r:2850}, {n:"足立区",   r:2550},
+  {n:"葛飾区",   r:2550}, {n:"江戸川区", r:2700},
+  {n:"川崎市",   r:3150}, {n:"横浜市",   r:3050}, {n:"武蔵野市", r:3700},
+  {n:"さいたま市",r:2650}, {n:"千葉市",  r:2300}, {n:"船橋市",   r:2450},
+  {n:"大阪市",   r:3050}, {n:"京都市",   r:2950}, {n:"神戸市",   r:2650},
+  {n:"名古屋市", r:2500}, {n:"福岡市",   r:2450}, {n:"札幌市",   r:2050},
+];
+const STATIONS = ["駅","本町","台","ヶ丘","公園前","中央","新町","坂上","通り","橋","西口","東口"];
+
+/* ---------- 間取り ---------- */
+const LAYOUTS = [
+  {l:"1R",  a:[16,23], rooms:["居"],            prem:1.06},
+  {l:"1K",  a:[20,28], rooms:["K","洋"],        prem:1.05},
+  {l:"1DK", a:[26,34], rooms:["DK","洋"],       prem:1.02},
+  {l:"1LDK",a:[33,46], rooms:["LDK","洋"],      prem:1.04},
+  {l:"2K",  a:[30,40], rooms:["K","洋","洋"],   prem:0.99},
+  {l:"2DK", a:[38,50], rooms:["DK","洋","洋"],  prem:1.00},
+  {l:"2LDK",a:[50,68], rooms:["LDK","洋","洋"], prem:1.03},
+  {l:"3DK", a:[52,66], rooms:["DK","洋","洋","洋"],  prem:0.99},
+  {l:"3LDK",a:[62,86], rooms:["LDK","洋","洋","洋"], prem:1.02},
+];
+const STRUCTS = [
+  {n:"木造",   f:0.93}, {n:"軽量鉄骨", f:0.97}, {n:"鉄骨", f:1.00},
+  {n:"RC",     f:1.05}, {n:"SRC",      f:1.07},
+];
+const FACES = [ {n:"南",f:1.03},{n:"南東",f:1.02},{n:"東",f:1.0},{n:"西",f:0.99},{n:"南西",f:1.01},{n:"北",f:0.96} ];
+// 設備: f は家賃補正(中央値からのプラス), plus はチラシ上の訴求(赤チップ)
+const FACILITIES = [
+  {n:"バス・トイレ別",f:1.04,plus:true}, {n:"室内洗濯機置場",f:1.02,plus:true},
+  {n:"オートロック",f:1.03,plus:true}, {n:"独立洗面台",f:1.02,plus:true},
+  {n:"宅配ボックス",f:1.015,plus:true}, {n:"システムキッチン",f:1.02,plus:true},
+  {n:"角部屋",f:1.02,plus:true}, {n:"2階以上",f:1.0,plus:false},
+  {n:"エアコン",f:1.0,plus:false}, {n:"フローリング",f:1.0,plus:false},
+  {n:"都市ガス",f:1.0,plus:false}, {n:"インターネット無料",f:1.015,plus:true},
+  {n:"オール電化",f:1.01,plus:false}, {n:"ペット相談",f:1.0,plus:false},
+  {n:"駐輪場",f:1.0,plus:false}, {n:"TVモニタ付インターホン",f:1.01,plus:true},
+];
+
+/* ---------- 家賃計算 ---------- */
+function sizeFactor(area){ return Math.pow(28/area, 0.16); }          // 小さい部屋ほど㎡単価高
+function baseRentOf(p){ return p.areaM2 * p.area.r * sizeFactor(p.areaM2); } // 相場(設備等の補正前)
+function rentOf(p){
+  let rent = baseRentOf(p);
+  rent *= (1.13 - 0.013*p.walk);                 // 駅徒歩
+  rent *= Math.max(0.70, 1.11 - 0.0085*p.age);   // 築年数
+  rent *= (0.97 + 0.0055*Math.min(p.floor,20));  // 所在階
+  rent *= p.struct.f;
+  rent *= p.face.f;
+  rent *= p.facFactor;                           // 設備補正(genで確定)
+  rent *= p.noise;                               // 個体差
+  // 1000円単位に丸め(安い物件は500円単位)
+  const unit = rent < 90000 ? 500 : 1000;
+  return Math.max(28000, Math.round(rent/unit)*unit);
+}
+
+function genProperty(){
+  const lay = pick(LAYOUTS);
+  const area = pick(AREAS);
+  const areaM2 = Math.round(rf(lay.a[0], lay.a[1])*10)/10;
+  const struct = areaM2 >= 45 ? pick([STRUCTS[2],STRUCTS[3],STRUCTS[3],STRUCTS[4]]) : pick(STRUCTS);
+  const totalFloors = ri(2, struct.f>=1.05? 14 : 6);
+  const floor = ri(1, totalFloors);
+  const face = pick(FACES);
+  const walk = ri(1, 18);
+  const age = ri(0, struct.f>=1.05? 35 : 40);
+  // 設備
+  const pool = FACILITIES.slice();
+  const facs = [];
+  const k = ri(3,6);
+  for(let i=0;i<k && pool.length;i++){ facs.push(pool.splice(Math.floor(rnd()*pool.length),1)[0]); }
+  if(floor>=2 && !facs.some(f=>f.n==="2階以上")) facs.push({n:"2階以上",f:1.0,plus:false});
+  let facFactor = 1;
+  facs.forEach(f=> facFactor *= f.f);
+  const noise = rf(0.93, 1.08);
+  const p = { area, layout:lay.l, lay, areaM2, struct, totalFloors, floor, face, walk, age, facs, facFactor, noise,
+              station: area.n.replace(/区|市$/,"") + pick(STATIONS) };
+  p.rent = rentOf(p);
+  // 相場タグ用: 設備・向き込みの「素の相場」に対する位置
+  const ref = baseRentOf(p) * (1.13-0.013*p.walk) * Math.max(0.70,1.11-0.0085*p.age) * p.struct.f;
+  p.marketRatio = p.rent / ref;
+  return p;
+}
+
+/* ---------- 間取り図 SVG (手描き風・procedural) ---------- */
+function madoriSVG(p){
+  const W=120, H=104, m=7;            // viewBox
+  const ix=m, iy=m, iw=W-2*m, ih=H-2*m-12; // 室内(下に12=バルコニー)
+  const wcW=30;                       // 右の水まわり/玄関列
+  const leftW=iw-wcW;
+  const rooms = p.lay.rooms.slice();
+  // 室内有効帖(水回り/玄関/壁/バルコニーを除いた居住部の目安)
+  const usableJo = Math.max(4, Math.round(p.areaM2*0.52/1.62));
+  function joFor(t){
+    if(t==="LDK") return Math.max(8, Math.round(usableJo*0.5));
+    if(t==="DK")  return Math.max(5, Math.round(usableJo*0.45));
+    if(t==="K")   return 0;
+    if(t==="居")  return usableJo;       // 1R/ワンルームは全体が居室
+    return 6;
+  }
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<defs><pattern id="bal" width="5" height="5" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+    <line x1="0" y1="0" x2="0" y2="5" stroke="#c8bda3" stroke-width="1"/></pattern></defs>`;
+  const wall = '#231d16';
+  // 外枠
+  svg += `<rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" fill="#fdfaf2" stroke="${wall}" stroke-width="2.4"/>`;
+  // バルコニー
+  svg += `<rect x="${ix}" y="${iy+ih}" width="${iw}" height="12" fill="url(#bal)" stroke="${wall}" stroke-width="1.6"/>`;
+  svg += `<text x="${ix+iw/2}" y="${iy+ih+8.5}" font-size="6" fill="#8a7f66" text-anchor="middle" font-family="Noto Sans JP">バルコニー</text>`;
+  // 右列: UB / WC / 玄関
+  const rx = ix+leftW;
+  const ubH = ih*0.34, wcH = ih*0.22, gkH = ih-ubH-wcH;
+  svg += `<rect x="${rx}" y="${iy}" width="${wcW}" height="${ubH}" fill="#eaf1f4" stroke="${wall}" stroke-width="1.4"/>`;
+  svg += `<text x="${rx+wcW/2}" y="${iy+ubH/2+2}" font-size="7" fill="#3a566e" text-anchor="middle" font-family="Noto Sans JP">UB</text>`;
+  svg += `<rect x="${rx}" y="${iy+ubH}" width="${wcW}" height="${wcH}" fill="#eaf1f4" stroke="${wall}" stroke-width="1.4"/>`;
+  svg += `<text x="${rx+wcW/2}" y="${iy+ubH+wcH/2+2}" font-size="6" fill="#3a566e" text-anchor="middle" font-family="Noto Sans JP">WC</text>`;
+  svg += `<rect x="${rx}" y="${iy+ubH+wcH}" width="${wcW}" height="${gkH}" fill="#f0ece0" stroke="${wall}" stroke-width="1.4"/>`;
+  svg += `<text x="${rx+wcW/2}" y="${iy+ubH+wcH+gkH/2+2}" font-size="6" fill="#8a7f66" text-anchor="middle" font-family="Noto Sans JP">玄関</text>`;
+  // 玄関ドア(外側のスイング)
+  svg += `<path d="M ${rx+wcW} ${iy+ih-3} a 9 9 0 0 1 -9 -9" fill="none" stroke="#8a7f66" stroke-width="1"/>`;
+  // 左側に部屋を縦積み (LDK/DKを下=バルコニー側に)
+  const livingTypes = rooms.filter(t=>t==="LDK"||t==="DK"||t==="K"||t==="居");
+  const bed = rooms.filter(t=>t==="洋").length;
+  // 区画: 下段=リビング系(全幅 leftW), 上段=洋室を横並び
+  const liveH = (rooms.length===1) ? ih : ih*(0.42 + (livingTypes[0]==="K"?-0.06:0));
+  const topH = ih - liveH;
+  // 洋室
+  if(bed>0 && topH>4){
+    const bw = leftW/bed;
+    for(let i=0;i<bed;i++){
+      const bx=ix+i*bw;
+      svg += `<rect x="${bx}" y="${iy}" width="${bw}" height="${topH}" fill="#fbf7ee" stroke="${wall}" stroke-width="1.4"/>`;
+      const jo = Math.max(4, Math.round((usableJo - joFor(livingTypes[0]||"居")) / bed));
+      svg += `<text x="${bx+bw/2}" y="${iy+topH/2-1}" font-size="7" fill="#231d16" text-anchor="middle" font-family="Noto Sans JP">洋室</text>`;
+      svg += `<text x="${bx+bw/2}" y="${iy+topH/2+8}" font-size="7.5" fill="#3a566e" text-anchor="middle" font-family="Oswald">${jo}帖</text>`;
+    }
+  }
+  // リビング/K
+  const lt = livingTypes[0]||"居";
+  const ltLabel = lt==="居" ? "洋室" : lt;
+  svg += `<rect x="${ix}" y="${iy+topH}" width="${leftW}" height="${liveH}" fill="#fdfaf2" stroke="${wall}" stroke-width="1.6"/>`;
+  const ljo = joFor(lt);
+  svg += `<text x="${ix+leftW/2}" y="${iy+topH+liveH/2-1}" font-size="9" fill="#231d16" text-anchor="middle" font-family="Noto Sans JP" font-weight="700">${ltLabel}</text>`;
+  if(ljo>0) svg += `<text x="${ix+leftW/2}" y="${iy+topH+liveH/2+9}" font-size="8" fill="#3a566e" text-anchor="middle" font-family="Oswald">${ljo}帖</text>`;
+  // キッチン記号(コンロ) リビング下端
+  svg += `<rect x="${ix+3}" y="${iy+topH+liveH-9}" width="9" height="6" fill="none" stroke="#8a7f66" stroke-width="0.9"/>`;
+  svg += `<circle cx="${ix+5.2}" cy="${iy+topH+liveH-6}" r="1.1" fill="#8a7f66"/><circle cx="${ix+9.5}" cy="${iy+topH+liveH-6}" r="1.1" fill="#8a7f66"/>`;
+  svg += `</svg>`;
+  return svg;
+}
+
+/* ---------- 通貨表示 ---------- */
+function fmtYen(n){ return n.toLocaleString("ja-JP"); }
+function manStr(n){ return (n/10000).toFixed(1).replace(/\.0$/,"") + "万"; }
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const els = {
+  floorV:$("floorV"), bestV:$("bestV"),
+  refSpec:$("refSpec"), refRent:$("refRent"),
+  cArea:$("cArea"), cLay:$("cLay"), cTag:$("cTag"),
+  madori:$("madori"), specs:$("specs"), chips:$("chips"),
+  rentQ:$("rentQ"), rentR:$("rentR"), rvNum:$("rvNum"), rvVerdict:$("rvVerdict"),
+  flash:$("flash"), card:$("card"),
+  btnHigh:$("btnHigh"), btnLow:$("btnLow"),
+  hud:$("hud"), toast:$("toast"),
+  titleScreen:$("titleScreen"), startBtn:$("startBtn"),
+  perkScreen:$("perkScreen"), perkTitle:$("perkTitle"), perkList:$("perkList"),
+  overScreen:$("overScreen"), finalFloor:$("finalFloor"), rankText:$("rankText"),
+  bestText:$("bestText"), overDetail:$("overDetail"), retryBtn:$("retryBtn"), shareBtn:$("shareBtn"),
+  tower:$("tower"),
+};
+
+/* ---------- state (全て宣言時に初期化: 初回フレームでループが死なないように) ---------- */
+const LS_KEY = "yachitower_best_v1";
+let best = 0;
+try{ best = parseInt(localStorage.getItem(LS_KEY)||"0",10)||0; }catch(e){}
+const state = {
+  phase:"title",          // title | play | reveal | perk | over
+  floor:0,
+  ref:null, cha:null,
+  insurance:0,
+  doubleNext:false,
+  hintRounds:0,
+  lock:false,
+  best, peakStreak:0, streak:0,
+  // tower anim
+  towerDrop:0,            // 0..1 落下中の新フロア
+  shakeT:0,
+  collapse:0,             // 崩壊アニメ進捗
+};
+
+/* ---------- audio (iOS消音スイッチ対策込み) ---------- */
+let AC=null;
+function audio(){
+  if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)();
+    AC.onstatechange=()=>{ if(AC.state!=="running"&&!document.hidden){ try{AC.resume();}catch(e){} } }; }catch(e){} }
+  if(AC&&AC.state!=="running"){ try{AC.resume();}catch(e){} }
+  return AC;
+}
+let silentEl=null;
+function silentWavUrl(){
+  const sr=8000,n=800,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  str(0,"RIFF");v.setUint32(4,36+n,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);
+  v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,"data");v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,0x80);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(!silentEl){ silentEl=document.createElement("audio");silentEl.setAttribute("playsinline","");
+    silentEl.loop=true;silentEl.volume=0.01;silentEl.src=silentWavUrl(); }
+  const pr=silentEl.play(); if(pr&&pr.catch)pr.catch(()=>{});
+  audio(); if(!AC)return;
+  const done=()=>{ if(AC.state==="running"){ ["pointerdown","pointerup","touchend","click"].forEach(ev=>document.removeEventListener(ev,unlockAudio,true)); } };
+  try{ AC.resume().then(done);}catch(e){done();}
+}
+["pointerdown","pointerup","touchend","click"].forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden)audio(); });
+
+function tone(freq,dur,type,gain,t0){
+  const ac=audio(); if(!ac)return;
+  const t=t0||ac.currentTime;
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.type=type||"sine"; o.frequency.setValueAtTime(freq,t);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain||0.18,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t+dur+0.02);
+}
+function sfxCorrect(){ const ac=audio(); if(!ac)return; const t=ac.currentTime;
+  tone(660,0.12,"triangle",0.18,t); tone(880,0.16,"triangle",0.16,t+0.07); }
+function sfxFloor(){ const ac=audio(); if(!ac)return; const t=ac.currentTime;
+  tone(523,0.1,"square",0.1,t); tone(784,0.14,"square",0.1,t+0.06); tone(1046,0.2,"triangle",0.12,t+0.12); }
+function sfxWrong(){ const ac=audio(); if(!ac)return; const t=ac.currentTime;
+  tone(180,0.25,"sawtooth",0.16,t); tone(120,0.4,"sawtooth",0.14,t+0.05);
+  // 崩壊ノイズ
+  const o=ac.createOscillator(),g=ac.createGain(); o.type="square"; o.frequency.setValueAtTime(90,t);
+  o.frequency.exponentialRampToValueAtTime(40,t+0.5); g.gain.setValueAtTime(0.1,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+0.55); o.connect(g).connect(ac.destination); o.start(t); o.stop(t+0.6); }
+function sfxPerk(){ const ac=audio(); if(!ac)return; const t=ac.currentTime;
+  tone(700,0.1,"sine",0.14,t); tone(1050,0.18,"sine",0.14,t+0.08); }
+function sfxTap(){ tone(420,0.04,"square",0.06); }
+
+/* ---------- 難易度: 階が上がるほど家賃差(maxGap)を縮めて僅差で難化 ----------
+   minGap: 近すぎてアンフェアにならない下限。 maxGap: 上ほど縮む=接戦に。 */
+function minGapPct(floor){ return Math.max(0.02, 0.05 - floor*0.0014); }
+function maxGapPct(floor){ return Math.max(0.06, 1.30 - floor*0.062); }
+
+function makeChallenger(refRent, floor){
+  const mn = minGapPct(floor), mx = maxGapPct(floor);
+  const cands=[];
+  for(let i=0;i<60;i++){
+    const p=genProperty();
+    const g=Math.abs(p.rent/refRent - 1);
+    if(g>=mn) cands.push({p,g});
+  }
+  if(!cands.length) return genProperty();
+  const within=cands.filter(c=>c.g<=mx);
+  if(within.length) return within[Math.floor(rnd()*within.length)].p;  // バンド内からランダム
+  cands.sort((a,b)=>a.g-b.g);                                          // 該当なし→一番接戦(最難)
+  return cands[0].p;
+}
+
+/* ---------- 描画: 物件カード ---------- */
+function renderRef(p){
+  els.refSpec.innerHTML = `<b>${p.area.n}</b>・${p.layout} ／ ${p.areaM2}㎡ 徒歩${p.walk}分 築${p.age}年`;
+  els.refRent.innerHTML = `<span class="yen">¥</span>${fmtYen(p.rent)}<span class="man">(${manStr(p.rent)})</span>`;
+}
+function renderCha(p){
+  els.cArea.textContent = p.area.n;
+  els.cLay.textContent = p.layout;
+  els.madori.innerHTML = madoriSVG(p);
+  els.specs.innerHTML =
+    row("専有面積", `<u>${p.areaM2}</u>㎡`) +
+    row("駅徒歩", `${p.station}駅 徒歩<u>${p.walk}</u>分`) +
+    row("築年数", `築<u>${p.age}</u>年`) +
+    row("所在階", `<u>${p.floor}</u>/${p.totalFloors}階`) +
+    row("構造", p.struct.n) +
+    row("向き", p.face.n+"向き");
+  // chips
+  els.chips.innerHTML = p.facs.map(f=>`<span class="chip ${f.plus?'plus':''}">${f.n}</span>`).join("");
+  // 相場タグ(ヒント)
+  if(state.hintRounds>0){
+    const r=p.marketRatio; let cls="mt-mid",t="適正相場";
+    if(r<0.94){cls="mt-low";t="割安";} else if(r>1.07){cls="mt-high";t="割高";}
+    els.cTag.style.display=""; els.cTag.className="marketTag "+cls; els.cTag.textContent=t;
+  } else { els.cTag.style.display="none"; }
+  // reset rent zone
+  els.rentQ.style.display=""; els.rentR.style.display="none";
+  els.card.classList.remove("shake");
+}
+function row(k,v){ return `<div class="srow"><span class="sk">${k}</span><span class="sv">${v}</span></div>`; }
+
+function updateHud(){
+  els.floorV.innerHTML = state.floor + '<small>F</small>';
+  els.bestV.innerHTML = state.best + '<small>F</small>';
+  let h="";
+  if(state.insurance>0) h+=`<span class="hbadge">🛡保険 ×${state.insurance}</span>`;
+  if(state.doubleNext)  h+=`<span class="hbadge">✨次×2階</span>`;
+  if(state.hintRounds>0)h+=`<span class="hbadge">🔮相場 残${state.hintRounds}</span>`;
+  els.hud.innerHTML=h;
+}
+
+/* ---------- ゲーム進行 ---------- */
+function startGame(){
+  reseed();
+  state.phase="play"; state.floor=0; state.streak=0; state.peakStreak=0;
+  state.insurance=0; state.doubleNext=false; state.hintRounds=0; state.lock=false;
+  state.towerDrop=0; state.shakeT=0; state.collapse=0;
+  els.titleScreen.classList.add("hidden");
+  els.overScreen.classList.add("hidden");
+  els.perkScreen.classList.add("hidden");
+  state.ref = genProperty();
+  nextChallenger();
+  renderRef(state.ref);
+  updateHud();
+  setButtons(true);
+}
+function nextChallenger(){
+  state.cha = makeChallenger(state.ref.rent, state.floor);
+  renderCha(state.cha);
+  els.rentQ.style.display=""; els.rentR.style.display="none";
+  state.lock=false; setButtons(true);
+}
+function setButtons(on){ els.btnHigh.disabled=!on; els.btnLow.disabled=!on; }
+
+function answer(guessHigh){
+  if(state.phase!=="play"||state.lock) return;
+  state.lock=true; setButtons(false); sfxTap();
+  const cha=state.cha, ref=state.ref;
+  const isHigh = cha.rent > ref.rent;
+  const correct = (guessHigh===isHigh);
+  // reveal
+  els.rentQ.style.display="none";
+  els.rentR.style.display="flex";
+  els.rvNum.textContent = fmtYen(cha.rent);
+  const diff = cha.rent - ref.rent;
+  const dtxt = (diff>=0?"+":"−") + fmtYen(Math.abs(diff)) + "円";
+  els.rvVerdict.className = "verdict " + (correct?"v-ok":"v-ng");
+  els.rvVerdict.textContent = (correct?"正解！ ":"ミス… ") + (isHigh?"基準より高い":"基準より安い") + " ("+dtxt+")";
+  flash(correct?"#3f7d4e":"#c5362b");
+
+  if(correct){
+    sfxCorrect();
+    let gain = 1;
+    if(state.doubleNext){ gain=2; state.doubleNext=false; }
+    state.floor += gain;
+    state.streak++; state.peakStreak=Math.max(state.peakStreak,state.streak);
+    if(state.hintRounds>0) state.hintRounds--;
+    state.towerDrop = 1;                 // 落下アニメ開始
+    setTimeout(sfxFloor, 180);
+    if(gain>=2) showToast("+2F!");
+    updateHud();
+    if(state.floor > state.best){ state.best=state.floor; }
+    const reached5 = Math.floor(state.floor/5) !== Math.floor((state.floor-gain)/5);
+    setTimeout(()=>{
+      if(state.phase!=="play") return;
+      state.ref = cha;
+      renderRef(state.ref);
+      if(reached5){ openPerk(); }
+      else nextChallenger();
+    }, 1000);
+  } else {
+    if(state.hintRounds>0) state.hintRounds--;
+    if(state.insurance>0){
+      state.insurance--;
+      sfxPerk();
+      showToast("🛡 保険発動");
+      els.card.classList.add("shake");
+      state.streak=0;
+      updateHud();
+      setTimeout(()=>{
+        if(state.phase!=="play")return;
+        state.ref = cha; renderRef(state.ref); nextChallenger();
+      }, 1100);
+    } else {
+      sfxWrong();
+      els.card.classList.add("shake");
+      state.shakeT=0.5; state.collapse=0.0001;
+      setTimeout(gameOver, 1100);
+    }
+  }
+}
+
+function flash(color){
+  els.flash.style.background=color;
+  els.flash.style.transition="none"; els.flash.style.opacity="0.42";
+  requestAnimationFrame(()=>{ els.flash.style.transition="opacity .6s"; els.flash.style.opacity="0"; });
+}
+let toastT=null;
+function showToast(txt){
+  els.toast.textContent=txt; els.toast.classList.remove("show");
+  void els.toast.offsetWidth; els.toast.classList.add("show");
+}
+
+/* ---------- 強化(ローグライト) ---------- */
+const PERKS = [
+  {i:"🛡", t:"保険を確保", d:"ミスを1回だけ無効化。基準は更新して続行。最大3つまで重ねられる。",
+   apply:()=>{ state.insurance=Math.min(3,state.insurance+1); }},
+  {i:"✨", t:"次は2階分", d:"次に正解したとき、いつもの+1階ではなく+2階のぼる。",
+   apply:()=>{ state.doubleNext=true; }},
+  {i:"🔮", t:"相場メーター", d:"以降5問、物件に『割安／適正／割高』タグが付き判断材料が増える。",
+   apply:()=>{ state.hintRounds=Math.max(state.hintRounds,5); }},
+  {i:"🏗", t:"基礎工事", d:"いますぐ+1階。ボーナスでそのまま1階のぼる。",
+   apply:()=>{ state.floor+=1; if(state.floor>state.best)state.best=state.floor; }},
+];
+function openPerk(){
+  state.phase="perk"; sfxPerk();
+  els.perkTitle.textContent = state.floor + "F 到達ボーナス";
+  // 3択(重複なし)
+  const pool=PERKS.slice(); const opts=[];
+  for(let i=0;i<3 && pool.length;i++){ opts.push(pool.splice(Math.floor(rnd()*pool.length),1)[0]); }
+  els.perkList.innerHTML="";
+  opts.forEach(o=>{
+    const d=document.createElement("div"); d.className="pcard";
+    d.innerHTML=`<div class="pi">${o.i}</div><div><div class="pt">${o.t}</div><div class="pd">${o.d}</div></div>`;
+    d.addEventListener("pointerup",()=>{
+      o.apply(); sfxPerk(); updateHud();
+      els.perkScreen.classList.add("hidden");
+      state.phase="play"; nextChallenger();
+    });
+    els.perkList.appendChild(d);
+  });
+  els.perkScreen.classList.remove("hidden");
+}
+
+/* ---------- ゲームオーバー ---------- */
+function rankOf(f){
+  if(f>=60) return "💎 不動産王 — 相場を完全に読み切った";
+  if(f>=40) return "🏙 大家マスター — 街の相場が体に入っている";
+  if(f>=25) return "🏢 ベテラン仲介 — もう内見いらず";
+  if(f>=15) return "🏠 一人前 — 良い目利き";
+  if(f>=8)  return "🔑 駆け出し仲介";
+  if(f>=3)  return "📋 新人内見係";
+  return "🚪 物件初心者";
+}
+function gameOver(){
+  state.phase="over"; setButtons(false);
+  let nb=false;
+  if(state.floor>=state.best){ state.best=state.floor; }
+  try{ const prev=parseInt(localStorage.getItem(LS_KEY)||"0",10)||0;
+    if(state.floor>prev){ localStorage.setItem(LS_KEY,String(state.floor)); nb=true; } }catch(e){}
+  els.finalFloor.textContent=state.floor;
+  els.rankText.textContent=rankOf(state.floor);
+  els.bestText.textContent=state.best+"F";
+  els.overDetail.innerHTML = (nb?"🎉 自己ベスト更新！<br>":"") +
+    `最高連勝 ${state.peakStreak} ／ 到達 ${state.floor} 階`;
+  updateHud();
+  els.overScreen.classList.remove("hidden");
+}
+
+/* ---------- 共有 ---------- */
+function shareResult(){
+  const txt = `ヤチタワー🏢 ${state.floor}階まで建てた！(${rankOf(state.floor).split(" — ")[0]})\n家賃の高い安いを当ててタワマンを建てるゲーム\nhttps://nrtkumi.github.io/games/yachitower/`;
+  const done=()=>{ els.shareBtn.textContent="コピーした！"; setTimeout(()=>els.shareBtn.textContent="結果をコピー",1500); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done,done); }
+  else { try{ const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();done(); }catch(e){} }
+}
+
+/* ---------- タワー描画 (canvas, 毎フレーム) ---------- */
+const tctx = els.tower.getContext("2d");
+let towerW=0, towerH=0, dpr=1;
+function sizeTower(){
+  dpr = Math.min(window.devicePixelRatio||1, 2.5);
+  const r=els.tower.getBoundingClientRect();
+  towerW=48; towerH=Math.max(80, Math.round(r.height));
+  // CSS寸法を明示してcanvas属性サイズがレイアウトへ漏れないようにする
+  els.tower.style.width=towerW+"px";
+  els.tower.style.height=towerH+"px";
+  els.tower.width=Math.round(towerW*dpr);
+  els.tower.height=Math.round(towerH*dpr);
+}
+function drawTower(now){
+  const ctx=tctx;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,towerW,towerH);
+  // 空 + 地面
+  const g=ctx.createLinearGradient(0,0,0,towerH);
+  g.addColorStop(0,"#dfe9ef"); g.addColorStop(1,"#f3ecdd");
+  ctx.fillStyle=g; ctx.fillRect(0,0,towerW,towerH);
+  const groundY=towerH-8;
+  ctx.fillStyle="#cdbe9f"; ctx.fillRect(0,groundY,towerW,8);
+
+  const floors=Math.max(state.floor,0);
+  const shown = Math.max(1, floors);
+  const sway = Math.sin(now/900)* (1.2 + Math.min(floors,30)*0.06);
+  // タワーが伸びても収まるよう階高を調整
+  const maxStackH = groundY-6;
+  let storyH = Math.min(15, maxStackH/Math.max(shown,1));
+  storyH = Math.max(3.2, storyH);
+  const bw = Math.min(towerW-12, 30);
+  const cx = towerW/2;
+
+  // 崩壊アニメ
+  let collapseY=0, collapseRot=0;
+  if(state.collapse>0){ collapseY = state.collapse*state.collapse*180; collapseRot=state.collapse*0.5; }
+
+  ctx.save();
+  ctx.translate(cx, 0);
+  for(let i=0;i<shown && floors>0;i++){
+    const y = groundY - (i+1)*storyH;
+    if(y < 2) break;
+    // 揺れ(上ほど大きい) + 崩壊
+    const t = i/Math.max(shown,1);
+    let dx = sway*t;
+    let dy = 0, rot=0;
+    if(state.collapse>0){ dx += collapseRot*40*t*t; dy = collapseY*t*t; rot=collapseRot*t*0.4; }
+    // 最新フロアの落下
+    let alpha=1, extraY=0;
+    if(i===floors-1 && state.towerDrop>0){ extraY = -state.towerDrop*60; alpha=1-state.towerDrop*0.3; }
+    ctx.save();
+    ctx.translate(dx, y+dy+extraY); ctx.rotate(rot);
+    // 階
+    const top = (i===shown-1);
+    ctx.fillStyle = top? "#cf9b39" : "#274769";
+    ctx.strokeStyle="#16263b"; ctx.lineWidth=0.8; ctx.globalAlpha=alpha;
+    ctx.fillRect(-bw/2,0,bw,storyH-0.8);
+    ctx.strokeRect(-bw/2,0,bw,storyH-0.8);
+    // 窓(階高が十分なら)
+    if(storyH>=6){
+      ctx.fillStyle = top? "#fff3d0" : "#ffd98a";
+      const wn=3, ww=bw/(wn+1);
+      for(let w=0;w<wn;w++){ ctx.globalAlpha=alpha*((Math.sin(i*3.1+w*2.2)>-0.3)?0.95:0.25);
+        ctx.fillRect(-bw/2+ww*(w+0.6), storyH*0.25, ww*0.5, storyH*0.45); }
+    }
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // 屋上アンテナ + 階数
+  if(floors>0 && state.collapse<=0){
+    const topY = groundY - shown*storyH;
+    if(topY>10){
+      ctx.strokeStyle="#c5362b"; ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.moveTo(cx+sway, topY); ctx.lineTo(cx+sway, topY-9); ctx.stroke();
+      ctx.fillStyle="#c5362b"; ctx.beginPath(); ctx.arc(cx+sway, topY-10,2,0,7); ctx.fill();
+    }
+  }
+  // 地面ラベル
+  ctx.fillStyle="#8a7f66"; ctx.font="700 9px 'Oswald',sans-serif"; ctx.textAlign="center";
+  ctx.fillText(floors+"F", cx, towerH-1.5);
+}
+
+/* ---------- メインループ (タイトルから回す) ---------- */
+let lastT=0;
+function loop(now){
+  const dt=Math.min(0.05,(now-lastT)/1000)||0; lastT=now;
+  // タワー落下減衰
+  if(state.towerDrop>0){ state.towerDrop=Math.max(0,state.towerDrop-dt*3.2); }
+  if(state.shakeT>0){ state.shakeT=Math.max(0,state.shakeT-dt); }
+  if(state.collapse>0){ state.collapse=Math.min(1,state.collapse+dt*1.6); }
+  try{ drawTower(now); }catch(e){}
+  requestAnimationFrame(loop);
+}
+
+/* ---------- 入力 ---------- */
+els.btnHigh.addEventListener("pointerup", e=>{ e.preventDefault(); answer(true); });
+els.btnLow.addEventListener("pointerup",  e=>{ e.preventDefault(); answer(false); });
+els.startBtn.addEventListener("pointerup", e=>{ e.preventDefault(); startGame(); });
+els.retryBtn.addEventListener("pointerup", e=>{ e.preventDefault(); startGame(); });
+els.shareBtn.addEventListener("pointerup", e=>{ e.preventDefault(); shareResult(); });
+// keyboard (PC)
+window.addEventListener("keydown", e=>{
+  if(e.key==="ArrowUp"||e.key==="1"){ answer(true); }
+  else if(e.key==="ArrowDown"||e.key==="2"){ answer(false); }
+  else if(e.key===" "||e.key==="Enter"){
+    if(state.phase==="title") startGame();
+    else if(state.phase==="over") startGame();
+  }
+});
+// ダブルタップズーム抑止
+let lastTouch=0;
+document.addEventListener("touchend",e=>{ const n=performance.now(); if(n-lastTouch<350){ e.preventDefault(); } lastTouch=n; }, {passive:false});
+document.addEventListener("dblclick",e=>e.preventDefault());
+document.addEventListener("gesturestart",e=>e.preventDefault());
+
+window.addEventListener("resize", sizeTower);
+window.addEventListener("orientationchange", ()=>setTimeout(sizeTower,200));
+
+/* ---------- init ---------- */
+try{ window.__YT = state; }catch(e){}   // デバッグ/E2E用の状態参照
+sizeTower();
+els.bestV.innerHTML = best + '<small>F</small>';
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
