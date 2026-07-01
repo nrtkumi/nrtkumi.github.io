@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>サテイスト — 英国・実売物件ねだん当て</title>
+<meta name="description" content="英国の“本物の成約物件”を地図と物件情報から査定するゲーム。HM Land Registry公式データを使い、いくらで売れたかをスライダーで当てる。ズバリ当てて査定士ランクを駆け上がれ。">
+<meta property="og:title" content="サテイスト — 英国・実売物件ねだん当て">
+<meta property="og:description" content="英国の本物の成約物件を、地図と間取りから“いくらで売れた？”と査定するハイスコア・ゲーム。データは英政府の実売記録。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://nrtkumi.github.io/games/sateist/assets/ogp.jpg">
+<meta property="og:url" content="https://nrtkumi.github.io/games/sateist/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,600&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+  :root{
+    --green:#123a2b; --green2:#1c5540; --cream:#f2ead6; --paper:#faf6ea;
+    --red:#b5262b; --red2:#8f1c20; --gold:#c39a3f; --ink:#241f16; --muted:#6b6350;
+    --line:#d8cdb0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:manipulation;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    background:#0d241b;
+    color:var(--ink);
+    font-family:'Manrope',system-ui,sans-serif;
+    -webkit-user-select:none; user-select:none;
+    overscroll-behavior:none;
+    overflow:hidden;
+  }
+  #bg{position:fixed; inset:0; z-index:0; display:block;}
+  #app{
+    position:relative; z-index:1;
+    max-width:500px; margin:0 auto;
+    height:100dvh; height:100vh;
+    display:flex; flex-direction:column;
+    background:var(--cream);
+    box-shadow:0 0 60px rgba(0,0,0,.55);
+    overflow:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .serif{font-family:'Fraunces',serif;}
+  button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit;}
+
+  /* ---------- TITLE ---------- */
+  #title{
+    position:absolute; inset:0; z-index:40;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:28px 26px calc(28px + env(safe-area-inset-bottom));
+    background:
+      radial-gradient(120% 80% at 50% 0%, #1c5540 0%, #123a2b 55%, #0e2c20 100%);
+    color:var(--cream);
+  }
+  .board{
+    border:3px solid var(--gold); border-radius:8px;
+    padding:26px 22px 24px; background:rgba(0,0,0,.16);
+    box-shadow:0 12px 30px rgba(0,0,0,.35), inset 0 0 0 6px rgba(195,154,63,.12);
+    max-width:360px; width:100%;
+  }
+  .eyebrow{letter-spacing:.36em; font-size:11px; font-weight:700; color:var(--gold); text-transform:uppercase;}
+  #title h1{
+    font-family:'Fraunces',serif; font-weight:900; font-size:clamp(46px,15vw,68px);
+    margin:.12em 0 .04em; line-height:.92; color:var(--cream);
+    text-shadow:0 2px 0 rgba(0,0,0,.35);
+  }
+  .subttl{font-size:14px; color:#e7dcc0; line-height:1.6; margin:6px 2px 0;}
+  .flag{font-size:20px; letter-spacing:.1em; margin-top:10px;}
+  #playBtn{
+    margin-top:26px; width:100%;
+    background:var(--red); color:#fff; font-weight:800; font-size:20px;
+    padding:16px; border-radius:6px; letter-spacing:.06em;
+    box-shadow:0 6px 0 var(--red2), 0 10px 20px rgba(0,0,0,.3);
+    transition:transform .06s, box-shadow .06s;
+  }
+  #playBtn:active{transform:translateY(4px); box-shadow:0 2px 0 var(--red2), 0 6px 12px rgba(0,0,0,.3);}
+  .best{margin-top:18px; font-size:13px; color:#e7dcc0;}
+  .best b{font-family:'Fraunces',serif; font-size:19px; color:var(--gold);}
+  .howto{margin-top:16px; font-size:12.5px; color:#cfc6ac; line-height:1.7; max-width:340px;}
+  .credit{margin-top:20px; font-size:10.5px; color:#9fb0a2; line-height:1.6;}
+  .credit a{color:#bcae86;}
+
+  /* ---------- GAME ---------- */
+  #game{display:none; flex-direction:column; height:100%; min-height:0;}
+  #hud{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:9px 14px; background:var(--green); color:var(--cream);
+    border-bottom:2px solid var(--gold); flex:0 0 auto;
+  }
+  #hud .lives{font-size:17px; letter-spacing:2px;}
+  #hud .lives .lost{opacity:.22;}
+  #hud .mid{text-align:center; line-height:1.05;}
+  #hud .round{font-size:10px; letter-spacing:.2em; color:var(--gold); text-transform:uppercase;}
+  #hud .score{font-family:'Fraunces',serif; font-weight:700; font-size:20px;}
+  #hud .mult{font-size:11px; color:#ffd98a; font-weight:700;}
+  #hud .streak{font-size:11px; color:#e7dcc0; min-width:54px; text-align:right;}
+
+  #map{
+    flex:1 1 0; min-height:120px; width:100%; background:#dfe4dc; z-index:1;
+  }
+  .mapribbon{
+    position:absolute; top:8px; left:8px; z-index:5;
+    background:var(--red); color:#fff; font-size:11px; font-weight:800;
+    padding:5px 10px; border-radius:3px; letter-spacing:.05em;
+    box-shadow:0 2px 6px rgba(0,0,0,.35); pointer-events:none;
+  }
+  .mapwrap{position:relative; flex:1 1 0; min-height:120px; display:flex;}
+  .house-pin{filter:drop-shadow(0 3px 3px rgba(0,0,0,.4));}
+
+  /* property card */
+  #card{
+    flex:0 0 auto; background:var(--paper);
+    border-top:2px solid var(--gold);
+    padding:11px 14px 8px;
+  }
+  .cardhead{display:flex; align-items:baseline; justify-content:space-between; gap:8px;}
+  .town{font-family:'Fraunces',serif; font-weight:900; font-size:22px; color:var(--green); line-height:1; letter-spacing:.01em; text-transform:capitalize;}
+  .postc{font-size:11px; color:var(--muted); font-weight:700; letter-spacing:.08em;}
+  .street{font-size:12.5px; color:var(--ink); margin-top:3px; text-transform:capitalize; opacity:.9;}
+  .chips{display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;}
+  .chip{
+    font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:20px;
+    background:#fff; border:1px solid var(--line); color:var(--ink);
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .chip.type{background:var(--green); color:#fff; border-color:var(--green);}
+  .chip.new{background:var(--gold); color:#3a2c00; border-color:var(--gold);}
+
+  /* guess control */
+  #control{flex:0 0 auto; background:var(--paper); padding:4px 16px calc(12px + env(safe-area-inset-bottom));}
+  .guesslabel{text-align:center; font-size:10.5px; letter-spacing:.2em; color:var(--muted); text-transform:uppercase; margin-bottom:1px;}
+  .guessval{text-align:center; font-family:'Fraunces',serif; font-weight:900; font-size:34px; color:var(--red); line-height:1; font-variant-numeric:tabular-nums;}
+  .guessyen{text-align:center; font-size:11px; color:var(--muted); margin-top:2px;}
+  .sliderrow{display:flex; align-items:center; gap:10px; margin-top:9px;}
+  .stepbtn{
+    flex:0 0 auto; width:38px; height:38px; border-radius:50%;
+    background:var(--green); color:#fff; font-size:20px; font-weight:800;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 3px 0 #0c261c;
+  }
+  .stepbtn:active{transform:translateY(2px); box-shadow:0 1px 0 #0c261c;}
+  .slidewrap{flex:1 1 auto; position:relative;}
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:8px; border-radius:6px;
+    background:linear-gradient(90deg,var(--green) 0%,var(--gold) 55%,var(--red) 100%);
+    outline:none; margin:0;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none; width:30px; height:30px; border-radius:50%;
+    background:#fff; border:3px solid var(--red); box-shadow:0 2px 6px rgba(0,0,0,.35); cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:30px; height:30px; border-radius:50%; background:#fff; border:3px solid var(--red); box-shadow:0 2px 6px rgba(0,0,0,.35); cursor:pointer;
+  }
+  .hintband{position:absolute; top:-1px; height:10px; background:rgba(181,38,43,.22); border-left:2px solid var(--red); border-right:2px solid var(--red); border-radius:2px; pointer-events:none; display:none;}
+  .ticks{display:flex; justify-content:space-between; font-size:9.5px; color:var(--muted); margin-top:4px; padding:0 2px;}
+  #appraiseBtn{
+    margin-top:11px; width:100%;
+    background:var(--red); color:#fff; font-weight:800; font-size:18px;
+    padding:13px; border-radius:6px; letter-spacing:.14em;
+    box-shadow:0 5px 0 var(--red2);
+  }
+  #appraiseBtn:active{transform:translateY(3px); box-shadow:0 2px 0 var(--red2);}
+  #appraiseBtn:disabled{opacity:.5; box-shadow:0 5px 0 var(--red2);}
+
+  /* loading */
+  #loading{position:absolute; inset:0; z-index:30; display:none; align-items:center; justify-content:center; flex-direction:column; background:var(--cream); color:var(--green);}
+  .spin{width:44px; height:44px; border:4px solid var(--line); border-top-color:var(--red); border-radius:50%; animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #loading p{margin-top:14px; font-size:13px; color:var(--muted); font-weight:700; letter-spacing:.08em;}
+
+  /* ---------- REVEAL ---------- */
+  #reveal{
+    position:absolute; inset:0; z-index:50; display:none;
+    flex-direction:column; align-items:center; justify-content:center;
+    background:rgba(14,36,27,.9); color:var(--cream); text-align:center;
+    padding:24px calc(24px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left));
+    backdrop-filter:blur(3px);
+  }
+  .stamp{
+    font-family:'Fraunces',serif; font-weight:900; font-size:clamp(52px,18vw,84px);
+    color:var(--red); border:6px solid var(--red); border-radius:10px;
+    padding:2px 26px; letter-spacing:.06em; transform:rotate(-9deg);
+    text-shadow:0 1px 0 rgba(0,0,0,.2); box-shadow:0 0 0 3px rgba(181,38,43,.2);
+    background:rgba(242,234,214,.06);
+    opacity:0;
+  }
+  .stamp.hit{animation:slap .45s cubic-bezier(.2,1.4,.4,1) forwards;}
+  @keyframes slap{0%{opacity:0; transform:rotate(-9deg) scale(2.4);}60%{opacity:1;}100%{opacity:1; transform:rotate(-9deg) scale(1);}}
+  .actual{margin-top:20px; font-size:12px; letter-spacing:.2em; color:var(--gold); text-transform:uppercase;}
+  .actualval{font-family:'Fraunces',serif; font-weight:900; font-size:clamp(40px,13vw,58px); color:#fff; line-height:1; font-variant-numeric:tabular-nums;}
+  .actualyen{font-size:12px; color:#cfc6ac; margin-top:4px;}
+  .verdict{margin-top:16px; font-family:'Fraunces',serif; font-weight:700; font-size:26px;}
+  .vsub{font-size:13px; color:#e7dcc0; margin-top:5px; line-height:1.6;}
+  .pts{margin-top:12px; font-size:15px;}
+  .pts b{color:var(--gold); font-family:'Fraunces',serif; font-size:22px;}
+  .flavor{margin-top:12px; font-size:11.5px; color:#9fb0a2; line-height:1.55; max-width:320px;}
+  #nextBtn{
+    margin-top:22px; background:var(--cream); color:var(--green); font-weight:800; font-size:17px;
+    padding:13px 40px; border-radius:6px; letter-spacing:.1em; box-shadow:0 5px 0 #b7ad90;
+  }
+  #nextBtn:active{transform:translateY(3px); box-shadow:0 2px 0 #b7ad90;}
+
+  /* ---------- PERK ---------- */
+  #perk{
+    position:absolute; inset:0; z-index:55; display:none;
+    flex-direction:column; align-items:center; justify-content:center;
+    background:rgba(14,36,27,.95); color:var(--cream); text-align:center; padding:26px;
+  }
+  #perk h2{font-family:'Fraunces',serif; font-weight:900; font-size:30px; color:var(--gold); margin:0 0 4px;}
+  #perk p{font-size:13px; color:#cfc6ac; margin:0 0 20px;}
+  .perkcards{display:flex; flex-direction:column; gap:12px; width:100%; max-width:340px;}
+  .perkcard{
+    background:var(--paper); color:var(--ink); border-radius:8px; padding:15px 16px; text-align:left;
+    border:2px solid var(--gold); box-shadow:0 6px 16px rgba(0,0,0,.3);
+    display:flex; gap:13px; align-items:center; transition:transform .06s;
+  }
+  .perkcard:active{transform:scale(.97);}
+  .perkcard .pi{font-size:30px; flex:0 0 auto;}
+  .perkcard .pt{font-family:'Fraunces',serif; font-weight:700; font-size:17px; color:var(--green);}
+  .perkcard .pd{font-size:12px; color:var(--muted); margin-top:2px; line-height:1.45;}
+
+  /* ---------- GAME OVER ---------- */
+  #over{
+    position:absolute; inset:0; z-index:60; display:none;
+    flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(120% 80% at 50% 0%, #1c5540 0%, #123a2b 60%, #0e2c20 100%);
+    color:var(--cream); text-align:center; padding:30px;
+  }
+  #over .eyebrow{color:var(--gold);}
+  #over .rank{font-family:'Fraunces',serif; font-weight:900; font-size:clamp(30px,9vw,42px); color:var(--cream); margin:6px 0 2px; line-height:1.05;}
+  #over .finalscore{font-family:'Fraunces',serif; font-weight:900; font-size:64px; color:var(--gold); line-height:1; margin:14px 0 2px;}
+  #over .flabel{font-size:11px; letter-spacing:.24em; color:#cfc6ac; text-transform:uppercase;}
+  #over .obest{margin-top:14px; font-size:13px; color:#e7dcc0;}
+  #over .newbest{color:var(--gold); font-weight:800;}
+  #over .ostats{margin-top:10px; font-size:12px; color:#bcae86; line-height:1.7;}
+  #againBtn{margin-top:26px; background:var(--red); color:#fff; font-weight:800; font-size:19px; padding:15px 46px; border-radius:6px; letter-spacing:.08em; box-shadow:0 5px 0 var(--red2);}
+  #againBtn:active{transform:translateY(3px); box-shadow:0 2px 0 var(--red2);}
+  #homeBtn{margin-top:14px; font-size:13px; color:#cfc6ac; text-decoration:underline; background:none;}
+
+  .toast{
+    position:absolute; left:50%; top:64px; transform:translateX(-50%);
+    z-index:45; background:var(--green); color:#fff; font-size:13px; font-weight:700;
+    padding:9px 16px; border-radius:20px; border:1px solid var(--gold);
+    opacity:0; transition:opacity .3s, transform .3s; pointer-events:none; white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div id="app">
+
+  <!-- TITLE -->
+  <div id="title">
+    <div class="board">
+      <div class="eyebrow">Guess the Sold Price</div>
+      <h1 class="serif">サテイスト</h1>
+      <div class="subttl">英国の<b>“本物の成約物件”</b>を<br>地図と物件情報から査定せよ。</div>
+      <div class="flag">🏴󠁧󠁢󠁥󠁮󠁧󠁿 🏠 💷</div>
+      <button id="playBtn">査定を はじめる</button>
+      <div class="best">自己ベスト査定額 <b id="bestScore">0</b> pt</div>
+    </div>
+    <div class="howto">
+      物件カードと地図を見て、<b>いくらで売れたか</b>をスライダーで予想。<br>
+      成約価格の<b>2倍〜半額の範囲</b>に収まれば査定成功、近いほど高得点。<br>
+      3回ミスで廃業。5件ごとに強化を選べます。
+    </div>
+    <div class="credit">
+      物件データ: <a href="https://landregistry.data.gov.uk/">HM Land Registry — Price Paid Data</a>（英政府オープンデータ / 実際の成約記録）<br>
+      位置: <a href="https://postcodes.io/">postcodes.io</a> ／ 地図: © OpenStreetMap contributors · © CARTO
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div id="game">
+    <div id="hud">
+      <div class="lives" id="lives">❤❤❤</div>
+      <div class="mid">
+        <div class="round" id="roundLbl">物件 #1</div>
+        <div class="score"><span id="scoreVal">0</span> <span class="mult" id="multVal"></span></div>
+      </div>
+      <div class="streak" id="streakVal"></div>
+    </div>
+
+    <div class="mapwrap">
+      <div id="map"></div>
+      <div class="mapribbon">この物件、いくら？</div>
+    </div>
+
+    <div id="card">
+      <div class="cardhead">
+        <div class="town" id="cTown">—</div>
+        <div class="postc" id="cPost"></div>
+      </div>
+      <div class="street" id="cStreet"></div>
+      <div class="chips" id="cChips"></div>
+    </div>
+
+    <div id="control">
+      <div class="guesslabel">あなたの査定額</div>
+      <div class="guessval" id="gVal">£0</div>
+      <div class="guessyen" id="gYen"></div>
+      <div class="sliderrow">
+        <button class="stepbtn" id="minus">−</button>
+        <div class="slidewrap">
+          <div class="hintband" id="hintBand"></div>
+          <input type="range" id="slider" min="0" max="1000" value="500">
+          <div class="ticks"><span>£30k</span><span>£100k</span><span>£300k</span><span>£1M</span><span>£2.5M</span></div>
+        </div>
+        <button class="stepbtn" id="plus">＋</button>
+      </div>
+      <button id="appraiseBtn">査 定 す る</button>
+    </div>
+
+    <div id="loading"><div class="spin"></div><p>物件を取り寄せています…</p></div>
+  </div>
+
+  <!-- REVEAL -->
+  <div id="reveal">
+    <div class="stamp" id="stamp">SOLD</div>
+    <div class="actual">実際の成約価格</div>
+    <div class="actualval" id="rActual">£0</div>
+    <div class="actualyen" id="rYen"></div>
+    <div class="verdict" id="rVerdict"></div>
+    <div class="vsub" id="rVsub"></div>
+    <div class="pts" id="rPts"></div>
+    <div class="flavor" id="rFlavor"></div>
+    <button id="nextBtn">次の物件へ →</button>
+  </div>
+
+  <!-- PERK -->
+  <div id="perk">
+    <h2 class="serif">査定士ボーナス</h2>
+    <p>1つ選んで強化しよう</p>
+    <div class="perkcards" id="perkCards"></div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="over">
+    <div class="eyebrow">査定士としての評価</div>
+    <div class="rank" id="oRank">—</div>
+    <div class="finalscore" id="oScore">0</div>
+    <div class="flabel">Total appraisal points</div>
+    <div class="obest" id="oBest"></div>
+    <div class="ostats" id="oStats"></div>
+    <button id="againBtn">もう一度 査定する</button>
+    <button id="homeBtn">タイトルへ戻る</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+(function(){
+'use strict';
+
+// ---------- constants ----------
+var LR = 'https://landregistry.data.gov.uk/data/ppi/transaction-record.json';
+var PC = 'https://api.postcodes.io/postcodes/';
+var GBP_JPY = 194; // 概算レート（表示用）
+var PRICE_MIN = 30000, PRICE_MAX = 2500000;
+var LMIN = Math.log(PRICE_MIN), LMAX = Math.log(PRICE_MAX);
+var LN2 = Math.log(2);            // 合格バンド = 成約価格の 1/2〜2倍
+var BULLSEYE = Math.log(1.10);    // ±10% でズバリ
+var START_LIVES = 3, MAX_LIVES = 5;
+
+// 実在の英国の街（HM Land Registryにデータが存在するもの）+ 参考中央値(千ポンド, ヒント用の概算)
+var TOWNS = [
+  ['LONDON',520],['OXFORD',450],['CAMBRIDGE',480],['BRIGHTON',400],['BRISTOL',360],
+  ['BATH',500],['GUILDFORD',520],['READING',380],['ST ALBANS',560],['WINCHESTER',520],
+  ['MANCHESTER',250],['LEEDS',230],['BIRMINGHAM',230],['NOTTINGHAM',220],['SHEFFIELD',220],
+  ['LIVERPOOL',180],['LEICESTER',250],['YORK',320],['NORWICH',280],['PLYMOUTH',260],
+  ['CARDIFF',270],['NEWCASTLE UPON TYNE',200],['BURNLEY',120],['BRADFORD',150],['STOKE-ON-TRENT',170],
+  ['MIDDLESBROUGH',140],['SUNDERLAND',150],['BLACKPOOL',150],['GRIMSBY',140],['HARTLEPOOL',140],
+  ['ROCHDALE',180],['OLDHAM',190],['DONCASTER',170],['BARNSLEY',170],['WIGAN',180],
+  ['COVENTRY',230],['SOUTHAMPTON',280],['PORTSMOUTH',280],['DERBY',220],['WOLVERHAMPTON',220],
+  ['SWANSEA',200],['PRESTON',180],['BOLTON',190],['HUDDERSFIELD',190],['EXETER',320],['IPSWICH',270]
+];
+
+var TYPE_JP = {
+  'detached':['一戸建て','🏡'], 'semi-detached':['二戸一（セミ）','🏠'],
+  'terraced':['テラスハウス','🏘️'], 'flat-maisonette':['フラット（集合）','🏢']
+};
+
+// ---------- state (すべて宣言時に初期化) ----------
+var lives=START_LIVES, score=0, roundNo=0, passes=0, streak=0, mult=1;
+var insurance=0, hintLeft=0, bestScore=0;
+var bestGuessErr=999, closestPct=null, totalErr=0;
+var cur=null;                 // 現在の物件
+var queue=[];                 // 先読み物件キュー
+var filling=false;
+var sliderT=0.5;              // 0..1
+var guessPrice=priceFromT(0.5);
+var revealing=false, busy=false;
+var map=null, marker=null, mapReady=false;
+var rafPaused=false;
+
+// count-up tween state
+var tween={active:false, from:0, to:0, t0:0, dur:1100, el:null, prefix:'£'};
+
+// ---------- DOM ----------
+function $(id){return document.getElementById(id);}
+var elLives=$('lives'), elScore=$('scoreVal'), elMult=$('multVal'), elStreak=$('streakVal'),
+    elRound=$('roundLbl'), elTown=$('cTown'), elPost=$('cPost'), elStreet=$('cStreet'),
+    elChips=$('cChips'), elGVal=$('gVal'), elGYen=$('gYen'), slider=$('slider'),
+    elHint=$('hintBand'), elToast=$('toast');
+
+// ---------- utils ----------
+function pick(a){return a[(Math.random()*a.length)|0];}
+function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+function priceFromT(t){return Math.exp(LMIN + clamp(t,0,1)*(LMAX-LMIN));}
+function tFromPrice(p){return (Math.log(clamp(p,PRICE_MIN,PRICE_MAX))-LMIN)/(LMAX-LMIN);}
+function niceRound(p){
+  if(p<80000) return Math.round(p/1000)*1000;
+  if(p<300000) return Math.round(p/2500)*2500;
+  if(p<800000) return Math.round(p/5000)*5000;
+  return Math.round(p/10000)*10000;
+}
+function fmtGBP(n){return '£'+Math.round(n).toLocaleString('en-GB');}
+function fmtYen(n){
+  var y=n*GBP_JPY;
+  if(y>=100000000) return '≒ ¥'+(y/100000000).toFixed(2)+'億';
+  return '≒ ¥'+Math.round(y/10000).toLocaleString('ja-JP')+'万';
+}
+function cap(s){return s?s.toLowerCase().replace(/\b\w/g,function(c){return c.toUpperCase();}):'';}
+
+function toast(msg){
+  elToast.textContent=msg; elToast.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(function(){elToast.classList.remove('show');},1600);
+}
+
+// ---------- localStorage ----------
+try{ bestScore=parseInt(localStorage.getItem('sateist_best')||'0',10)||0; }catch(e){}
+$('bestScore').textContent=bestScore.toLocaleString();
+function saveBest(){ try{ localStorage.setItem('sateist_best', String(bestScore)); }catch(e){} }
+
+// ================= AUDIO (iOS対応) =================
+var AC=null, silentAudio=null, audioReady=false;
+function makeSilentWav(){
+  var sr=8000, len=sr*0.4, bytes=44+len*2, buf=new ArrayBuffer(bytes), v=new DataView(buf), i;
+  function ws(o,s){for(i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));}
+  ws(0,'RIFF'); v.setUint32(4,36+len*2,true); ws(8,'WAVE'); ws(12,'fmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true);
+  v.setUint16(34,16,true); ws(36,'data'); v.setUint32(40,len*2,true);
+  var blob=new Blob([buf],{type:'audio/wav'}); return URL.createObjectURL(blob);
+}
+function unlockAudio(){
+  if(audioReady) return;
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    if(!silentAudio){
+      silentAudio=new Audio(makeSilentWav()); silentAudio.loop=true; silentAudio.volume=0.01;
+    }
+    silentAudio.play().catch(function(){});
+    var done=function(){ audioReady=(AC.state==='running'); };
+    if(AC.state!=='running'){ AC.resume().then(done).catch(function(){}); } else { done(); }
+    AC.onstatechange=function(){
+      if(AC.state==='interrupted'||AC.state==='suspended'){ AC.resume().catch(function(){}); }
+    };
+  }catch(e){}
+}
+function beep(freq,dur,type,vol,slideTo){
+  if(!AC||AC.state!=='running') return;
+  try{
+    var o=AC.createOscillator(), g=AC.createGain(), t=AC.currentTime;
+    o.type=type||'sine'; o.frequency.setValueAtTime(freq,t);
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo,t+dur);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol||0.14,t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+function sTick(){ beep(520,0.03,'square',0.05); }
+function sConfirm(){ beep(300,0.18,'sawtooth',0.12,620); }
+function sStamp(){ beep(90,0.22,'square',0.2); setTimeout(function(){beep(60,0.18,'sine',0.16);},40); }
+function sGood(){ beep(660,0.12,'triangle',0.14); setTimeout(function(){beep(990,0.16,'triangle',0.14);},110); setTimeout(function(){beep(1320,0.2,'triangle',0.12);},230); }
+function sBull(){ sGood(); setTimeout(function(){beep(1760,0.25,'sine',0.13);},360); }
+function sBad(){ beep(200,0.3,'sawtooth',0.16,90); }
+function sPerk(){ beep(523,0.1,'sine',0.12); setTimeout(function(){beep(784,0.16,'sine',0.12);},110); }
+
+// ================= BACKGROUND canvas =================
+var bg=$('bg'), bctx=bg.getContext('2d'), bw=0,bh=0, dpr=1;
+var motes=[];
+for(var m=0;m<26;m++){ motes.push({x:Math.random(),y:Math.random(),s:8+Math.random()*22,sp:0.008+Math.random()*0.02,rot:Math.random()*6.28,ch:Math.random()<0.5?'£':'🏠'}); }
+function resizeBG(){
+  dpr=Math.min(2,window.devicePixelRatio||1);
+  bw=window.innerWidth; bh=window.innerHeight;
+  bg.width=bw*dpr; bg.height=bh*dpr; bg.style.width=bw+'px'; bg.style.height=bh+'px';
+}
+function drawBG(dt){
+  bctx.setTransform(dpr,0,0,dpr,0,0);
+  bctx.clearRect(0,0,bw,bh);
+  bctx.fillStyle='#0d241b'; bctx.fillRect(0,0,bw,bh);
+  for(var i=0;i<motes.length;i++){
+    var p=motes[i];
+    p.y-=p.sp*dt*0.06; p.rot+=0.002*dt*0.06;
+    if(p.y<-0.1){p.y=1.1;p.x=Math.random();}
+    var x=p.x*bw, y=p.y*bh;
+    bctx.save(); bctx.translate(x,y); bctx.rotate(p.rot);
+    bctx.globalAlpha=0.05; bctx.font=p.s+'px Fraunces, serif'; bctx.fillStyle='#c39a3f';
+    bctx.textAlign='center'; bctx.textBaseline='middle'; bctx.fillText(p.ch,0,0);
+    bctx.restore();
+  }
+}
+
+// ================= MAIN LOOP (タイトルから回る) =================
+var lastT=0;
+function loop(ts){
+  try{
+    if(!lastT) lastT=ts;
+    var dt=Math.min(48, ts-lastT); lastT=ts;
+    if(!rafPaused) drawBG(dt);
+    // count-up tween
+    if(tween.active && tween.el){
+      var k=Math.min(1,(ts-tween.t0)/tween.dur);
+      var e=1-Math.pow(1-k,3);
+      var val=tween.from+(tween.to-tween.from)*e;
+      tween.el.textContent=tween.prefix+Math.round(val).toLocaleString('en-GB');
+      if(k>=1) tween.active=false;
+    }
+  }catch(err){ /* ループを絶対に殺さない */ }
+  requestAnimationFrame(loop);
+}
+resizeBG();
+requestAnimationFrame(loop);
+window.addEventListener('resize',function(){ resizeBG(); if(map){ try{map.invalidateSize();}catch(e){}} });
+
+// ================= MAP =================
+function initMap(){
+  if(mapReady || typeof L==='undefined') return;
+  try{
+    map=L.map('map',{zoomControl:false, attributionControl:true, dragging:true, scrollWheelZoom:false, tap:true})
+         .setView([53.0,-1.5],6);
+    L.control.zoom({position:'topright'}).addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+      attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains:'abcd', maxZoom:19
+    }).addTo(map);
+    mapReady=true;
+  }catch(e){ mapReady=false; }
+}
+function housePin(){
+  return L.divIcon({className:'house-pin', iconSize:[34,44], iconAnchor:[17,42], html:
+    '<svg width="34" height="44" viewBox="0 0 34 44" xmlns="http://www.w3.org/2000/svg">'+
+    '<path d="M17 43 C17 43 3 26 3 15 A14 14 0 0 1 31 15 C31 26 17 43 17 43 Z" fill="#b5262b" stroke="#fff" stroke-width="2.5"/>'+
+    '<path d="M10.5 17.5 L17 11.5 L23.5 17.5 V23.5 H10.5 Z" fill="#fff"/>'+
+    '<rect x="15" y="19" width="4" height="4.5" fill="#b5262b"/></svg>'});
+}
+function showOnMap(lat,lon){
+  if(!mapReady||lat==null) return false;
+  try{
+    if(!marker){ marker=L.marker([lat,lon],{icon:housePin()}).addTo(map); }
+    else { marker.setLatLng([lat,lon]); }
+    map.setView([lat,lon], 14, {animate:false});
+    setTimeout(function(){ try{map.invalidateSize();}catch(e){} },60);
+    return true;
+  }catch(e){ return false; }
+}
+
+// ================= DATA =================
+function isUsable(it){
+  if(!it) return false;
+  var p=it.pricePaid; if(typeof p!=='number'||p<PRICE_MIN||p>PRICE_MAX) return false;
+  var tc=(it.transactionCategory&&it.transactionCategory._about)||'';
+  if(tc.indexOf('additional')>=0) return false;
+  var pt=(it.propertyType&&it.propertyType._about||'').split('/').pop();
+  if(!TYPE_JP[pt]) return false;
+  var a=it.propertyAddress||{}; if(!a.postcode||!a.town) return false;
+  return true;
+}
+function normalize(it){
+  var a=it.propertyAddress||{};
+  var pt=(it.propertyType._about||'').split('/').pop();
+  var est=(it.estateType&&it.estateType.prefLabel&&it.estateType.prefLabel[0]&&it.estateType.prefLabel[0]._value)||'';
+  var year='';
+  if(it.transactionDate){ var mt=String(it.transactionDate).match(/(\d{4})/); year=mt?mt[1]:''; }
+  var addr=[a.paon,cap(a.street||'')].filter(Boolean).join(' ');
+  return {
+    price:it.pricePaid, type:pt, tenure:est, newBuild:!!it.newBuild,
+    town:cap(a.town), postcode:a.postcode, street:addr,
+    district:cap(a.district||a.county||''), year:year,
+    townRaw:(a.town||'').toUpperCase(), lat:null, lon:null, geo:null
+  };
+}
+function fetchListing(){
+  var attempt=0;
+  function tryOne(){
+    var tw=pick(TOWNS);
+    var maxPage=attempt<3?28:6;
+    var page=Math.floor(Math.random()*maxPage);
+    var url=LR+'?propertyAddress.town='+encodeURIComponent(tw[0])+
+            '&min-transactionDate=2023-01-01&_pageSize=20&_page='+page;
+    return fetch(url).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(j){
+        var items=(j.result&&j.result.items)||[];
+        var usable=items.filter(isUsable);
+        if(!usable.length) throw 0;
+        var it=normalize(pick(usable));
+        it.hintMed=tw[1]*1000;
+        return it;
+      })
+      .catch(function(){
+        attempt++;
+        if(attempt>=7) return null;
+        return tryOne();
+      });
+  }
+  return tryOne();
+}
+function geocode(it){
+  return fetch(PC+encodeURIComponent(it.postcode)).then(function(r){
+    if(!r.ok) throw 0; return r.json();
+  }).then(function(j){
+    if(j&&j.result){ it.lat=j.result.latitude; it.lon=j.result.longitude; it.geo=j.result; }
+    return it;
+  }).catch(function(){ return it; });
+}
+function fillQueue(){
+  if(filling) return; filling=true;
+  function step(){
+    if(queue.length>=3){ filling=false; return; }
+    fetchListing().then(function(it){
+      if(!it){ filling=false; return; }
+      return geocode(it).then(function(g){ queue.push(g); step(); });
+    }).catch(function(){ filling=false; });
+  }
+  step();
+}
+
+// ================= GUESS UI =================
+function updateGuess(){
+  guessPrice=niceRound(priceFromT(sliderT));
+  elGVal.textContent=fmtGBP(guessPrice);
+  elGYen.textContent=fmtYen(guessPrice);
+}
+function setSlider(t,silent){
+  sliderT=clamp(t,0,1);
+  slider.value=Math.round(sliderT*1000);
+  updateGuess();
+  if(!silent) sTick();
+}
+slider.addEventListener('input',function(){ setSlider(slider.value/1000,false); });
+$('minus').addEventListener('pointerdown',function(e){e.preventDefault(); step(-1);});
+$('plus').addEventListener('pointerdown',function(e){e.preventDefault(); step(1);});
+function step(dir){
+  var p=priceFromT(sliderT);
+  var inc=p*0.04*dir;               // 約±4%の微調整
+  setSlider(tFromPrice(p+inc),false);
+}
+
+// ================= ROUND FLOW =================
+function startGame(){
+  lives=START_LIVES; score=0; roundNo=0; passes=0; streak=0; mult=1;
+  insurance=0; hintLeft=0;
+  bestGuessErr=999; closestPct=null; totalErr=0;
+  queue=[]; cur=null;
+  $('title').style.display='none';
+  $('over').style.display='none';
+  $('game').style.display='flex';
+  initMap();
+  updateHUD();
+  fillQueue();
+  nextRound();
+}
+function updateHUD(){
+  // 現在ライフ数ぶんの❤ + 失った分（開始3基準）を薄く表示
+  var shown=Math.max(START_LIVES,lives);
+  var h='';
+  for(var k=0;k<shown;k++){ h+= (k<lives)?'❤':'<span class="lost">❤</span>'; }
+  elLives.innerHTML=h;
+  elScore.textContent=score.toLocaleString();
+  elMult.textContent = mult>1 ? ('×'+mult.toFixed(1)) : '';
+  elStreak.textContent = streak>1 ? ('🔥'+streak) : '';
+  elRound.textContent='物件 #'+(roundNo);
+  if(insurance>0) elStreak.textContent += (elStreak.textContent?' ':'')+'🛡'+insurance;
+}
+function showLoading(v){ $('loading').style.display=v?'flex':'none'; }
+
+function nextRound(){
+  revealing=false;
+  if(queue.length===0){
+    showLoading(true);
+    fillQueue();
+    var wait=setInterval(function(){
+      if(queue.length>0){ clearInterval(wait); showLoading(false); nextRound(); }
+    },250);
+    // 安全弁: 15秒来なければ再試行
+    setTimeout(function(){ clearInterval(wait); if(queue.length===0){ fillQueue(); } },15000);
+    return;
+  }
+  roundNo++;
+  cur=queue.shift();
+  fillQueue();
+  renderListing(cur);
+  updateHUD();
+}
+function renderListing(it){
+  elTown.textContent=it.town||'—';
+  elPost.textContent=it.postcode||'';
+  var loc=it.district && it.district.toUpperCase()!==(it.town||'').toUpperCase() ? (it.street? it.street+'（'+it.district+'）': it.district) : it.street;
+  elStreet.textContent=loc||'';
+  // chips
+  var tp=TYPE_JP[it.type]||['—','🏠'];
+  var chips='<span class="chip type">'+tp[1]+' '+tp[0]+'</span>';
+  var ten = /leasehold/i.test(it.tenure)?'借地権（Leasehold）':'所有権（Freehold）';
+  chips+='<span class="chip">📜 '+ten+'</span>';
+  if(it.newBuild) chips+='<span class="chip new">✨ 新築（New build）</span>';
+  else chips+='<span class="chip">🧱 中古（既存）</span>';
+  if(it.year) chips+='<span class="chip">🗓️ '+it.year+'年 成約</span>';
+  elChips.innerHTML=chips;
+
+  // map
+  var ok=showOnMap(it.lat,it.lon);
+  if(!ok && mapReady){ try{ map.setView([53.0,-1.5],6);}catch(e){} }
+
+  // slider reset to town-ish center or mid
+  var startT = it.hintMed ? tFromPrice(it.hintMed) : 0.5;
+  setSlider(startT,true);
+
+  // hint band (perk)
+  if(hintLeft>0 && it.hintMed){
+    var lo=tFromPrice(it.hintMed*0.45), hi=tFromPrice(it.hintMed*2.2);
+    elHint.style.left=(lo*100)+'%'; elHint.style.width=((hi-lo)*100)+'%'; elHint.style.display='block';
+    hintLeft--;
+  } else { elHint.style.display='none'; }
+
+  $('appraiseBtn').disabled=false;
+}
+
+// ================= APPRAISE / REVEAL =================
+function appraise(){
+  if(revealing||!cur) return;
+  revealing=true; $('appraiseBtn').disabled=true;
+  sConfirm();
+  var actual=cur.price, guess=guessPrice;
+  var off=Math.abs(Math.log(guess/actual));   // 自然対数の絶対誤差
+  var pct=Math.abs(guess-actual)/actual*100;
+  var pass = off<=LN2;
+  var bull = off<=BULLSEYE;
+  totalErr+=pct;
+  if(off<bestGuessErr){ bestGuessErr=off; closestPct=pct; }
+
+  var pts=0;
+  if(pass){
+    pts=Math.round(1000*(1-off/LN2));
+    if(bull) pts+=600;
+    streak++;
+    if(streak>1) mult=Math.min(multCap, 1+ (streak-1)*0.15);
+    var gained=Math.round(pts*mult);
+    score+=gained;
+    passes++;
+  } else {
+    streak=0; mult=1;
+    if(insurance>0){ insurance--; pass='saved'; }
+    else { lives--; }
+  }
+
+  // reveal UI
+  var rev=$('reveal'); rev.style.display='flex';
+  var stamp=$('stamp');
+  stamp.classList.remove('hit'); void stamp.offsetWidth; stamp.classList.add('hit');
+  stamp.style.color = pass===true?'#2f8f4e':(pass==='saved'?'#c39a3f':'#b5262b');
+  stamp.style.borderColor = stamp.style.color;
+  stamp.textContent = pass===true?'SOLD':(pass==='saved'?'SAVED':'MISS');
+  sStamp();
+
+  // count-up
+  tween={active:true, from:Math.min(guess,actual)*0.7, to:actual, t0:performance.now(), dur:1200, el:$('rActual'), prefix:'£'};
+  $('rYen').textContent=fmtYen(actual)+'　（あなたの査定 '+fmtGBP(guess)+'）';
+
+  var vEl=$('rVerdict'), vsub=$('rVsub'), ptsEl=$('rPts');
+  if(pass===true){
+    vEl.textContent = bull? 'ズバリ査定！🎯' : '査定成功 ✔';
+    vEl.style.color = bull? '#ffd98a':'#8fe0a6';
+    vsub.textContent='誤差 '+pct.toFixed(0)+'%'+(bull?'　完璧な目利き！':'');
+    setTimeout(bull?sBull:sGood, 260);
+  } else if(pass==='saved'){
+    vEl.textContent='保険で救済 🛡'; vEl.style.color='#ffd98a';
+    vsub.textContent='誤差 '+pct.toFixed(0)+'%　— 大外れだが廃業は免れた';
+    setTimeout(sBad,260);
+  } else {
+    vEl.textContent='査定ミス ✕'; vEl.style.color='#ff9d9d';
+    vsub.textContent='誤差 '+pct.toFixed(0)+'%　— 相場の半額〜2倍から外れた';
+    setTimeout(sBad,260);
+  }
+  if(pass===true){
+    ptsEl.innerHTML='+ <b>'+Math.round(pts*mult).toLocaleString()+'</b> pt'+(mult>1?'（×'+mult.toFixed(1)+'）':'');
+  } else {
+    ptsEl.innerHTML= pass==='saved' ? '保険を1つ消費（残り'+insurance+'）' : 'ライフ −1（残り'+Math.max(0,lives)+'）';
+  }
+  // flavor from geocode
+  var f='';
+  if(cur.geo){
+    var g=cur.geo;
+    var bits=[];
+    if(g.admin_ward) bits.push(g.admin_ward+' 地区');
+    if(g.parliamentary_constituency) bits.push(g.parliamentary_constituency+' 選挙区');
+    if(g.region) bits.push(g.region);
+    f='📍 '+bits.join(' / ');
+  }
+  $('rFlavor').textContent=f;
+
+  updateHUD();
+  saveBestIfNeeded();
+}
+function saveBestIfNeeded(){
+  if(score>bestScore){ bestScore=score; saveBest(); }
+}
+
+$('nextBtn').addEventListener('pointerdown',function(e){
+  e.preventDefault();
+  $('reveal').style.display='none';
+  if(lives<=0){ gameOver(); return; }
+  if(passes>0 && passes%5===0 && !perkGivenFor[passes]){ perkGivenFor[passes]=true; showPerk(); return; }
+  nextRound();
+});
+var perkGivenFor={};
+
+// ================= PERKS =================
+var PERKS=[
+  {i:'🛡',t:'保険を確保',d:'次に査定ミスしても廃業を1回まで免れる（累積可）',fn:function(){insurance++;}},
+  {i:'❤️',t:'物件を回復',d:'ライフを1回復（最大'+MAX_LIVES+'）',fn:function(){lives=Math.min(MAX_LIVES,lives+1);}},
+  {i:'📈',t:'査定倍率アップ',d:'この先ずっと連勝倍率の上限が上がる（+0.5）',fn:function(){multCap+=0.5;}},
+  {i:'🔍',t:'相場カンペ',d:'次の5物件、スライダーに“この街の相場帯”を表示',fn:function(){hintLeft+=5;}},
+  {i:'💷',t:'臨時ボーナス',d:'いますぐ +2,000 pt',fn:function(){score+=2000;}}
+];
+var multCap=3;
+function showPerk(){
+  sPerk();
+  var pool=PERKS.slice(); var chosen=[];
+  for(var i=0;i<3 && pool.length;i++){ var idx=(Math.random()*pool.length)|0; chosen.push(pool.splice(idx,1)[0]); }
+  var html='';
+  chosen.forEach(function(p,i){
+    html+='<div class="perkcard" data-i="'+i+'"><div class="pi">'+p.i+'</div><div><div class="pt">'+p.t+'</div><div class="pd">'+p.d+'</div></div></div>';
+  });
+  var pc=$('perkCards'); pc.innerHTML=html;
+  $('perk').style.display='flex';
+  Array.prototype.forEach.call(pc.children,function(c){
+    c.addEventListener('pointerdown',function(e){
+      e.preventDefault();
+      var p=chosen[+c.getAttribute('data-i')];
+      p.fn(); sConfirm();
+      $('perk').style.display='none';
+      updateHUD();
+      toast(p.t+' を獲得！');
+      nextRound();
+    },{once:true});
+  });
+}
+
+// ================= GAME OVER =================
+function rankFor(s){
+  if(s>=30000) return ['大英不動産卿','Lord of the Land'];
+  if(s>=20000) return ['王立公認 査定士','Royal Surveyor'];
+  if(s>=12000) return ['敏腕エージェント','Prime Agent'];
+  if(s>=7000)  return ['一人前の査定士','Chartered Valuer'];
+  if(s>=3500)  return ['駆け出し仲介人','Junior Estate Agent'];
+  if(s>=1200)  return ['見習い査定士','Apprentice'];
+  return ['冷やかしの内見客','Curious Viewer'];
+}
+function gameOver(){
+  rafPaused=false;
+  var isBest = score>=bestScore;
+  if(score>bestScore){ bestScore=score; saveBest(); }
+  var r=rankFor(score);
+  $('oRank').textContent=r[0];
+  $('over').querySelector('.eyebrow').textContent=r[1];
+  $('oScore').textContent='0';
+  tween={active:true, from:0, to:score, t0:performance.now(), dur:1000, el:$('oScore'), prefix:''};
+  $('oBest').innerHTML = isBest ? '<span class="newbest">🏆 自己ベスト更新！</span>' : ('自己ベスト '+bestScore.toLocaleString()+' pt');
+  var avg = roundNo>0 ? Math.round(totalErr/roundNo) : 0;
+  $('oStats').innerHTML='査定した物件 '+roundNo+' 件　/　成功 '+passes+' 件<br>平均誤差 '+avg+'%'+(closestPct!=null?('　/　最接近 '+closestPct.toFixed(0)+'%'):'');
+  $('over').style.display='flex';
+}
+$('againBtn').addEventListener('pointerdown',function(e){e.preventDefault(); startGame();});
+$('homeBtn').addEventListener('pointerdown',function(e){e.preventDefault(); $('over').style.display='none'; $('game').style.display='none'; $('title').style.display='flex'; $('bestScore').textContent=bestScore.toLocaleString();});
+
+// ================= WIRING =================
+$('appraiseBtn').addEventListener('pointerdown',function(e){ e.preventDefault(); appraise(); });
+$('playBtn').addEventListener('pointerdown',function(e){ e.preventDefault(); unlockAudio(); startGame(); });
+
+// double-tap zoom guard
+var lastTouchEnd=0;
+document.addEventListener('touchend',function(e){
+  var now=Date.now();
+  if(now-lastTouchEnd<=350){ e.preventDefault(); }
+  lastTouchEnd=now;
+},{passive:false});
+document.addEventListener('gesturestart',function(e){ e.preventDefault(); });
+document.addEventListener('dblclick',function(e){ e.preventDefault(); });
+
+updateGuess();
+})();
+</script>
+</body>
+</html>
